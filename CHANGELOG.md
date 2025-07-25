@@ -1,0 +1,119 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.0.0] - 2025-01-25
+
+### 🎉 Major Release: Multi-Language Support
+
+This release transforms the code-graph-mcp from a Python-only analyzer to a comprehensive **25+ language code analysis platform**.
+
+### ✨ Added
+
+#### Multi-Language Architecture
+- **Universal Parser** - ast-grep-powered parsing for 25+ programming languages
+- **Language-Agnostic Graph Structures** - Universal AST representation that works across all languages
+- **Intelligent Language Detection** - Multi-method detection (extension, MIME, shebang, content signatures)
+- **Cross-Language Analysis** - Code similarity, complexity, and pattern detection across language boundaries
+
+#### Supported Languages (25+)
+- **Web & Frontend**: JavaScript, TypeScript, HTML, CSS
+- **Backend & Systems**: Python, Java, C#, C++, C, Rust, Go  
+- **JVM Languages**: Java, Kotlin, Scala
+- **Functional**: Elixir, Elm, Haskell, OCaml, F#
+- **Mobile**: Swift, Dart
+- **Scripting**: Ruby, PHP, Lua
+- **Data & Config**: SQL, YAML, JSON, TOML
+- **Markup & Docs**: XML, Markdown
+
+#### Advanced Analysis Features
+- **Code Smell Detection** - Long functions, complex logic, duplicate patterns across languages
+- **Cross-Language Call Graphs** - Function relationships spanning multiple languages
+- **Circular Dependency Detection** - Import/dependency cycle analysis
+- **Maintainability Indexing** - Project health scoring with language-aware metrics
+- **Framework Recognition** - React, Angular, Vue, Django, Flask, Spring, and 15+ more
+
+#### Project Intelligence
+- **Project Profiling** - Automatic detection of project type, build systems, CI configuration
+- **Multi-Language Statistics** - Comprehensive metrics across entire polyglot codebases
+- **Smart File Discovery** - Language-aware filtering with framework detection
+- **Parallel Processing** - Concurrent analysis of multi-language projects
+
+### 🚀 Enhanced
+
+#### Performance Improvements
+- **Multi-Language AST Caching** - LRU caching with mtime invalidation across all languages
+- **Intelligent Routing** - Priority-based analysis with language-specific optimizations
+- **Memory Efficiency** - Universal graph structures with optimized storage
+
+#### Enterprise Features
+- **Production Stability** - Comprehensive error handling across all language parsers
+- **Defensive Security** - Secure analysis without code execution
+- **Comprehensive Testing** - 14 test suites covering all major features
+- **10.00/10 Pylint Score** - Maintained code quality standards
+
+### 🔄 Changed
+
+#### Breaking Changes
+- Minimum Python version remains 3.12+
+- New dependency: `ast-grep-py>=0.39.0` for multi-language parsing
+- Enhanced MCP tools now return language-aware results
+
+#### API Evolution
+- All existing MCP tools (`analyze_codebase`, `find_definition`, etc.) now work across all 25+ languages
+- Universal node types replace Python-specific AST structures
+- Language detection integrated into all analysis workflows
+
+### 📦 Dependencies
+
+#### New Requirements
+- `ast-grep-py>=0.39.0` - Multi-language parsing backend
+- Enhanced MCP protocol support for cross-language analysis
+
+#### Development Dependencies
+- `pytest>=7.0.0` with multi-language test fixtures
+- `black>=23.0.0` and `ruff>=0.1.0` for code quality
+
+### 🧪 Testing
+
+- **Comprehensive Test Suite** - 14 tests covering all major features
+- **Multi-Language Integration Tests** - End-to-end validation of parsing pipeline
+- **Language Registry Tests** - Verification of all 25+ language configurations
+- **Performance Benchmarks** - Cross-language analysis performance validation
+
+### 📚 Documentation
+
+- **Updated README** - Complete multi-language feature documentation
+- **Enhanced Installation Guide** - PyPI and source installation with ast-grep-py
+- **Usage Examples** - Real-world multi-language project analysis scenarios
+- **Language Support Matrix** - Detailed breakdown of all supported languages
+
+### 🎯 Migration Guide
+
+#### For Existing Users
+The v1.0.0 release is backward compatible - all existing functionality continues to work exactly as before, but now with enhanced multi-language capabilities.
+
+#### New Installation
+```bash
+pip install code-graph-mcp  # Now automatically includes ast-grep-py
+claude mcp add code-graph-mcp code-graph-mcp --project-root $(pwd) --verbose
+```
+
+#### Enhanced Features
+- Same MCP tools, now work with JavaScript, TypeScript, Java, Rust, Go, and 20+ more languages
+- Automatic language detection - no configuration needed
+- Cross-language analysis - find relationships between Python APIs and React components
+
+---
+
+## [0.1.0] - 2025-01-20
+
+### Initial Release
+- Python-only code analysis
+- 8 MCP analysis tools
+- AST parsing with caching
+- Basic complexity analysis
+- MCP protocol integration

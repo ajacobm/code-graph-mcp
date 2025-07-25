@@ -5,6 +5,68 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2025-07-25
+
+### 📚 Documentation Release: Corrected Installation Commands
+
+This patch release fixes critical documentation errors in installation commands.
+
+#### 🐛 Fixed
+- **Installation Commands** - Removed non-existent `--project-root` flag from all documentation
+- **README.md** - Corrected MCP server installation instructions for both PyPI and source installations
+- **CHANGELOG.md** - Updated installation examples with accurate commands
+- **.mcp.json** - Fixed project configuration to use correct command syntax
+
+#### 📖 Improved
+- **Accurate Documentation** - All installation commands now work correctly
+- **User Experience** - Eliminated confusion from incorrect command-line flags
+- **Professional Standards** - Documentation consistency across all files
+
+---
+
+## [1.0.2] - 2025-07-25
+
+### 🛠️ Professional Release: Open Source Ready
+
+This maintenance release focuses on code quality, professional documentation, and open source preparation.
+
+#### ✨ Added
+- **MIT License** - Open source license for commercial and personal use
+- **Professional Documentation** - Cleaned up comments and documentation for public release
+- **Enhanced Error Handling** - Improved logging and error messages across all components
+
+#### 🐛 Fixed
+- **All Pylance Type Errors** - Resolved attribute access issues with UniversalNode structure
+- **Server.py Compatibility** - Fixed data structure alignment with universal graph components
+- **Professional Code Quality** - Removed development comments and improved documentation
+
+#### 🚀 Improved
+- **Perfect Static Analysis** - Maintained 0 Ruff linting errors across all modules
+- **Enhanced Type Safety** - Proper attribute access patterns for UniversalNode
+- **Enterprise Standards** - Professional code quality suitable for open source distribution
+
+---
+
+## [1.0.1] - 2025-07-25
+
+### 🎯 Quality & Performance Release
+
+Major code quality improvements and performance optimizations while maintaining full functionality.
+
+#### 🐛 Fixed
+- **190+ Linting Errors** - Comprehensive cleanup across all source files
+- **Complex Function Refactoring** - Dictionary dispatch pattern for improved maintainability
+- **Import Optimization** - Cleaned up unused imports and improved module organization
+- **Type Annotation Issues** - Enhanced type hints for better IDE support
+
+#### 🚀 Enhanced
+- **Perfect Code Quality** - Achieved 0 Ruff linting errors across entire codebase
+- **Enhanced Type Safety** - Proper null guards and exception handling
+- **Performance Optimizations** - Maintained 50-90% caching improvements
+- **Professional Standards** - Enterprise-grade error handling and defensive programming
+
+---
+
 ## [1.0.0] - 2025-01-25
 
 ### 🎉 Major Release: Multi-Language Support
@@ -99,7 +161,7 @@ The v1.0.0 release is backward compatible - all existing functionality continues
 #### New Installation
 ```bash
 pip install code-graph-mcp  # Now automatically includes ast-grep-py
-claude mcp add code-graph-mcp code-graph-mcp --project-root $(pwd) --verbose
+claude mcp add --scope project code-graph-mcp "uv run code-graph-mcp --verbose"
 ```
 
 #### Enhanced Features

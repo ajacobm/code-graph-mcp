@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "code-graph-mcp": {
+      "type": "stdio",
+      "command": "uv run code-graph-mcp --verbose",
+      "args": [],
+      "env": {}
+    }
+  }
+}

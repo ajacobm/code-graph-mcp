@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 class UniversalAnalysisEngine:
-    """Bridge adapter that uses the new multi-language system with old MCP interface."""
+    """Code analysis engine with comprehensive project analysis capabilities."""
 
     def __init__(self, project_root: Path):
         self.project_root = project_root
@@ -71,11 +71,11 @@ class UniversalAnalysisEngine:
             results.append({
                 "name": node.name,
                 "type": node.node_type.value,
-                "file": node.file_path,
-                "line": node.start_line,
+                "file": node.location.file_path,
+                "line": node.location.start_line,
                 "complexity": getattr(node, 'complexity', 0),
-                "documentation": getattr(node, 'documentation', ''),
-                "full_path": node.file_path,
+                "documentation": getattr(node, 'docstring', ''),
+                "full_path": node.location.file_path,
             })
 
         return results
@@ -90,7 +90,7 @@ class UniversalAnalysisEngine:
 
         for def_node in definition_nodes:
             # Get all relationships pointing to this node
-            relationships = self.graph.get_relationships_to(def_node.node_id)
+            relationships = self.graph.get_relationships_to(def_node.id)
 
             for rel in relationships:
                 if rel.relationship_type == RelationshipType.REFERENCES:
@@ -98,8 +98,8 @@ class UniversalAnalysisEngine:
                     if source_node:
                         results.append({
                             "reference_type": "references",
-                            "file": source_node.file_path,
-                            "line": source_node.start_line,
+                            "file": source_node.location.file_path,
+                            "line": source_node.location.start_line,
                             "context": source_node.name,
                             "referencing_symbol": source_node.name,
                         })
@@ -113,13 +113,13 @@ class UniversalAnalysisEngine:
         # Find function nodes
         function_nodes = [
             node for node in self.graph.find_nodes_by_name(function_name, exact_match=True)
-            if node.node_type in [NodeType.FUNCTION, NodeType.METHOD]
+            if node.node_type == NodeType.FUNCTION
         ]
 
         results = []
         for func_node in function_nodes:
             # Get all CALLS relationships pointing to this function
-            relationships = self.graph.get_relationships_to(func_node.node_id)
+            relationships = self.graph.get_relationships_to(func_node.id)
 
             for rel in relationships:
                 if rel.relationship_type == RelationshipType.CALLS:
@@ -128,8 +128,8 @@ class UniversalAnalysisEngine:
                         results.append({
                             "caller": caller_node.name,
                             "caller_type": caller_node.node_type.value,
-                            "file": caller_node.file_path,
-                            "line": caller_node.start_line,
+                            "file": caller_node.location.file_path,
+                            "line": caller_node.location.start_line,
                             "target_function": function_name,
                         })
 
@@ -142,13 +142,13 @@ class UniversalAnalysisEngine:
         # Find the function node
         function_nodes = [
             node for node in self.graph.find_nodes_by_name(function_name, exact_match=True)
-            if node.node_type in [NodeType.FUNCTION, NodeType.METHOD]
+            if node.node_type == NodeType.FUNCTION
         ]
 
         results = []
         for func_node in function_nodes:
             # Get all CALLS relationships from this function
-            relationships = self.graph.get_relationships_from(func_node.node_id)
+            relationships = self.graph.get_relationships_from(func_node.id)
 
             for rel in relationships:
                 if rel.relationship_type == RelationshipType.CALLS:
@@ -157,9 +157,9 @@ class UniversalAnalysisEngine:
                         results.append({
                             "callee": callee_node.name,
                             "callee_type": callee_node.node_type.value,
-                            "file": callee_node.file_path,
-                            "line": callee_node.start_line,
-                            "call_line": func_node.start_line,  # Line where the call happens
+                            "file": callee_node.location.file_path,
+                            "line": callee_node.location.start_line,
+                            "call_line": func_node.location.start_line,  # Line where the call happens
                         })
 
         return results

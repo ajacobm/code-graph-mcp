@@ -1,349 +1,445 @@
 """
-Universal AST abstraction layer providing unified analysis capabilities
-across all supported programming languages.
+Universal AST Analyzer
 
-This module creates a high-level interface that abstracts away language-specific
-differences while preserving the semantic meaning of code structures.
+High-level analyzer that provides cross-language analysis capabilities.
+Builds on the universal graph to provide code intelligence features.
 """
 
-from __future__ import annotations
-from typing import Dict, List, Any, Protocol
-from dataclasses import dataclass
 import logging
+from collections import defaultdict
+from pathlib import Path
+from typing import Any, Dict, List, Set, Union
 
 from .universal_graph import (
-    UniversalNode,
-    UniversalGraph,
     NodeType,
-    RelationType,
+    RelationshipType,
+    UniversalNode,
 )
 from .universal_parser import UniversalParser
 
 logger = logging.getLogger(__name__)
 
 
-class ASTAnalyzer(Protocol):
-    """Protocol for language-specific AST analyzers."""
-
-    def analyze_complexity(self, node: UniversalNode) -> int:
-        """Calculate cyclomatic complexity for a node."""
-        ...  # pragma: no cover
-
-    def extract_dependencies(self, node: UniversalNode) -> List[str]:
-        """Extract import/dependency information."""
-        ...  # pragma: no cover
-
-    def find_test_patterns(self, node: UniversalNode) -> bool:
-        """Determine if node represents test code."""
-        ...  # pragma: no cover
-
-
-@dataclass
-class AnalysisResult:
-    """Result of analyzing a code construct."""
-
-    node: UniversalNode
-    complexity: int
-    dependencies: List[str]
-    is_test: bool
-    metrics: Dict[str, Any]
-    issues: List[str]
-
-
 class UniversalASTAnalyzer:
-    """High-level analyzer that works across all programming languages."""
+    """High-level analyzer providing cross-language analysis capabilities."""
 
-    def __init__(self, parser: UniversalParser):
-        self.parser = parser
-        self.language_analyzers: Dict[str, ASTAnalyzer] = {}
-        self._setup_language_analyzers()
+    def __init__(self, project_root: Path):
+        self.project_root = project_root
+        self.parser = UniversalParser()
+        self.graph = self.parser.graph
+        self._analysis_cache: Dict[str, Any] = {}
 
-    def _setup_language_analyzers(self) -> None:
-        """Initialize language-specific analyzers."""
-        # For now, use generic analyzers - can be extended with language-specific ones
-        for language in self.parser.get_supported_languages():
-            self.language_analyzers[language.lower()] = GenericASTAnalyzer()
+    def analyze_project(self, recursive: bool = True) -> Dict[str, Any]:
+        """Analyze entire project and return comprehensive statistics."""
+        logger.info("Analyzing project: %s", self.project_root)
 
-    def analyze_function(self, node: UniversalNode) -> AnalysisResult:
-        """Analyze a function/method node across any language."""
-        if node.node_type != NodeType.FUNCTION:
-            raise ValueError(f"Expected function node, got {node.node_type}")
+        # Parse all files
+        parsed_files = self.parser.parse_directory(self.project_root, recursive)
 
-        analyzer = self.language_analyzers.get(node.language, GenericASTAnalyzer())
+        # Get basic statistics
+        stats = self.graph.get_statistics()
 
-        return AnalysisResult(
-            node=node,
-            complexity=analyzer.analyze_complexity(node),
-            dependencies=analyzer.extract_dependencies(node),
-            is_test=analyzer.find_test_patterns(node),
-            metrics=self._calculate_function_metrics(node),
-            issues=self._detect_function_issues(node),
-        )
+        # Add additional analysis
+        stats.update({
+            "parsed_files": parsed_files,
+            "code_smells": self.detect_code_smells(),
+            "complexity_analysis": self.analyze_complexity(),
+            "dependency_analysis": self.analyze_dependencies(),
+            "quality_metrics": self.calculate_quality_metrics(),
+            "language_distribution": self.get_language_distribution(),
+        })
 
-    def analyze_class(self, node: UniversalNode) -> AnalysisResult:
-        """Analyze a class/struct/interface node across any language."""
-        if node.node_type not in [NodeType.CLASS, NodeType.INTERFACE]:
-            raise ValueError(f"Expected class/interface node, got {node.node_type}")
+        logger.info("Analysis complete: %d nodes, %d relationships",
+                   stats["total_nodes"], stats["total_relationships"])
 
-        analyzer = self.language_analyzers.get(node.language, GenericASTAnalyzer())
+        return stats
 
-        return AnalysisResult(
-            node=node,
-            complexity=analyzer.analyze_complexity(node),
-            dependencies=analyzer.extract_dependencies(node),
-            is_test=analyzer.find_test_patterns(node),
-            metrics=self._calculate_class_metrics(node),
-            issues=self._detect_class_issues(node),
-        )
-
-    def find_similar_patterns(
-        self, target_node: UniversalNode, graph: UniversalGraph, similarity_threshold: float = 0.8
-    ) -> List[UniversalNode]:
-        """Find structurally similar code patterns across languages."""
-        similar_nodes = []
-
-        # Get nodes of same type
-        candidates = graph.get_nodes_by_type(target_node.node_type)
-
-        for candidate in candidates:
-            if candidate.id == target_node.id:
-                continue
-
-            similarity = self._calculate_structural_similarity(target_node, candidate)
-            if similarity >= similarity_threshold:
-                similar_nodes.append(candidate)
-
-        return sorted(
-            similar_nodes,
-            key=lambda n: self._calculate_structural_similarity(target_node, n),
-            reverse=True,
-        )
-
-    def detect_code_smells(self, graph: UniversalGraph) -> Dict[str, List[UniversalNode]]:
-        """Detect common code smells across all languages."""
+    def detect_code_smells(self) -> Dict[str, List[Dict[str, Any]]]:
+        """Detect various code smells across all languages."""
         smells = {
             "long_functions": [],
             "complex_functions": [],
-            "large_classes": [],
             "duplicate_logic": [],
-            "deep_nesting": [],
+            "large_classes": [],
+            "god_classes": [],
             "dead_code": [],
+            "naming_issues": [],
         }
 
-        functions = graph.get_nodes_by_type(NodeType.FUNCTION)
-        classes = graph.get_nodes_by_type(NodeType.CLASS)
+        # Analyze functions
+        functions = self.graph.get_nodes_by_type(NodeType.FUNCTION)
+        for func in functions:
+            # Long functions (>50 lines)
+            if func.line_count > 50:
+                smells["long_functions"].append({
+                    "name": func.name,
+                    "location": f"{func.location.file_path}:{func.location.start_line}",
+                    "line_count": func.line_count,
+                    "language": func.language,
+                    "severity": "high" if func.line_count > 100 else "medium"
+                })
 
-        # Long functions (>50 lines)
-        smells["long_functions"] = [f for f in functions if f.line_count > 50]
+            # Complex functions (high cyclomatic complexity)
+            if func.complexity > 15:
+                smells["complex_functions"].append({
+                    "name": func.name,
+                    "location": f"{func.location.file_path}:{func.location.start_line}",
+                    "complexity": func.complexity,
+                    "language": func.language,
+                    "severity": "high" if func.complexity > 20 else "medium"
+                })
 
-        # Complex functions (complexity >15)
-        smells["complex_functions"] = [f for f in functions if f.complexity > 15]
+            # Naming issues (single letter names, etc.)
+            if len(func.name) <= 2 and func.name not in ["id", "x", "y", "i", "j", "k"]:
+                smells["naming_issues"].append({
+                    "name": func.name,
+                    "location": f"{func.location.file_path}:{func.location.start_line}",
+                    "issue": "Very short function name",
+                    "language": func.language,
+                    "severity": "low"
+                })
 
-        # Large classes (>500 lines or >20 methods)
+        # Analyze classes
+        classes = self.graph.get_nodes_by_type(NodeType.CLASS)
         for cls in classes:
-            if cls.line_count > 500:
-                smells["large_classes"].append(cls)
-            elif len(cls.get_children_by_type(NodeType.FUNCTION)) > 20:
-                smells["large_classes"].append(cls)
+            # Get methods in this class
+            class_methods = [
+                rel.target_id for rel in self.graph.get_relationships_from(cls.id)
+                if rel.relationship_type == RelationshipType.CONTAINS
+            ]
+            method_count = len(class_methods)
 
-        # Find potential duplicates
+            # Large classes (many methods)
+            if method_count > 20:
+                smells["large_classes"].append({
+                    "name": cls.name,
+                    "location": f"{cls.location.file_path}:{cls.location.start_line}",
+                    "method_count": method_count,
+                    "language": cls.language,
+                    "severity": "high" if method_count > 30 else "medium"
+                })
+
+            # God classes (too many responsibilities)
+            if method_count > 30 and cls.line_count > 500:
+                smells["god_classes"].append({
+                    "name": cls.name,
+                    "location": f"{cls.location.file_path}:{cls.location.start_line}",
+                    "method_count": method_count,
+                    "line_count": cls.line_count,
+                    "language": cls.language,
+                    "severity": "critical"
+                })
+
+        # Find duplicate logic patterns
         smells["duplicate_logic"] = self._find_duplicate_patterns(functions)
+
+        # Find potentially dead code
+        smells["dead_code"] = self._find_dead_code()
 
         return smells
 
-    def generate_call_graph(self, graph: UniversalGraph) -> Dict[str, List[str]]:
-        """Generate function call graph across all languages."""
-        call_graph = {}
+    def analyze_complexity(self, threshold: int = 10) -> Dict[str, Any]:
+        """Analyze code complexity across the project."""
+        functions = self.graph.get_nodes_by_type(NodeType.FUNCTION)
 
-        # Get all call relations
-        call_relations = graph.get_relations_by_type(RelationType.CALLS)
+        if not functions:
+            return {
+                "total_functions": 0,
+                "average_complexity": 0.0,
+                "max_complexity": 0,
+                "high_complexity_functions": [],
+                "complexity_distribution": {},
+            }
 
-        for relation in call_relations:
-            source_node = graph.nodes.get(relation.source_id)
-            target_node = graph.nodes.get(relation.target_id)
+        complexities = [func.complexity for func in functions if func.complexity > 0]
 
-            if source_node and target_node:
-                if source_node.qualified_name not in call_graph:
-                    call_graph[source_node.qualified_name] = []
-                call_graph[source_node.qualified_name].append(target_node.qualified_name)
+        if not complexities:
+            return {
+                "total_functions": len(functions),
+                "average_complexity": 0.0,
+                "max_complexity": 0,
+                "high_complexity_functions": [],
+                "complexity_distribution": {},
+            }
 
-        return call_graph
+        # Calculate distribution
+        distribution = defaultdict(int)
+        for complexity in complexities:
+            if complexity <= 5:
+                distribution["simple"] += 1
+            elif complexity <= 10:
+                distribution["moderate"] += 1
+            elif complexity <= 20:
+                distribution["complex"] += 1
+            else:
+                distribution["very_complex"] += 1
 
-    def find_circular_dependencies(self, graph: UniversalGraph) -> List[List[str]]:
-        """Find circular dependencies in the codebase."""
-        import_relations = graph.get_relations_by_type(RelationType.IMPORTS)
+        # Find high complexity functions
+        high_complexity = [
+            {
+                "name": func.name,
+                "complexity": func.complexity,
+                "location": f"{func.location.file_path}:{func.location.start_line}",
+                "language": func.language,
+                "risk_level": "critical" if func.complexity > 25 else "high"
+            }
+            for func in functions
+            if func.complexity >= threshold
+        ]
+
+        high_complexity.sort(key=lambda x: x["complexity"], reverse=True)
+
+        return {
+            "total_functions": len(functions),
+            "average_complexity": sum(complexities) / len(complexities),
+            "max_complexity": max(complexities),
+            "high_complexity_functions": high_complexity,
+            "complexity_distribution": dict(distribution),
+            "functions_above_threshold": len(high_complexity)
+        }
+
+    def analyze_dependencies(self) -> Dict[str, Any]:
+        """Analyze dependencies and coupling between modules."""
+        import_relationships = self.graph.get_relationships_by_type(RelationshipType.IMPORTS)
 
         # Build dependency graph
-        deps = {}
-        for relation in import_relations:
-            source = graph.nodes.get(relation.source_id)
-            target = graph.nodes.get(relation.target_id)
+        dependencies = defaultdict(set)
+        reverse_dependencies = defaultdict(set)
 
-            if source and target:
-                if source.qualified_name not in deps:
-                    deps[source.qualified_name] = []
-                deps[source.qualified_name].append(target.qualified_name)
+        for rel in import_relationships:
+            source_node = self.graph.get_node(rel.source_id)
+            if source_node and source_node.node_type == NodeType.MODULE:
+                target = rel.target_id.replace("module:", "")
+                dependencies[source_node.name].add(target)
+                reverse_dependencies[target].add(source_node.name)
 
-        # Find cycles using DFS
-        return self._find_cycles_dfs(deps)
+        # Calculate metrics
+        total_dependencies = sum(len(deps) for deps in dependencies.values())
 
-    def calculate_maintainability_index(self, graph: UniversalGraph) -> float:
-        """Calculate overall maintainability index for the codebase."""
-        if not graph.nodes:
-            return 0.0
+        # Find highly coupled modules
+        highly_coupled = [
+            {
+                "module": module,
+                "dependency_count": len(deps),
+                "dependencies": list(deps),
+                "severity": "high" if len(deps) > 10 else "medium"
+            }
+            for module, deps in dependencies.items()
+            if len(deps) > 5
+        ]
 
-        total_complexity = sum(node.complexity for node in graph.nodes.values())
-        total_lines = sum(node.line_count for node in graph.nodes.values())
-        avg_complexity = total_complexity / len(graph.nodes)
+        # Find modules with many dependents
+        popular_modules = [
+            {
+                "module": module,
+                "dependent_count": len(dependents),
+                "dependents": list(dependents)
+            }
+            for module, dependents in reverse_dependencies.items()
+            if len(dependents) > 3
+        ]
 
-        # Simplified maintainability index calculation
-        # Real implementation would use Halstead metrics and other factors
-        complexity_factor = max(0, 100 - (avg_complexity * 5))
-        size_factor = max(0, 100 - (total_lines / 1000))
-
-        return (complexity_factor + size_factor) / 2
-
-    def _calculate_function_metrics(self, node: UniversalNode) -> Dict[str, Any]:
-        """Calculate detailed metrics for a function."""
-        return {
-            "lines_of_code": node.line_count,
-            "cyclomatic_complexity": node.complexity,
-            "parameter_count": len(node.get_children_by_type(NodeType.PARAMETER)),
-            "nested_depth": self._calculate_nesting_depth(node),
-            "has_documentation": node.documentation is not None,
-            "return_points": self._count_return_statements(node),
-        }
-
-    def _calculate_class_metrics(self, node: UniversalNode) -> Dict[str, Any]:
-        """Calculate detailed metrics for a class."""
-        methods = node.get_children_by_type(NodeType.FUNCTION)
-        variables = node.get_children_by_type(NodeType.VARIABLE)
+        # Detect circular dependencies
+        circular_deps = self._detect_circular_dependencies(dependencies)
 
         return {
-            "lines_of_code": node.line_count,
-            "method_count": len(methods),
-            "field_count": len(variables),
-            "avg_method_complexity": (
-                sum(m.complexity for m in methods) / len(methods) if methods else 0
-            ),
-            "public_methods": len([m for m in methods if not m.name.startswith("_")]),
-            "has_documentation": node.documentation is not None,
+            "total_modules": len(dependencies),
+            "total_dependencies": total_dependencies,
+            "average_dependencies_per_module": total_dependencies / len(dependencies) if dependencies else 0,
+            "highly_coupled_modules": highly_coupled,
+            "popular_modules": popular_modules,
+            "circular_dependencies": circular_deps,
+            "dependency_graph": {k: list(v) for k, v in dependencies.items()}
         }
 
-    def _detect_function_issues(self, node: UniversalNode) -> List[str]:
-        """Detect potential issues in a function."""
-        issues = []
+    def calculate_quality_metrics(self) -> Dict[str, Any]:
+        """Calculate overall code quality metrics."""
+        functions = self.graph.get_nodes_by_type(NodeType.FUNCTION)
+        modules = self.graph.get_nodes_by_type(NodeType.MODULE)
 
-        if node.line_count > 50:
-            issues.append("Function is too long (>50 lines)")
+        if not functions:
+            return {
+                "maintainability_index": 0,
+                "technical_debt_ratio": 0,
+                "test_coverage_estimate": 0,
+                "documentation_ratio": 0,
+                "code_duplication_ratio": 0
+            }
 
-        if node.complexity > 10:
-            issues.append(f"High cyclomatic complexity ({node.complexity})")
+        # Calculate maintainability index (simplified)
+        complexities = [func.complexity for func in functions if func.complexity > 0]
+        avg_complexity = sum(complexities) / len(complexities) if complexities else 1
 
-        param_count = len(node.get_children_by_type(NodeType.PARAMETER))
-        if param_count > 7:
-            issues.append(f"Too many parameters ({param_count})")
+        total_lines = sum(node.line_count for node in self.graph.nodes.values() if node.line_count > 0)
 
-        if not node.documentation:
-            issues.append("Missing documentation")
+        # Maintainability index (0-100, higher is better)
+        maintainability = max(0, 100 - (avg_complexity * 5) - (total_lines / 1000))
 
-        if self._calculate_nesting_depth(node) > 4:
-            issues.append("Deep nesting detected")
+        # Technical debt ratio (estimated based on code smells)
+        code_smells = self.detect_code_smells()
+        total_smells = sum(len(smells) for smells in code_smells.values())
+        debt_ratio = min(100, (total_smells / len(functions)) * 100) if functions else 0
 
-        return issues
+        # Documentation ratio (functions with docstrings)
+        documented_functions = len([f for f in functions if f.docstring])
+        doc_ratio = (documented_functions / len(functions)) * 100 if functions else 0
 
-    def _detect_class_issues(self, node: UniversalNode) -> List[str]:
-        """Detect potential issues in a class."""
-        issues = []
+        # Estimate test coverage based on file patterns
+        test_files = [
+            node for node in modules
+            if any(pattern in node.name.lower() for pattern in ["test", "spec", "_test", ".test"])
+        ]
+        test_coverage_estimate = min(100, (len(test_files) / len(modules)) * 200) if modules else 0
 
-        methods = node.get_children_by_type(NodeType.FUNCTION)
+        return {
+            "maintainability_index": round(maintainability, 2),
+            "technical_debt_ratio": round(debt_ratio, 2),
+            "test_coverage_estimate": round(test_coverage_estimate, 2),
+            "documentation_ratio": round(doc_ratio, 2),
+            "code_duplication_ratio": 0,  # Would require more sophisticated analysis
+            "total_code_smells": total_smells,
+            "quality_score": round((maintainability + doc_ratio + test_coverage_estimate - debt_ratio) / 4, 2)
+        }
 
-        if node.line_count > 500:
-            issues.append("Class is too large (>500 lines)")
+    def get_language_distribution(self) -> Dict[str, Any]:
+        """Get distribution of languages in the project."""
+        language_stats: Dict[str, Dict[str, Union[int, float]]] = defaultdict(lambda: {
+            "files": 0,
+            "nodes": 0,
+            "functions": 0,
+            "classes": 0,
+            "lines": 0
+        })
 
-        if len(methods) > 20:
-            issues.append(f"Too many methods ({len(methods)})")
+        for node in self.graph.nodes.values():
+            if node.language:
+                lang = node.language
+                language_stats[lang]["nodes"] += 1
+                language_stats[lang]["lines"] += node.line_count
 
-        if not node.documentation:
-            issues.append("Missing class documentation")
+                if node.node_type == NodeType.MODULE:
+                    language_stats[lang]["files"] += 1
+                elif node.node_type == NodeType.FUNCTION:
+                    language_stats[lang]["functions"] += 1
+                elif node.node_type == NodeType.CLASS:
+                    language_stats[lang]["classes"] += 1
 
-        # Check for god class pattern
-        if len(methods) > 15 and node.line_count > 300:
-            issues.append("Potential god class (too many responsibilities)")
+        # Calculate percentages
+        total_files = sum(stats["files"] for stats in language_stats.values())
+        total_lines = sum(stats["lines"] for stats in language_stats.values())
 
-        return issues
+        for lang, stats in language_stats.items():
+            stats["file_percentage"] = (stats["files"] / total_files * 100) if total_files else 0.0
+            stats["line_percentage"] = (stats["lines"] / total_lines * 100) if total_lines else 0.0
 
-    def _calculate_structural_similarity(self, node1: UniversalNode, node2: UniversalNode) -> float:
-        """Calculate structural similarity between two nodes."""
-        if node1.node_type != node2.node_type:
-            return 0.0
-
-        # Compare various structural aspects
-        similarity_factors = []
-
-        # Line count similarity
-        size_diff = abs(node1.line_count - node2.line_count)
-        max_size = max(node1.line_count, node2.line_count)
-        size_similarity = 1.0 - (size_diff / max_size) if max_size > 0 else 1.0
-        similarity_factors.append(size_similarity)
-
-        # Complexity similarity
-        complexity_diff = abs(node1.complexity - node2.complexity)
-        max_complexity = max(node1.complexity, node2.complexity)
-        complexity_similarity = (
-            1.0 - (complexity_diff / max_complexity) if max_complexity > 0 else 1.0
+        # Sort by number of lines (descending)
+        sorted_languages = sorted(
+            language_stats.items(),
+            key=lambda x: x[1]["lines"],
+            reverse=True
         )
-        similarity_factors.append(complexity_similarity)
 
-        # Child count similarity
-        child_diff = abs(len(node1.children) - len(node2.children))
-        max_children = max(len(node1.children), len(node2.children))
-        child_similarity = 1.0 - (child_diff / max_children) if max_children > 0 else 1.0
-        similarity_factors.append(child_similarity)
+        return {
+            "languages": dict(sorted_languages),
+            "primary_language": sorted_languages[0][0] if sorted_languages else None,
+            "total_languages": len(language_stats),
+            "polyglot_score": min(len(language_stats), 10) * 10  # 0-100 score
+        }
 
-        return sum(similarity_factors) / len(similarity_factors)
+    def find_similar_functions(self, function_name: str, similarity_threshold: float = 0.7) -> List[Dict[str, Any]]:
+        """Find functions similar to the given function."""
+        target_function = None
+        for node in self.graph.nodes.values():
+            if node.name == function_name and node.node_type == NodeType.FUNCTION:
+                target_function = node
+                break
 
-    def _find_duplicate_patterns(self, functions: List[UniversalNode]) -> List[UniversalNode]:
-        """Find potentially duplicate function implementations."""
+        if not target_function:
+            return []
+
+        similar_functions = []
+        functions = self.graph.get_nodes_by_type(NodeType.FUNCTION)
+
+        for func in functions:
+            if func.id == target_function.id:
+                continue
+
+            similarity = self._calculate_function_similarity(target_function, func)
+            if similarity >= similarity_threshold:
+                similar_functions.append({
+                    "name": func.name,
+                    "location": f"{func.location.file_path}:{func.location.start_line}",
+                    "language": func.language,
+                    "similarity": similarity,
+                    "complexity": func.complexity
+                })
+
+        return sorted(similar_functions, key=lambda x: x["similarity"], reverse=True)
+
+    def _find_duplicate_patterns(self, functions: List[UniversalNode]) -> List[Dict[str, Any]]:
+        """Find potentially duplicate code patterns."""
         duplicates = []
 
-        for i, func1 in enumerate(functions):
-            for func2 in functions[i + 1 :]:
-                similarity = self._calculate_structural_similarity(func1, func2)
-                if similarity > 0.9:  # High similarity threshold
-                    if func1 not in duplicates:
-                        duplicates.append(func1)
-                    if func2 not in duplicates:
-                        duplicates.append(func2)
+        # Group functions by similar characteristics
+        function_groups = defaultdict(list)
+
+        for func in functions:
+            # Group by complexity and line count (simplified)
+            if func.complexity > 5 and func.line_count > 10:
+                key = (func.complexity, func.line_count // 5 * 5)  # Round to nearest 5
+                function_groups[key].append(func)
+
+        # Find groups with multiple functions
+        for key, group in function_groups.items():
+            if len(group) > 1:
+                duplicates.append({
+                    "pattern": f"Functions with complexity {key[0]} and ~{key[1]} lines",
+                    "count": len(group),
+                    "functions": [
+                        {
+                            "name": func.name,
+                            "location": f"{func.location.file_path}:{func.location.start_line}",
+                            "language": func.language
+                        }
+                        for func in group
+                    ],
+                    "severity": "medium" if len(group) < 4 else "high"
+                })
 
         return duplicates
 
-    def _calculate_nesting_depth(self, node: UniversalNode) -> int:
-        """Calculate maximum nesting depth in a node."""
+    def _find_dead_code(self) -> List[Dict[str, Any]]:
+        """Find potentially dead (unused) code."""
+        dead_code = []
 
-        def depth_recursive(current_node: UniversalNode, current_depth: int) -> int:
-            max_depth = current_depth
+        # Find functions that are never called
+        all_functions = {node.id: node for node in self.graph.get_nodes_by_type(NodeType.FUNCTION)}
+        called_functions = set()
 
-            for child in current_node.children:
-                if child.node_type in [NodeType.CONDITIONAL, NodeType.LOOP]:
-                    child_depth = depth_recursive(child, current_depth + 1)
-                    max_depth = max(max_depth, child_depth)
-                else:
-                    child_depth = depth_recursive(child, current_depth)
-                    max_depth = max(max_depth, child_depth)
+        # Find all function calls
+        call_relationships = self.graph.get_relationships_by_type(RelationshipType.CALLS)
+        for rel in call_relationships:
+            called_functions.add(rel.target_id)
 
-            return max_depth
+        # Functions that are defined but never called
+        for func_id, func in all_functions.items():
+            if func_id not in called_functions:
+                # Skip entry points and special methods
+                if not self._is_entry_point(func):
+                    dead_code.append({
+                        "name": func.name,
+                        "type": "function",
+                        "location": f"{func.location.file_path}:{func.location.start_line}",
+                        "language": func.language,
+                        "reason": "Never called",
+                        "severity": "medium"
+                    })
 
-        return depth_recursive(node, 0)
+        return dead_code
 
-    def _count_return_statements(self, node: UniversalNode) -> int:
-        """Count return statements in a function."""
-        # Simplified implementation - would need language-specific logic
-        return node.source_text.count("return") if node.source_text else 0
-
-    def _find_cycles_dfs(self, graph: Dict[str, List[str]]) -> List[List[str]]:
-        """Find cycles in a directed graph using DFS."""
-        cycles = []
+    def _detect_circular_dependencies(self, dependencies: Dict[str, Set[str]]) -> List[Dict[str, Any]]:
+        """Detect circular dependencies using DFS."""
+        circular_deps = []
         visited = set()
         rec_stack = set()
 
@@ -352,7 +448,11 @@ class UniversalASTAnalyzer:
                 # Found a cycle
                 cycle_start = path.index(node)
                 cycle = path[cycle_start:] + [node]
-                cycles.append(cycle)
+                circular_deps.append({
+                    "cycle": cycle,
+                    "length": len(cycle) - 1,
+                    "severity": "high" if len(cycle) <= 3 else "medium"
+                })
                 return
 
             if node in visited:
@@ -361,73 +461,117 @@ class UniversalASTAnalyzer:
             visited.add(node)
             rec_stack.add(node)
 
-            for neighbor in graph.get(node, []):
+            for neighbor in dependencies.get(node, set()):
                 dfs(neighbor, path + [node])
 
             rec_stack.remove(node)
 
-        for node in graph:
-            if node not in visited:
-                dfs(node, [])
+        for module in dependencies:
+            if module not in visited:
+                dfs(module, [])
 
-        return cycles
+        return circular_deps
 
+    def _calculate_function_similarity(self, func1: UniversalNode, func2: UniversalNode) -> float:
+        """Calculate similarity between two functions."""
+        # Simple similarity based on multiple factors
+        similarity_factors = []
 
-class GenericASTAnalyzer:
-    """Generic AST analyzer that works across all languages."""
+        # Name similarity (Levenshtein distance)
+        name_similarity = 1.0 - (self._levenshtein_distance(func1.name, func2.name) / max(len(func1.name), len(func2.name)))
+        similarity_factors.append(name_similarity * 0.3)
 
-    def analyze_complexity(self, node: UniversalNode) -> int:
-        """Calculate cyclomatic complexity using universal node structure."""
-        complexity = 1
+        # Complexity similarity
+        if func1.complexity > 0 and func2.complexity > 0:
+            complexity_diff = abs(func1.complexity - func2.complexity)
+            complexity_similarity = 1.0 / (1.0 + complexity_diff)
+            similarity_factors.append(complexity_similarity * 0.2)
 
-        def count_decision_points(current_node: UniversalNode) -> int:
-            count = 0
+        # Line count similarity
+        if func1.line_count > 0 and func2.line_count > 0:
+            line_diff = abs(func1.line_count - func2.line_count)
+            line_similarity = 1.0 / (1.0 + line_diff / 10.0)
+            similarity_factors.append(line_similarity * 0.2)
 
-            # Count control flow nodes that increase complexity
-            if current_node.node_type in [NodeType.CONDITIONAL, NodeType.LOOP]:
-                count += 1
-            elif current_node.node_type == NodeType.EXCEPTION:
-                count += 1
+        # Language similarity
+        if func1.language == func2.language:
+            similarity_factors.append(0.3)
 
-            # Recursively count in children
-            for child in current_node.children:
-                count += count_decision_points(child)
+        return sum(similarity_factors) if similarity_factors else 0.0
 
-            return count
+    def _levenshtein_distance(self, s1: str, s2: str) -> int:
+        """Calculate Levenshtein distance between two strings."""
+        if len(s1) < len(s2):
+            return self._levenshtein_distance(s2, s1)
 
-        return complexity + count_decision_points(node)
+        if len(s2) == 0:
+            return len(s1)
 
-    def extract_dependencies(self, node: UniversalNode) -> List[str]:
-        """Extract import/dependency information from any language."""
-        dependencies = []
+        previous_row = list(range(len(s2) + 1))
+        for i, c1 in enumerate(s1):
+            current_row = [i + 1]
+            for j, c2 in enumerate(s2):
+                insertions = previous_row[j + 1] + 1
+                deletions = current_row[j] + 1
+                substitutions = previous_row[j] + (c1 != c2)
+                current_row.append(min(insertions, deletions, substitutions))
+            previous_row = current_row
 
-        def find_imports(current_node: UniversalNode) -> None:
-            if current_node.node_type == NodeType.IMPORT:
-                dependencies.append(current_node.name)
+        return previous_row[-1]
 
-            for child in current_node.children:
-                find_imports(child)
-
-        find_imports(node)
-        return dependencies
-
-    def find_test_patterns(self, node: UniversalNode) -> bool:
-        """Determine if node represents test code using universal patterns."""
-        test_indicators = [
-            "test_",
-            "Test",
-            "spec_",
-            "Spec",
-            "it(",
-            "describe(",
-            "assert",
-            "expect",
-            "should",
-            "mock",
-            "stub",
+    def _is_entry_point(self, func: UniversalNode) -> bool:
+        """Check if a function is likely an entry point."""
+        entry_point_patterns = [
+            "main", "__main__", "init", "__init__", "setup", "run",
+            "start", "begin", "execute", "handler", "callback"
         ]
 
-        # Check node name and source text for test patterns
-        text_to_check = f"{node.name} {node.source_text}".lower()
+        return any(
+            pattern in func.name.lower()
+            for pattern in entry_point_patterns
+        )
 
-        return any(indicator.lower() in text_to_check for indicator in test_indicators)
+    def export_analysis_report(self, output_path: Path) -> None:
+        """Export comprehensive analysis report to a file."""
+        analysis = self.analyze_project()
+
+        report_content = f"""# Code Analysis Report
+
+## Project Overview
+- **Project Root**: {self.project_root}
+- **Total Files Parsed**: {analysis['parsed_files']}
+- **Total Languages**: {analysis['language_distribution']['total_languages']}
+- **Primary Language**: {analysis['language_distribution']['primary_language']}
+
+## Code Statistics
+- **Total Nodes**: {analysis['total_nodes']:,}
+- **Total Relationships**: {analysis['total_relationships']:,}
+- **Functions**: {analysis['nodes_by_type'].get('function', 0):,}
+- **Classes**: {analysis['nodes_by_type'].get('class', 0):,}
+
+## Quality Metrics
+- **Maintainability Index**: {analysis['quality_metrics']['maintainability_index']}/100
+- **Technical Debt Ratio**: {analysis['quality_metrics']['technical_debt_ratio']}%
+- **Documentation Ratio**: {analysis['quality_metrics']['documentation_ratio']}%
+- **Quality Score**: {analysis['quality_metrics']['quality_score']}/100
+
+## Code Smells Detected
+- **Long Functions**: {len(analysis['code_smells']['long_functions'])}
+- **Complex Functions**: {len(analysis['code_smells']['complex_functions'])}
+- **Large Classes**: {len(analysis['code_smells']['large_classes'])}
+- **Potential Duplicates**: {len(analysis['code_smells']['duplicate_logic'])}
+
+## Complexity Analysis
+- **Average Complexity**: {analysis['complexity_analysis']['average_complexity']:.2f}
+- **Max Complexity**: {analysis['complexity_analysis']['max_complexity']}
+- **High Complexity Functions**: {analysis['complexity_analysis']['functions_above_threshold']}
+
+## Dependencies
+- **Total Modules**: {analysis['dependency_analysis']['total_modules']}
+- **Average Dependencies**: {analysis['dependency_analysis']['average_dependencies_per_module']:.2f}
+- **Circular Dependencies**: {len(analysis['dependency_analysis']['circular_dependencies'])}
+"""
+
+        output_path.write_text(report_content, encoding='utf-8')
+        logger.info("Analysis report exported to: %s", output_path)
+

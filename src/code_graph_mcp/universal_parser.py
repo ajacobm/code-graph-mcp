@@ -1,25 +1,27 @@
 """
-Universal multi-language parser using ast-grep backend.
+Universal Multi-Language Parser
 
-This module provides a pluggable parser architecture that can analyze code
-in 25+ programming languages and convert them to universal graph structures.
+Uses ast-grep as the backend to parse 25+ programming languages into a universal AST format.
+Provides language-agnostic parsing with consistent node types and relationships.
 """
 
-from __future__ import annotations
-from pathlib import Path
-from typing import Dict, List, Optional, Set, Callable, Union, Any
 import logging
 from dataclasses import dataclass
-import re
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set
 
-import ast_grep_py as ag  # type: ignore[import-untyped]
+try:
+    from ast_grep_py import SgRoot  # type: ignore[import-untyped]
+except ImportError:
+    SgRoot = None
 
 from .universal_graph import (
-    UniversalNode,
-    UniversalGraph,
-    SourceLocation,
     NodeType,
-    LanguageMapping,
+    RelationshipType,
+    UniversalGraph,
+    UniversalLocation,
+    UniversalNode,
+    UniversalRelationship,
 )
 
 logger = logging.getLogger(__name__)
@@ -29,439 +31,625 @@ logger = logging.getLogger(__name__)
 class LanguageConfig:
     """Configuration for a specific programming language."""
 
-    name: str  # Language name
-    extensions: List[str]  # File extensions (.py, .js, etc.)
-    ast_grep_id: str  # ast-grep language identifier
-    comment_patterns: List[str]  # Comment syntax patterns
-    node_extractors: Optional[Dict[str, Callable]] = None  # Custom node extraction logic
+    name: str
+    extensions: List[str]
+    ast_grep_id: str
+    comment_patterns: List[str]
+    string_patterns: List[str]
 
-    def __post_init__(self):
-        if self.node_extractors is None:
-            self.node_extractors = {}
+    # Language-specific parsing rules
+    function_patterns: List[str]
+    class_patterns: List[str]
+    variable_patterns: List[str]
+    import_patterns: List[str]
 
 
 class LanguageRegistry:
     """Registry of supported programming languages with their configurations."""
 
-    # Comprehensive language support for enterprise environments
     LANGUAGES = {
-        # Web & Frontend
         "javascript": LanguageConfig(
             name="JavaScript",
             extensions=[".js", ".mjs", ".jsx"],
             ast_grep_id="javascript",
             comment_patterns=["//", "/*", "*/"],
+            string_patterns=['"', "'", "`"],
+            function_patterns=["function", "=>", "async function"],
+            class_patterns=["class"],
+            variable_patterns=["var", "let", "const"],
+            import_patterns=["import", "require", "export"]
         ),
         "typescript": LanguageConfig(
             name="TypeScript",
             extensions=[".ts", ".tsx", ".d.ts"],
             ast_grep_id="typescript",
             comment_patterns=["//", "/*", "*/"],
+            string_patterns=['"', "'", "`"],
+            function_patterns=["function", "=>", "async function"],
+            class_patterns=["class", "interface", "type"],
+            variable_patterns=["var", "let", "const"],
+            import_patterns=["import", "export", "declare"]
         ),
-        "html": LanguageConfig(
-            name="HTML",
-            extensions=[".html", ".htm"],
-            ast_grep_id="html",
-            comment_patterns=["<!--", "-->"],
-        ),
-        "css": LanguageConfig(
-            name="CSS",
-            extensions=[".css", ".scss", ".sass", ".less"],
-            ast_grep_id="css",
-            comment_patterns=["/*", "*/"],
-        ),
-        # Backend & Systems
         "python": LanguageConfig(
             name="Python",
             extensions=[".py", ".pyi", ".pyw"],
             ast_grep_id="python",
             comment_patterns=["#", '"""', "'''"],
+            string_patterns=['"', "'", '"""', "'''"],
+            function_patterns=["def", "async def", "lambda"],
+            class_patterns=["class"],
+            variable_patterns=["=", ":"],
+            import_patterns=["import", "from", "import"]
         ),
         "java": LanguageConfig(
             name="Java",
             extensions=[".java"],
             ast_grep_id="java",
             comment_patterns=["//", "/*", "*/"],
+            string_patterns=['"'],
+            function_patterns=["public", "private", "protected", "static"],
+            class_patterns=["class", "interface", "enum"],
+            variable_patterns=["int", "String", "boolean", "double", "float"],
+            import_patterns=["import", "package"]
+        ),
+        "rust": LanguageConfig(
+            name="Rust",
+            extensions=[".rs"],
+            ast_grep_id="rust",
+            comment_patterns=["//", "/*", "*/"],
+            string_patterns=['"', "'"],
+            function_patterns=["fn", "async fn"],
+            class_patterns=["struct", "enum", "trait", "impl"],
+            variable_patterns=["let", "const", "static"],
+            import_patterns=["use", "mod", "extern"]
+        ),
+        "go": LanguageConfig(
+            name="Go",
+            extensions=[".go"],
+            ast_grep_id="go",
+            comment_patterns=["//", "/*", "*/"],
+            string_patterns=['"', "`"],
+            function_patterns=["func"],
+            class_patterns=["type", "struct", "interface"],
+            variable_patterns=["var", ":="],
+            import_patterns=["import", "package"]
+        ),
+        "cpp": LanguageConfig(
+            name="C++",
+            extensions=[".cpp", ".cc", ".cxx", ".hpp", ".h"],
+            ast_grep_id="cpp",
+            comment_patterns=["//", "/*", "*/"],
+            string_patterns=['"', "'"],
+            function_patterns=["int", "void", "auto", "template"],
+            class_patterns=["class", "struct", "namespace"],
+            variable_patterns=["int", "double", "float", "char", "auto"],
+            import_patterns=["#include", "using", "namespace"]
+        ),
+        "c": LanguageConfig(
+            name="C",
+            extensions=[".c", ".h"],
+            ast_grep_id="c",
+            comment_patterns=["//", "/*", "*/"],
+            string_patterns=['"', "'"],
+            function_patterns=["int", "void", "char", "float", "double"],
+            class_patterns=["struct", "enum", "union"],
+            variable_patterns=["int", "char", "float", "double", "static"],
+            import_patterns=["#include", "#define"]
         ),
         "csharp": LanguageConfig(
             name="C#",
             extensions=[".cs"],
-            ast_grep_id="c_sharp",
+            ast_grep_id="csharp",
             comment_patterns=["//", "/*", "*/"],
+            string_patterns=['"', "'"],
+            function_patterns=["public", "private", "protected", "static"],
+            class_patterns=["class", "interface", "struct", "enum"],
+            variable_patterns=["int", "string", "bool", "double", "var"],
+            import_patterns=["using", "namespace"]
         ),
-        "cpp": LanguageConfig(
-            name="C++",
-            extensions=[".cpp", ".cxx", ".cc", ".hpp", ".hxx", ".h"],
-            ast_grep_id="cpp",
-            comment_patterns=["//", "/*", "*/"],
+        "php": LanguageConfig(
+            name="PHP",
+            extensions=[".php"],
+            ast_grep_id="php",
+            comment_patterns=["//", "/*", "*/", "#"],
+            string_patterns=['"', "'"],
+            function_patterns=["function", "public function", "private function"],
+            class_patterns=["class", "interface", "trait"],
+            variable_patterns=["$"],
+            import_patterns=["require", "include", "use"]
         ),
-        "c": LanguageConfig(
-            name="C", extensions=[".c", ".h"], ast_grep_id="c", comment_patterns=["//", "/*", "*/"]
+        "ruby": LanguageConfig(
+            name="Ruby",
+            extensions=[".rb"],
+            ast_grep_id="ruby",
+            comment_patterns=["#"],
+            string_patterns=['"', "'"],
+            function_patterns=["def", "class", "module"],
+            class_patterns=["class", "module"],
+            variable_patterns=["@", "@@", "$"],
+            import_patterns=["require", "load", "include"]
         ),
-        "rust": LanguageConfig(
-            name="Rust", extensions=[".rs"], ast_grep_id="rust", comment_patterns=["//", "/*", "*/"]
-        ),
-        "go": LanguageConfig(
-            name="Go", extensions=[".go"], ast_grep_id="go", comment_patterns=["//", "/*", "*/"]
-        ),
-        # JVM Languages
-        "kotlin": LanguageConfig(
-            name="Kotlin",
-            extensions=[".kt", ".kts"],
-            ast_grep_id="kotlin",
-            comment_patterns=["//", "/*", "*/"],
-        ),
-        "scala": LanguageConfig(
-            name="Scala",
-            extensions=[".scala", ".sc"],
-            ast_grep_id="scala",
-            comment_patterns=["//", "/*", "*/"],
-        ),
-        # Functional Languages
-        "elixir": LanguageConfig(
-            name="Elixir", extensions=[".ex", ".exs"], ast_grep_id="elixir", comment_patterns=["#"]
-        ),
-        "elm": LanguageConfig(
-            name="Elm", extensions=[".elm"], ast_grep_id="elm", comment_patterns=["--", "{-", "-}"]
-        ),
-        # Mobile Development
         "swift": LanguageConfig(
             name="Swift",
             extensions=[".swift"],
             ast_grep_id="swift",
             comment_patterns=["//", "/*", "*/"],
+            string_patterns=['"'],
+            function_patterns=["func", "init"],
+            class_patterns=["class", "struct", "enum", "protocol"],
+            variable_patterns=["var", "let"],
+            import_patterns=["import"]
+        ),
+        "kotlin": LanguageConfig(
+            name="Kotlin",
+            extensions=[".kt", ".kts"],
+            ast_grep_id="kotlin",
+            comment_patterns=["//", "/*", "*/"],
+            string_patterns=['"', "'"],
+            function_patterns=["fun", "suspend fun"],
+            class_patterns=["class", "interface", "object", "enum"],
+            variable_patterns=["val", "var"],
+            import_patterns=["import", "package"]
+        ),
+        "scala": LanguageConfig(
+            name="Scala",
+            extensions=[".scala"],
+            ast_grep_id="scala",
+            comment_patterns=["//", "/*", "*/"],
+            string_patterns=['"', "'"],
+            function_patterns=["def", "val", "var"],
+            class_patterns=["class", "object", "trait", "case class"],
+            variable_patterns=["val", "var"],
+            import_patterns=["import", "package"]
         ),
         "dart": LanguageConfig(
             name="Dart",
             extensions=[".dart"],
             ast_grep_id="dart",
             comment_patterns=["//", "/*", "*/"],
-        ),
-        # Scripting & Dynamic
-        "ruby": LanguageConfig(
-            name="Ruby", extensions=[".rb", ".rbw"], ast_grep_id="ruby", comment_patterns=["#"]
-        ),
-        "php": LanguageConfig(
-            name="PHP",
-            extensions=[".php", ".phtml"],
-            ast_grep_id="php",
-            comment_patterns=["//", "/*", "*/", "#"],
+            string_patterns=['"', "'"],
+            function_patterns=["void", "int", "String", "double"],
+            class_patterns=["class", "abstract class", "mixin"],
+            variable_patterns=["var", "final", "const"],
+            import_patterns=["import", "export", "library"]
         ),
         "lua": LanguageConfig(
             name="Lua",
             extensions=[".lua"],
             ast_grep_id="lua",
             comment_patterns=["--", "--[[", "]]"],
+            string_patterns=['"', "'"],
+            function_patterns=["function", "local function"],
+            class_patterns=["{}"],
+            variable_patterns=["local"],
+            import_patterns=["require", "dofile", "loadfile"]
         ),
-        # Data & Config
-        "sql": LanguageConfig(
-            name="SQL", extensions=[".sql"], ast_grep_id="sql", comment_patterns=["--", "/*", "*/"]
-        ),
-        "yaml": LanguageConfig(
-            name="YAML", extensions=[".yml", ".yaml"], ast_grep_id="yaml", comment_patterns=["#"]
-        ),
-        "json": LanguageConfig(
-            name="JSON",
-            extensions=[".json", ".jsonc"],
-            ast_grep_id="json",
-            comment_patterns=[],  # JSON doesn't support comments
-        ),
-        "toml": LanguageConfig(
-            name="TOML", extensions=[".toml"], ast_grep_id="toml", comment_patterns=["#"]
-        ),
-        # Markup & Documentation
-        "xml": LanguageConfig(
-            name="XML",
-            extensions=[".xml", ".xsd", ".xsl"],
-            ast_grep_id="xml",
-            comment_patterns=["<!--", "-->"],
-        ),
-        "markdown": LanguageConfig(
-            name="Markdown",
-            extensions=[".md", ".markdown"],
-            ast_grep_id="markdown",
-            comment_patterns=["<!--", "-->"],
-        ),
-        # Additional Enterprise Languages
         "haskell": LanguageConfig(
             name="Haskell",
             extensions=[".hs", ".lhs"],
             ast_grep_id="haskell",
             comment_patterns=["--", "{-", "-}"],
+            string_patterns=['"'],
+            function_patterns=["::"],
+            class_patterns=["data", "newtype", "class", "instance"],
+            variable_patterns=["let", "where"],
+            import_patterns=["import", "module"]
         ),
-        "ocaml": LanguageConfig(
-            name="OCaml",
-            extensions=[".ml", ".mli"],
-            ast_grep_id="ocaml",
-            comment_patterns=["(*", "*)"],
+        "elixir": LanguageConfig(
+            name="Elixir",
+            extensions=[".ex", ".exs"],
+            ast_grep_id="elixir",
+            comment_patterns=["#"],
+            string_patterns=['"', "'"],
+            function_patterns=["def", "defp", "defmacro"],
+            class_patterns=["defmodule", "defprotocol", "defstruct"],
+            variable_patterns=["@"],
+            import_patterns=["import", "alias", "require"]
         ),
-        "fsharp": LanguageConfig(
-            name="F#",
-            extensions=[".fs", ".fsi", ".fsx"],
-            ast_grep_id="fsharp",
-            comment_patterns=["//", "(*", "*)"],
+        "erlang": LanguageConfig(
+            name="Erlang",
+            extensions=[".erl", ".hrl"],
+            ast_grep_id="erlang",
+            comment_patterns=["%"],
+            string_patterns=['"'],
+            function_patterns=["-export", "-spec"],
+            class_patterns=["-module", "-record"],
+            variable_patterns=["-define"],
+            import_patterns=["-import", "-include"]
         ),
+        "clojure": LanguageConfig(
+            name="Clojure",
+            extensions=[".clj", ".cljs", ".cljc"],
+            ast_grep_id="clojure",
+            comment_patterns=[";", ";;"],
+            string_patterns=['"'],
+            function_patterns=["defn", "defn-", "fn"],
+            class_patterns=["defprotocol", "defrecord", "deftype"],
+            variable_patterns=["def", "defonce"],
+            import_patterns=["require", "import", "use"]
+        ),
+        "r": LanguageConfig(
+            name="R",
+            extensions=[".r", ".R"],
+            ast_grep_id="r",
+            comment_patterns=["#"],
+            string_patterns=['"', "'"],
+            function_patterns=["function", "<-"],
+            class_patterns=["setClass", "setMethod"],
+            variable_patterns=["<-", "="],
+            import_patterns=["library", "require", "source"]
+        ),
+        "matlab": LanguageConfig(
+            name="MATLAB",
+            extensions=[".m"],
+            ast_grep_id="matlab",
+            comment_patterns=["%"],
+            string_patterns=['"', "'"],
+            function_patterns=["function"],
+            class_patterns=["classdef"],
+            variable_patterns=["="],
+            import_patterns=["import"]
+        ),
+        "perl": LanguageConfig(
+            name="Perl",
+            extensions=[".pl", ".pm"],
+            ast_grep_id="perl",
+            comment_patterns=["#"],
+            string_patterns=['"', "'"],
+            function_patterns=["sub"],
+            class_patterns=["package"],
+            variable_patterns=["$", "@", "%"],
+            import_patterns=["use", "require"]
+        ),
+        "sql": LanguageConfig(
+            name="SQL",
+            extensions=[".sql"],
+            ast_grep_id="sql",
+            comment_patterns=["--", "/*", "*/"],
+            string_patterns=['"', "'"],
+            function_patterns=["CREATE FUNCTION", "CREATE PROCEDURE"],
+            class_patterns=["CREATE TABLE", "CREATE VIEW"],
+            variable_patterns=["DECLARE"],
+            import_patterns=["USE", "IMPORT"]
+        ),
+        "html": LanguageConfig(
+            name="HTML",
+            extensions=[".html", ".htm"],
+            ast_grep_id="html",
+            comment_patterns=["<!--", "-->"],
+            string_patterns=['"', "'"],
+            function_patterns=["<script>"],
+            class_patterns=["class="],
+            variable_patterns=["id="],
+            import_patterns=["<link", "<script"]
+        ),
+        "css": LanguageConfig(
+            name="CSS",
+            extensions=[".css"],
+            ast_grep_id="css",
+            comment_patterns=["/*", "*/"],
+            string_patterns=['"', "'"],
+            function_patterns=["@function"],
+            class_patterns=["."],
+            variable_patterns=["--"],
+            import_patterns=["@import", "@use"]
+        )
     }
 
-    @classmethod
-    def get_language_by_extension(cls, file_path: Path) -> Optional[LanguageConfig]:
-        """Determine language from file extension."""
-        ext = file_path.suffix.lower()
-        for lang_config in cls.LANGUAGES.values():
-            if ext in lang_config.extensions:
+    def get_language_by_extension(self, file_path: Path) -> Optional[LanguageConfig]:
+        """Get language configuration by file extension."""
+        suffix = file_path.suffix.lower()
+        for lang_config in self.LANGUAGES.values():
+            if suffix in lang_config.extensions:
                 return lang_config
         return None
 
-    @classmethod
-    def get_supported_extensions(cls) -> Set[str]:
+    def get_language_by_name(self, name: str) -> Optional[LanguageConfig]:
+        """Get language configuration by name."""
+        return self.LANGUAGES.get(name.lower())
+
+    def get_all_languages(self) -> List[LanguageConfig]:
+        """Get all supported language configurations."""
+        return list(self.LANGUAGES.values())
+
+    def get_supported_extensions(self) -> Set[str]:
         """Get all supported file extensions."""
         extensions = set()
-        for config in cls.LANGUAGES.values():
-            extensions.update(config.extensions)
+        for lang_config in self.LANGUAGES.values():
+            extensions.update(lang_config.extensions)
         return extensions
-
-    @classmethod
-    def get_language_count(cls) -> int:
-        """Get total number of supported languages."""
-        return len(cls.LANGUAGES)
 
 
 class UniversalParser:
-    """Multi-language parser using ast-grep with universal graph output."""
+    """Universal parser supporting 25+ programming languages via ast-grep."""
 
-    def __init__(self, project_root: Path):
-        self.project_root = Path(project_root)
+    def __init__(self):
         self.registry = LanguageRegistry()
-        self.node_id_counter = 0
+        self.graph = UniversalGraph()
 
-    def _generate_node_id(self, file_path: Path, node_kind: str, line: int) -> str:
-        """Generate unique node ID."""
-        self.node_id_counter += 1
-        return f"{file_path.stem}_{node_kind}_{line}_{self.node_id_counter}"
-
-    def _extract_source_location(self, node: Any, file_path: Path) -> SourceLocation:
-        """Extract source location from ast-grep node."""
-        # ast-grep provides byte positions, convert to line/column
-        # This is a simplified implementation - real implementation would need
-        # to map byte positions to line/column coordinates
-        return SourceLocation(
-            file_path=file_path,
-            start_line=1,  # Placeholder - need proper byte-to-line mapping
-            start_column=1,
-            end_line=1,
-            end_column=len(node.text()) + 1,
-        )
-
-    def _extract_documentation(self, _node: Any, _language: str) -> Optional[str]:
-        """Extract documentation/comments for a node."""
-        # Look for preceding comments based on language patterns
-        # lang_config = self.registry.LANGUAGES.get(_language)
-        # if not lang_config or not lang_config.comment_patterns:
-        # Simplified implementation - would need to scan preceding nodes
-        # for comment patterns and extract documentation
-        return None
-
-    def _calculate_node_complexity(self, node: Any) -> int:
-        """Calculate cyclomatic complexity for a node."""
-        complexity = 1
-
-        # Simple complexity calculation based on node text patterns
-        # This avoids invalid AST kind issues while still providing useful metrics
-        text = node.text().lower()
-
-        # Count decision keywords that increase complexity
-        decision_keywords = ["if", "while", "for", "switch", "case", "catch", "elif", "else if"]
-
-        for keyword in decision_keywords:
-            # Count occurrences but avoid double-counting (e.g., "else if" vs "if")
-            if keyword in ("elif", "else if"):
-                complexity += text.count("elif") + text.count("else if")
-            elif keyword not in ["if"]:  # Skip 'if' to avoid double counting with elif
-                complexity += text.count(f" {keyword} ") + text.count(f"{keyword}(")
-
-        # Add basic if counting (avoiding elif double count)
-        if_count = text.count(" if ") + text.count("if(")
-        elif_count = text.count("elif") + text.count("else if")
-        complexity += max(0, if_count - elif_count)
-
-        return max(1, complexity)  # Minimum complexity is 1
-
-    def _parse_node_recursive(
-        self, node: Any, file_path: Path, language: str, parent_qualified_name: str = ""
-    ) -> List[UniversalNode]:
-        """Recursively parse ast-grep nodes into universal nodes."""
-        nodes = []
-
-        # Map ast-grep kind to universal type
-        node_type = LanguageMapping.get_universal_type(language, node.kind())
-
-        # Skip non-significant nodes
-        if node_type == NodeType.REFERENCE and not self._is_significant_reference(node):
-            return nodes
-
-        # Generate node info
-        node_id = self._generate_node_id(file_path, node.kind(), 1)
-        node_text = node.text()
-        node_name = self._extract_node_name(node, node_type)
-
-        # Build qualified name
-        if parent_qualified_name:
-            qualified_name = f"{parent_qualified_name}.{node_name}"
+        # Check if ast-grep is available
+        if SgRoot is None:
+            logger.warning("ast-grep-py not available. Multi-language parsing disabled.")
+            self._ast_grep_available = False
         else:
-            qualified_name = node_name
+            self._ast_grep_available = True
+            logger.info("ast-grep available. Supporting %d languages.", len(self.registry.LANGUAGES))
 
-        # Create universal node
-        universal_node = UniversalNode(
-            id=node_id,
-            node_type=node_type,
-            name=node_name,
-            qualified_name=qualified_name,
-            location=self._extract_source_location(node, file_path),
-            language=language,
-            raw_kind=node.kind(),
-            source_text=node_text,
-            documentation=self._extract_documentation(node, language),
-            complexity=self._calculate_node_complexity(node),
-            line_count=len(node_text.split("\n")),
-        )
+    def is_supported_file(self, file_path: Path) -> bool:
+        """Check if a file is supported for parsing."""
+        return file_path.suffix.lower() in self.registry.get_supported_extensions()
 
-        nodes.append(universal_node)
+    def detect_language(self, file_path: Path) -> Optional[LanguageConfig]:
+        """Detect the programming language of a file."""
+        return self.registry.get_language_by_extension(file_path)
 
-        # Process children recursively
-        for child in node.children():
-            child_nodes = self._parse_node_recursive(child, file_path, language, qualified_name)
-            nodes.extend(child_nodes)
-
-            # Add parent-child relationships
-            for child_node in child_nodes:
-                universal_node.add_child(child_node)
-
-        return nodes
-
-    def _extract_node_name(self, node: Any, node_type: NodeType) -> str:
-        """Extract meaningful name from a node."""
-        # Look for identifier children first
-        identifiers = node.find_all({"rule": {"kind": "identifier"}})
-        if identifiers:
-            return identifiers[0].text()
-
-        # Fallback to node text (truncated)
-        text = node.text().strip()
-        if len(text) > 50:
-            text = text[:47] + "..."
-        return text or f"anonymous_{node_type.value}"
-
-    def _is_significant_reference(self, node: Any) -> bool:
-        """Determine if a reference node is significant enough to include."""
-        # Skip very short or common identifiers
-        text = node.text().strip()
-        if len(text) < 2 or text in ["i", "j", "k", "x", "y", "z"]:
+    def parse_file(self, file_path: Path) -> bool:
+        """Parse a single file and add nodes to the graph."""
+        if not self._ast_grep_available:
+            logger.warning("ast-grep not available, skipping %s", file_path)
             return False
-        return True
 
-    def parse_file(self, file_path: Path) -> Optional[UniversalGraph]:
-        """Parse a single file into a universal graph."""
+        if not file_path.exists():
+            logger.warning("File not found: %s", file_path)
+            return False
+
+        language_config = self.detect_language(file_path)
+        if not language_config:
+            logger.debug("Unsupported file type: %s", file_path)
+            return False
+
         try:
-            # Detect language
-            lang_config = self.registry.get_language_by_extension(file_path)
-            if not lang_config:
-                logger.warning("Unsupported file type: %s", file_path)
-                return None
-
             # Read file content
-            content = file_path.read_text(encoding="utf-8", errors="ignore")
+            content = file_path.read_text(encoding='utf-8', errors='ignore')
 
             # Parse with ast-grep
-            root = ag.SgRoot(content, lang_config.ast_grep_id)
-            root_node = root.root()
+            if SgRoot is None:
+                logger.error("ast-grep-py not available")
+                return False
+            sg_root = SgRoot(content, language_config.ast_grep_id)
 
-            # Convert to universal nodes
-            nodes = self._parse_node_recursive(root_node, file_path, lang_config.name.lower())
+            # Create file node
+            file_node = self._create_file_node(file_path, language_config, content)
+            self.graph.add_node(file_node)
 
-            # Build graph
-            graph = UniversalGraph()
-            for node in nodes:
-                graph.add_node(node)
+            # Parse language-specific constructs
+            self._parse_functions(sg_root, file_path, language_config)
+            self._parse_classes(sg_root, file_path, language_config)
+            self._parse_variables(sg_root, file_path, language_config)
+            self._parse_imports(sg_root, file_path, language_config)
 
-            graph.file_count = 1
+            logger.debug("Successfully parsed %s (%s)", file_path, language_config.name)
+            return True
 
-            logger.info("Parsed %s: %d nodes", file_path, len(nodes))
-            return graph
+        except Exception as e:
+            logger.error("Error parsing %s: %s", file_path, e)
+            return False
 
-        except (OSError, ValueError, RuntimeError) as e:
-            logger.error("Failed to parse %s: %s", file_path, e)
-            return None
+    def _create_file_node(self, file_path: Path, language_config: LanguageConfig, content: str) -> UniversalNode:
+        """Create a file node."""
+        line_count = len(content.splitlines())
 
-    def parse_directory(
-        self,
-        directory: Optional[Path] = None,
-        include_patterns: Optional[List[str]] = None,
-        exclude_patterns: Optional[List[str]] = None,
-    ) -> UniversalGraph:
-        """Parse all supported files in a directory."""
-        if directory is None:
-            directory = self.project_root
-
-        combined_graph = UniversalGraph()
-        supported_extensions = self.registry.get_supported_extensions()
-
-        # Find all supported files
-        for file_path in directory.rglob("*"):
-            if not file_path.is_file():
-                continue
-
-            # Check extension support
-            if file_path.suffix.lower() not in supported_extensions:
-                continue
-
-            # Apply include/exclude patterns
-            if include_patterns and not any(
-                re.search(pattern, str(file_path)) for pattern in include_patterns
-            ):
-                continue
-
-            if exclude_patterns and any(
-                re.search(pattern, str(file_path)) for pattern in exclude_patterns
-            ):
-                continue
-
-            # Parse file
-            file_graph = self.parse_file(file_path)
-            if file_graph:
-                # Merge into combined graph
-                for node in file_graph.nodes.values():
-                    combined_graph.add_node(node)
-                for relation in file_graph.relations:
-                    combined_graph.add_relation(relation)
-
-                combined_graph.file_count += 1
-
-        logger.info(
-            "Parsed %d files across %d languages",
-            combined_graph.file_count,
-            len(combined_graph.languages),
+        return UniversalNode(
+            id=f"file:{file_path}",
+            name=file_path.name,
+            node_type=NodeType.MODULE,
+            location=UniversalLocation(
+                file_path=str(file_path),
+                start_line=1,
+                end_line=line_count,
+                language=language_config.name
+            ),
+            content=content,
+            line_count=line_count,
+            language=language_config.name,
+            metadata={
+                "file_size": len(content),
+                "extension": file_path.suffix,
+                "ast_grep_id": language_config.ast_grep_id
+            }
         )
 
-        return combined_graph
+    def _parse_functions(self, sg_root: Any, file_path: Path, language_config: LanguageConfig) -> None:
+        """Parse function definitions."""
+        # This is a simplified implementation - real implementation would use ast-grep patterns
+        # For now, we'll use text-based pattern matching as a fallback
+        try:
+            content = file_path.read_text(encoding='utf-8', errors='ignore')
+            lines = content.splitlines()
 
-    def get_supported_languages(self) -> List[str]:
-        """Get list of all supported programming languages."""
-        return [config.name for config in self.registry.LANGUAGES.values()]
+            for i, line in enumerate(lines, 1):
+                for pattern in language_config.function_patterns:
+                    if pattern in line and not line.strip().startswith(language_config.comment_patterns[0]):
+                        func_name = self._extract_function_name(line, pattern, language_config)
+                        if func_name:
+                            func_node = UniversalNode(
+                                id=f"function:{file_path}:{func_name}:{i}",
+                                name=func_name,
+                                node_type=NodeType.FUNCTION,
+                                location=UniversalLocation(
+                                    file_path=str(file_path),
+                                    start_line=i,
+                                    end_line=i,
+                                    language=language_config.name
+                                ),
+                                language=language_config.name,
+                                complexity=1,  # Basic complexity
+                                metadata={"pattern": pattern}
+                            )
+                            self.graph.add_node(func_node)
 
-    def get_language_stats(self) -> Dict[str, Union[int, Dict[str, int]]]:
-        """Get statistics about supported languages."""
-        return {
-            "total_languages": self.registry.get_language_count(),
-            "supported_extensions": len(self.registry.get_supported_extensions()),
-            "language_categories": {
-                "web_frontend": 4,
-                "backend_systems": 7,
-                "jvm_languages": 3,
-                "functional": 2,
-                "mobile": 2,
-                "scripting": 3,
-                "data_config": 4,
-                "markup_docs": 2,
-                "additional": 3,
-            },
-        }
+                            # Add contains relationship
+                            rel = UniversalRelationship(
+                                id=f"contains:file:{file_path}:function:{func_name}:{i}",
+                                source_id=f"file:{file_path}",
+                                target_id=func_node.id,
+                                relationship_type=RelationshipType.CONTAINS
+                            )
+                            self.graph.add_relationship(rel)
+
+        except Exception as e:
+            logger.debug("Error parsing functions in %s: %s", file_path, e)
+
+    def _parse_classes(self, sg_root: Any, file_path: Path, language_config: LanguageConfig) -> None:
+        """Parse class definitions."""
+        try:
+            content = file_path.read_text(encoding='utf-8', errors='ignore')
+            lines = content.splitlines()
+
+            for i, line in enumerate(lines, 1):
+                for pattern in language_config.class_patterns:
+                    if pattern in line and not line.strip().startswith(language_config.comment_patterns[0]):
+                        class_name = self._extract_class_name(line, pattern, language_config)
+                        if class_name:
+                            class_node = UniversalNode(
+                                id=f"class:{file_path}:{class_name}:{i}",
+                                name=class_name,
+                                node_type=NodeType.CLASS,
+                                location=UniversalLocation(
+                                    file_path=str(file_path),
+                                    start_line=i,
+                                    end_line=i,
+                                    language=language_config.name
+                                ),
+                                language=language_config.name,
+                                metadata={"pattern": pattern}
+                            )
+                            self.graph.add_node(class_node)
+
+                            # Add contains relationship
+                            rel = UniversalRelationship(
+                                id=f"contains:file:{file_path}:class:{class_name}:{i}",
+                                source_id=f"file:{file_path}",
+                                target_id=class_node.id,
+                                relationship_type=RelationshipType.CONTAINS
+                            )
+                            self.graph.add_relationship(rel)
+
+        except Exception as e:
+            logger.debug("Error parsing classes in %s: %s", file_path, e)
+
+    def _parse_variables(self, sg_root: Any, file_path: Path, language_config: LanguageConfig) -> None:
+        """Parse variable definitions."""
+        # Simplified implementation for variable parsing
+        pass
+
+    def _parse_imports(self, sg_root: Any, file_path: Path, language_config: LanguageConfig) -> None:
+        """Parse import statements."""
+        try:
+            content = file_path.read_text(encoding='utf-8', errors='ignore')
+            lines = content.splitlines()
+
+            for i, line in enumerate(lines, 1):
+                for pattern in language_config.import_patterns:
+                    if line.strip().startswith(pattern):
+                        import_target = self._extract_import_target(line, pattern, language_config)
+                        if import_target:
+                            import_node = UniversalNode(
+                                id=f"import:{file_path}:{import_target}:{i}",
+                                name=import_target,
+                                node_type=NodeType.IMPORT,
+                                location=UniversalLocation(
+                                    file_path=str(file_path),
+                                    start_line=i,
+                                    end_line=i,
+                                    language=language_config.name
+                                ),
+                                language=language_config.name,
+                                metadata={"pattern": pattern}
+                            )
+                            self.graph.add_node(import_node)
+
+                            # Add import relationship
+                            rel = UniversalRelationship(
+                                id=f"imports:file:{file_path}:module:{import_target}:{i}",
+                                source_id=f"file:{file_path}",
+                                target_id=f"module:{import_target}",
+                                relationship_type=RelationshipType.IMPORTS
+                            )
+                            self.graph.add_relationship(rel)
+
+        except Exception as e:
+            logger.debug("Error parsing imports in %s: %s", file_path, e)
+
+    def _extract_function_name(self, line: str, pattern: str, language_config: LanguageConfig) -> Optional[str]:
+        """Extract function name from a line."""
+        # Simplified name extraction - real implementation would be more sophisticated
+        parts = line.strip().split()
+        try:
+            if pattern == "def" and len(parts) >= 2:
+                return parts[1].split("(")[0]
+            elif pattern == "function" and len(parts) >= 2:
+                return parts[1].split("(")[0]
+            elif pattern == "func" and len(parts) >= 2:
+                return parts[1].split("(")[0]
+        except (IndexError, AttributeError):
+            pass
+        return None
+
+    def _extract_class_name(self, line: str, pattern: str, language_config: LanguageConfig) -> Optional[str]:
+        """Extract class name from a line."""
+        parts = line.strip().split()
+        try:
+            if pattern == "class" and len(parts) >= 2:
+                return parts[1].split("(")[0].split(":")[0].split("{")[0]
+            elif pattern == "struct" and len(parts) >= 2:
+                return parts[1].split("{")[0]
+        except (IndexError, AttributeError):
+            pass
+        return None
+
+    def _extract_import_target(self, line: str, pattern: str, language_config: LanguageConfig) -> Optional[str]:
+        """Extract import target from a line."""
+        try:
+            if pattern == "import":
+                # Handle different import styles
+                if "from" in line:
+                    # from X import Y
+                    parts = line.split("from")
+                    if len(parts) >= 2:
+                        return parts[1].split("import")[0].strip()
+                else:
+                    # import X
+                    return line.replace("import", "").strip().split()[0]
+            elif pattern == "require":
+                # require('module') or require "module"
+                import re
+                match = re.search(r'require\s*\(?["\']([^"\']+)["\']', line)
+                if match:
+                    return match.group(1)
+        except (IndexError, AttributeError):
+            pass
+        return None
+
+    def parse_directory(self, directory: Path, recursive: bool = True) -> int:
+        """Parse all supported files in a directory."""
+        if not directory.is_dir():
+            logger.error("Not a directory: %s", directory)
+            return 0
+
+        parsed_count = 0
+        supported_extensions = self.registry.get_supported_extensions()
+
+        if recursive:
+            files = directory.rglob("*")
+        else:
+            files = directory.iterdir()
+
+        for file_path in files:
+            if file_path.is_file() and file_path.suffix.lower() in supported_extensions:
+                if self.parse_file(file_path):
+                    parsed_count += 1
+
+        logger.info("Parsed %d files in %s", parsed_count, directory)
+        return parsed_count
+
+    def get_parsing_statistics(self) -> Dict[str, Any]:
+        """Get statistics about the parsed code."""
+        stats = self.graph.get_statistics()
+        stats.update({
+            "supported_languages": len(self.registry.LANGUAGES),
+            "supported_extensions": list(self.registry.get_supported_extensions()),
+            "ast_grep_available": self._ast_grep_available
+        })
+        return stats
+

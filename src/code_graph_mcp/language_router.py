@@ -1,556 +1,753 @@
 """
-Language detection and routing system for multi-language code analysis.
+Language Router and Project Analysis
 
-This module provides intelligent language detection, project structure analysis,
-and routing to appropriate parsers and analyzers based on file content and patterns.
+Intelligent language detection and project analysis system that determines
+the primary languages, frameworks, and project structure for optimal parsing.
 """
 
-from __future__ import annotations
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
-from dataclasses import dataclass
-from collections import defaultdict, Counter
 import json
 import logging
 import mimetypes
 import re
+from collections import defaultdict
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
-from .universal_parser import LanguageRegistry, LanguageConfig
+from .universal_parser import LanguageConfig, LanguageRegistry
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
-class ProjectProfile:  # pylint: disable=too-many-instance-attributes
-    """Profile of a project's language composition and structure."""
+class ProjectStructure:
+    """Analysis of project structure and characteristics."""
 
-    primary_language: str  # Most prevalent language
-    languages: Dict[str, int]  # Language -> file count
-    total_files: int  # Total analyzable files
-    confidence_score: float  # Detection confidence (0-1)
+    root_path: Path
+    primary_language: Optional[str] = None
+    languages: Dict[str, int] = field(default_factory=dict)  # language -> file count
+    frameworks: List[str] = field(default_factory=list)
+    project_type: str = "unknown"
 
-    # Project characteristics
-    framework_hints: List[str]  # Detected frameworks/libraries
-    build_system: Optional[str]  # Build system (npm, cargo, maven, etc.)
-    project_type: str  # web, mobile, desktop, library, etc.
+    # Directory analysis
+    source_directories: List[str] = field(default_factory=list)
+    test_directories: List[str] = field(default_factory=list)
+    config_files: List[str] = field(default_factory=list)
 
-    # File organization
-    source_directories: List[Path]  # Main source code directories
-    test_directories: List[Path]  # Test code directories
-    config_files: List[Path]  # Configuration files
+    # Framework hints
+    framework_hints: Dict[str, List[str]] = field(default_factory=dict)
+
+    # Build system detection
+    build_system: Optional[str] = None
+    package_managers: List[str] = field(default_factory=list)
 
     # Quality indicators
-    has_tests: bool  # Project has test files
-    has_documentation: bool  # Project has documentation
-    has_ci_config: bool  # Project has CI/CD configuration
+    has_tests: bool = False
+    has_docs: bool = False
+    has_ci: bool = False
+    has_linting: bool = False
 
 
-class LanguageDetector:  # pylint: disable=too-few-public-methods
-    """Intelligent language detection using multiple heuristics."""
+class LanguageDetector:
+    """Advanced language detection with multiple detection methods."""
 
     def __init__(self):
         self.registry = LanguageRegistry()
-        self.shebang_patterns = {
-            r"#!/usr/bin/env python": "python",
-            r"#!/usr/bin/python": "python",
-            r"#!/bin/bash": "bash",
-            r"#!/bin/sh": "shell",
-            r"#!/usr/bin/env node": "javascript",
-            r"#!/usr/bin/env ruby": "ruby",
-            r"#!/usr/bin/env php": "php",
+        self.mime_type_mappings = self._build_mime_mappings()
+        self.shebang_patterns = self._build_shebang_patterns()
+        self.content_signatures = self._build_content_signatures()
+
+    def _build_mime_mappings(self) -> Dict[str, str]:
+        """Build MIME type to language mappings."""
+        return {
+            'text/x-python': 'python',
+            'text/x-java-source': 'java',
+            'text/x-c': 'c',
+            'text/x-c++src': 'cpp',
+            'text/x-csharp': 'csharp',
+            'application/javascript': 'javascript',
+            'text/javascript': 'javascript',
+            'application/typescript': 'typescript',
+            'text/x-go': 'go',
+            'text/x-rust': 'rust',
+            'text/x-ruby': 'ruby',
+            'text/x-php': 'php',
+            'text/x-swift': 'swift',
+            'text/x-kotlin': 'kotlin',
+            'text/x-scala': 'scala',
+            'text/x-haskell': 'haskell',
+            'text/x-lua': 'lua',
+            'text/x-perl': 'perl',
+            'text/x-sql': 'sql',
+            'text/html': 'html',
+            'text/css': 'css',
         }
 
-        self.content_signatures = {
-            # Python patterns
-            "python": [
-                r"import\s+\w+",
-                r"from\s+\w+\s+import",
-                r"def\s+\w+\s*\(",
-                r"class\s+\w+\s*\(",
-                r'if\s+__name__\s*==\s*["\']__main__["\']',
+    def _build_shebang_patterns(self) -> Dict[str, str]:
+        """Build shebang patterns to language mappings."""
+        return {
+            r'#!/usr/bin/env python': 'python',
+            r'#!/usr/bin/python': 'python',
+            r'#!/bin/python': 'python',
+            r'#!/usr/bin/env node': 'javascript',
+            r'#!/usr/bin/env ruby': 'ruby',
+            r'#!/usr/bin/ruby': 'ruby',
+            r'#!/bin/ruby': 'ruby',
+            r'#!/usr/bin/env perl': 'perl',
+            r'#!/usr/bin/perl': 'perl',
+            r'#!/bin/perl': 'perl',
+            r'#!/bin/bash': 'bash',
+            r'#!/bin/sh': 'bash',
+            r'#!/usr/bin/env bash': 'bash',
+        }
+
+    def _build_content_signatures(self) -> Dict[str, List[Tuple[str, float]]]:
+        """Build content signature patterns for language detection."""
+        return {
+            'python': [
+                (r'import\s+\w+', 0.8),
+                (r'from\s+\w+\s+import', 0.8),
+                (r'def\s+\w+\s*\(', 0.7),
+                (r'class\s+\w+\s*\(', 0.7),
+                (r'if\s+__name__\s*==\s*["\']__main__["\']', 0.9),
+                (r'#.*coding[:=]\s*([-\w.]+)', 0.9),
             ],
-            # JavaScript/TypeScript patterns
-            "javascript": [
-                r"function\s+\w+\s*\(",
-                r"const\s+\w+\s*=",
-                r"require\s*\(",
-                r"module\.exports",
-                r"console\.log\s*\(",
+            'javascript': [
+                (r'function\s+\w+\s*\(', 0.7),
+                (r'var\s+\w+\s*=', 0.6),
+                (r'let\s+\w+\s*=', 0.7),
+                (r'const\s+\w+\s*=', 0.7),
+                (r'require\s*\(["\']', 0.8),
+                (r'module\.exports\s*=', 0.8),
+                (r'=>', 0.6),
             ],
-            "typescript": [
-                r"interface\s+\w+",
-                r"type\s+\w+\s*=",
-                r"export\s+\w+",
-                r'import.*from\s+["\'].+["\']',
-                r":\s*\w+\s*=",
+            'typescript': [
+                (r'interface\s+\w+', 0.8),
+                (r'type\s+\w+\s*=', 0.7),
+                (r':\s*\w+\s*=', 0.6),
+                (r'export\s+', 0.6),
+                (r'import.*from\s+["\']', 0.7),
             ],
-            # Java patterns
-            "java": [
-                r"public\s+class\s+\w+",
-                r"package\s+[\w.]+",
-                r"import\s+[\w.]+",
-                r"public\s+static\s+void\s+main",
-                r"System\.out\.print",
+            'java': [
+                (r'public\s+class\s+\w+', 0.8),
+                (r'public\s+static\s+void\s+main', 0.9),
+                (r'import\s+[\w.]+;', 0.7),
+                (r'package\s+[\w.]+;', 0.8),
+                (r'@\w+', 0.6),
             ],
-            # C/C++ patterns
-            "c": [
-                r"#include\s*<.*>",
-                r"int\s+main\s*\(",
-                r"printf\s*\(",
-                r"malloc\s*\(",
-                r"sizeof\s*\(",
+            'cpp': [
+                (r'#include\s*<\w+>', 0.8),
+                (r'#include\s*"\w+"', 0.8),
+                (r'using\s+namespace\s+\w+', 0.7),
+                (r'std::', 0.7),
+                (r'int\s+main\s*\(', 0.8),
             ],
-            "cpp": [
-                r"#include\s*<.*>",
-                r"using\s+namespace",
-                r"std::",
-                r"class\s+\w+",
-                r"cout\s*<<",
+            'c': [
+                (r'#include\s*<\w+\.h>', 0.8),
+                (r'int\s+main\s*\(', 0.7),
+                (r'printf\s*\(', 0.6),
+                (r'malloc\s*\(', 0.6),
             ],
-            # Other languages
-            "rust": [
-                r"fn\s+\w+\s*\(",
-                r"use\s+\w+",
-                r"let\s+\w+\s*=",
-                r"impl\s+\w+",
-                r"println!\s*\(",
+            'rust': [
+                (r'fn\s+\w+\s*\(', 0.8),
+                (r'use\s+\w+', 0.7),
+                (r'let\s+\w+\s*=', 0.6),
+                (r'match\s+\w+', 0.7),
+                (r'impl\s+', 0.7),
             ],
-            "go": [
-                r"package\s+\w+",
-                r'import\s+["\'].*["\']',
-                r"func\s+\w+\s*\(",
-                r"fmt\.Print",
-                r"var\s+\w+\s+\w+",
+            'go': [
+                (r'package\s+\w+', 0.8),
+                (r'import\s*\(', 0.7),
+                (r'func\s+\w+\s*\(', 0.8),
+                (r'go\s+\w+\(', 0.7),
+                (r'defer\s+', 0.7),
             ],
         }
 
     def detect_file_language(self, file_path: Path) -> Optional[LanguageConfig]:
-        """Detect language of a single file using multiple methods."""
-
-        # Method 1: File extension
+        """Detect the programming language of a file using multiple methods."""
+        # Method 1: File extension (most reliable)
         ext_result = self.registry.get_language_by_extension(file_path)
         if ext_result:
             return ext_result
 
-        # Method 2: MIME type
-        mime_type, _ = mimetypes.guess_type(str(file_path))
-        if mime_type:
-            mime_result = self._detect_by_mime_type(mime_type)
-            if mime_result:
-                return mime_result
+        # Method 2: MIME type detection
+        mime_result = self._detect_by_mime_type(file_path)
+        if mime_result:
+            return mime_result
 
         # Method 3: File content analysis
-        try:
-            content = file_path.read_text(encoding="utf-8", errors="ignore")
+        return self._detect_by_content(file_path)
 
-            # Check shebang
-            shebang_result = self._detect_by_shebang(content)
-            if shebang_result:
-                return self.registry.LANGUAGES.get(shebang_result)
-
-            # Check content signatures
-            signature_result = self._detect_by_content_signatures(content)
-            if signature_result:
-                return self.registry.LANGUAGES.get(signature_result)
-
-        except OSError as e:
-            logger.warning("Failed to read file %s: %s", file_path, e)
-
-        return None
-
-    def _detect_by_mime_type(self, mime_type: str) -> Optional[LanguageConfig]:
+    def _detect_by_mime_type(self, file_path: Path) -> Optional[LanguageConfig]:
         """Detect language by MIME type."""
-        mime_mapping = {
-            "text/x-python": "python",
-            "application/javascript": "javascript",
-            "text/javascript": "javascript",
-            "application/typescript": "typescript",
-            "text/x-java-source": "java",
-            "text/x-c": "c",
-            "text/x-c++": "cpp",
-            "text/x-rust": "rust",
-            "text/x-go": "go",
-            "text/html": "html",
-            "text/css": "css",
-            "application/json": "json",
-            "text/xml": "xml",
-            "text/yaml": "yaml",
-        }
+        mime_type, _ = mimetypes.guess_type(str(file_path))
+        if mime_type and mime_type in self.mime_type_mappings:
+            lang_name = self.mime_type_mappings[mime_type]
+            return self.registry.get_language_by_name(lang_name)
+        return None
 
-        lang_id = mime_mapping.get(mime_type)
-        return self.registry.LANGUAGES.get(lang_id) if lang_id else None
+    def _detect_by_content(self, file_path: Path) -> Optional[LanguageConfig]:
+        """Detect language by file content analysis."""
+        try:
+            content = file_path.read_text(encoding='utf-8', errors='ignore')
 
-    def _detect_by_shebang(self, content: str) -> Optional[str]:
-        """Detect language by shebang line."""
-        first_line = content.split("\n")[0].strip()
+            # Check shebang first
+            shebang_result = self._check_shebang(content)
+            if shebang_result:
+                return shebang_result
 
-        for pattern, language in self.shebang_patterns.items():
-            if re.match(pattern, first_line):
-                return language
+            # Content signature analysis
+            return self._analyze_content_signatures(content)
+
+        except (UnicodeDecodeError, PermissionError, OSError):
+            return None
+
+    def _check_shebang(self, content: str) -> Optional[LanguageConfig]:
+        """Check shebang patterns in file content."""
+        if content.startswith('#!'):
+            first_line = content.split('\n')[0]
+            for pattern, lang_name in self.shebang_patterns.items():
+                if re.match(pattern, first_line):
+                    return self.registry.get_language_by_name(lang_name)
+        return None
+
+    def _analyze_content_signatures(self, content: str) -> Optional[LanguageConfig]:
+        """Analyze content signatures to determine language."""
+        language_scores = defaultdict(float)
+
+        for lang_name, signatures in self.content_signatures.items():
+            for pattern, weight in signatures:
+                matches = len(re.findall(pattern, content, re.IGNORECASE))
+                language_scores[lang_name] += matches * weight
+
+        if language_scores:
+            best_lang = max(language_scores.keys(), key=lambda lang: language_scores[lang])
+            if language_scores[best_lang] > 2.0:  # Threshold for confidence
+                return self.registry.get_language_by_name(best_lang)
 
         return None
 
-    def _detect_by_content_signatures(self, content: str) -> Optional[str]:
-        """Detect language by content patterns."""
-        scores = defaultdict(int)
+    def analyze_project_languages(self, project_root: Path) -> Dict[str, int]:
+        """Analyze all languages used in a project."""
+        language_counts = defaultdict(int)
 
-        for language, patterns in self.content_signatures.items():
-            for pattern in patterns:
-                matches = len(re.findall(pattern, content))
-                scores[language] += matches
-
-        if scores:
-            # Return language with highest score
-            return max(scores.items(), key=lambda x: x[1])[0]
-
-        return None
-
-
-class ProjectAnalyzer:  # pylint: disable=too-few-public-methods
-    """Analyzes project structure and composition."""
-
-    def __init__(self):
-        self.detector = LanguageDetector()
-        self.framework_indicators = {
-            # JavaScript/TypeScript frameworks
-            "react": ["package.json", "jsx", "tsx", "react"],
-            "angular": ["angular.json", "@angular", "ng-"],
-            "vue": ["vue.config.js", ".vue", "Vue"],
-            "nodejs": ["package.json", "node_modules", "npm"],
-            # Python frameworks
-            "django": ["manage.py", "settings.py", "django"],
-            "flask": ["app.py", "flask"],
-            "fastapi": ["fastapi", "uvicorn"],
-            # Java frameworks
-            "spring": ["pom.xml", "@SpringBootApplication", "spring"],
-            "maven": ["pom.xml", "src/main/java"],
-            "gradle": ["build.gradle", "gradle"],
-            # Build systems
-            "webpack": ["webpack.config.js", "webpack"],
-            "rollup": ["rollup.config.js"],
-            "vite": ["vite.config.js"],
-        }
-
-        self.ci_indicators = [
-            ".github/workflows",
-            ".gitlab-ci.yml",
-            ".travis.yml",
-            "Jenkinsfile",
-            ".circleci",
-            "azure-pipelines.yml",
-        ]
-
-    def analyze_project(self, project_root: Path) -> ProjectProfile:
-        """Analyze entire project structure and composition."""
-        logger.info("Analyzing project structure at %s", project_root)
-
-        # Scan all files
-        file_analysis = self._scan_files(project_root)
-
-        # Detect languages
-        language_stats = self._analyze_languages(file_analysis)
-
-        # Detect frameworks and build systems
-        frameworks = self._detect_frameworks(project_root, file_analysis)
-        build_system = self._detect_build_system(project_root)
-
-        # Analyze project structure
-        structure = self._analyze_structure(project_root, file_analysis)
-
-        # Determine project type
-        project_type = self._classify_project_type(language_stats, frameworks, structure)
-
-        # Calculate confidence score
-        confidence = self._calculate_confidence(language_stats, file_analysis)
-
-        return ProjectProfile(
-            primary_language=(
-                max(language_stats.items(), key=lambda x: x[1])[0] if language_stats else "unknown"
-            ),
-            languages=language_stats,
-            total_files=len(file_analysis),
-            confidence_score=confidence,
-            framework_hints=frameworks,
-            build_system=build_system,
-            project_type=project_type,
-            source_directories=structure["source_dirs"],
-            test_directories=structure["test_dirs"],
-            config_files=structure["config_files"],
-            has_tests=len(structure["test_dirs"]) > 0,
-            has_documentation=structure["has_docs"],
-            has_ci_config=structure["has_ci"],
-        )
-
-    def _scan_files(self, root: Path) -> List[Tuple[Path, Optional[LanguageConfig]]]:
-        """Scan all files and detect their languages."""
-        results = []
-        supported_extensions = self.detector.registry.get_supported_extensions()
-
-        for file_path in root.rglob("*"):
-            if not file_path.is_file():
-                continue
-
-            # Skip hidden files and common ignore patterns
-            if any(part.startswith(".") for part in file_path.parts):
-                if not self._is_important_hidden_file(file_path):
-                    continue
-
-            # Skip common ignore directories
-            if any(
-                ignore_dir in file_path.parts
-                for ignore_dir in ["node_modules", "__pycache__", ".git", "target", "build", "dist"]
-            ):
-                continue
-
-            # Try to detect language
-            lang_config = None
-            if file_path.suffix.lower() in supported_extensions:
-                lang_config = self.detector.detect_file_language(file_path)
-
-            results.append((file_path, lang_config))
-
-        return results
-
-    def _is_important_hidden_file(self, file_path: Path) -> bool:
-        """Check if hidden file is important for analysis."""
-        important_files = {
-            ".gitignore",
-            ".dockerignore",
-            ".eslintrc",
-            ".prettierrc",
-            ".github",
-            ".gitlab-ci.yml",
-            ".travis.yml",
-        }
-        return any(important in str(file_path) for important in important_files)
-
-    def _analyze_languages(
-        self, file_analysis: List[Tuple[Path, Optional[LanguageConfig]]]
-    ) -> Dict[str, int]:
-        """Analyze language distribution in the project."""
-        language_counts = Counter()
-
-        for _, lang_config in file_analysis:
-            if lang_config:
-                language_counts[lang_config.name.lower()] += 1
+        # Scan all files in the project
+        for file_path in project_root.rglob('*'):
+            if file_path.is_file() and not self._should_ignore_file(file_path):
+                lang_config = self.detect_file_language(file_path)
+                if lang_config:
+                    language_counts[lang_config.name] += 1
 
         return dict(language_counts)
 
-    def _detect_frameworks(
-        self, root: Path, file_analysis: List[Tuple[Path, Optional[LanguageConfig]]]
-    ) -> List[str]:
-        """Detect frameworks and libraries used in the project."""
-        detected = []
-
-        # Check for framework-specific files
-        all_files = {str(f[0].relative_to(root)) for f in file_analysis}
-
-        for framework, indicators in self.framework_indicators.items():
-            if any(indicator in " ".join(all_files) for indicator in indicators):
-                detected.append(framework)
-
-        # Check package.json for JavaScript frameworks
-        package_json = root / "package.json"
-        if package_json.exists():
-            try:
-                content = json.loads(package_json.read_text())
-                deps = {**content.get("dependencies", {}), **content.get("devDependencies", {})}
-
-                for dep in deps:
-                    if "react" in dep:
-                        detected.append("react")
-                    elif "angular" in dep:
-                        detected.append("angular")
-                    elif "vue" in dep:
-                        detected.append("vue")
-
-            except (OSError, json.JSONDecodeError) as e:
-                logger.debug("Failed to parse package.json: %s", e)
-
-        return list(set(detected))
-
-    def _detect_build_system(self, root: Path) -> Optional[str]:
-        """Detect the primary build system."""
-        build_indicators = [
-            ("package.json", "npm"),
-            ("yarn.lock", "yarn"),
-            ("pom.xml", "maven"),
-            ("build.gradle", "gradle"),
-            ("Cargo.toml", "cargo"),
-            ("pyproject.toml", "python-build"),
-            ("setup.py", "setuptools"),
-            ("Makefile", "make"),
-            ("CMakeLists.txt", "cmake"),
+    def _should_ignore_file(self, file_path: Path) -> bool:
+        """Check if a file should be ignored during analysis."""
+        ignore_patterns = [
+            # Version control
+            '.git', '.svn', '.hg', '.bzr',
+            # Build artifacts
+            'node_modules', '__pycache__', '.pytest_cache', 'target', 'build',
+            'dist', 'out', 'bin', 'obj', '.gradle', '.mvn',
+            # IDE files
+            '.idea', '.vscode', '.eclipse', '.settings',
+            # OS files
+            '.DS_Store', 'Thumbs.db', 'desktop.ini',
+            # Package files
+            '*.pyc', '*.pyo', '*.class', '*.o', '*.so', '*.dll', '*.exe',
         ]
 
-        for filename, build_system in build_indicators:
-            if (root / filename).exists():
-                return build_system
+        path_str = str(file_path)
+        return any(pattern in path_str for pattern in ignore_patterns)
 
-        return None
 
-    def _analyze_structure(
-        self, root: Path, file_analysis: List[Tuple[Path, Optional[LanguageConfig]]]
-    ) -> Dict[str, Any]:
-        """Analyze project directory structure."""
-        source_dirs = set()
-        test_dirs = set()
-        config_files = []
-        has_docs = False
-        has_ci = False
+class ProjectAnalyzer:
+    """Comprehensive project structure and framework analysis."""
 
-        for file_path, lang_config in file_analysis:
-            rel_path = file_path.relative_to(root)
+    def __init__(self):
+        self.language_detector = LanguageDetector()
+        self.framework_detectors = self._build_framework_detectors()
+        self.build_system_detectors = self._build_build_system_detectors()
 
-            # Identify source directories
-            if lang_config and len(rel_path.parts) > 1:
-                potential_source_dir = rel_path.parts[0]
-                if potential_source_dir in ["src", "lib", "app", "source"]:
-                    source_dirs.add(root / potential_source_dir)
-
-            # Identify test directories
-            if any(
-                test_indicator in str(rel_path).lower()
-                for test_indicator in ["test", "tests", "spec", "specs", "__tests__"]
-            ):
-                test_dirs.add(file_path.parent)
-
-            # Identify config files
-            if file_path.suffix in [".json", ".yml", ".yaml", ".toml", ".ini", ".cfg"]:
-                config_files.append(file_path)
-
-            # Check for documentation
-            if any(
-                doc_indicator in str(rel_path).lower()
-                for doc_indicator in ["readme", "doc", "docs", "documentation"]
-            ):
-                has_docs = True
-
-            # Check for CI configuration
-            if any(ci_indicator in str(rel_path) for ci_indicator in self.ci_indicators):
-                has_ci = True
-
+    def _build_framework_detectors(self) -> Dict[str, Dict[str, List[str]]]:
+        """Build framework detection rules."""
         return {
-            "source_dirs": list(source_dirs),
-            "test_dirs": list(test_dirs),
-            "config_files": config_files,
-            "has_docs": has_docs,
-            "has_ci": has_ci,
+            'javascript': {
+                'react': ['package.json:react', 'jsx', 'tsx'],
+                'vue': ['package.json:vue', '.vue', 'vue.config.js'],
+                'angular': ['package.json:@angular', 'angular.json', '.angular-cli.json'],
+                'express': ['package.json:express'],
+                'next': ['package.json:next', 'next.config.js'],
+                'nuxt': ['package.json:nuxt', 'nuxt.config.js'],
+                'gatsby': ['package.json:gatsby', 'gatsby-config.js'],
+                'electron': ['package.json:electron'],
+            },
+            'python': {
+                'django': ['manage.py', 'django', 'requirements.txt:Django'],
+                'flask': ['app.py', 'requirements.txt:Flask'],
+                'fastapi': ['requirements.txt:fastapi', 'main.py:FastAPI'],
+                'tornado': ['requirements.txt:tornado'],
+                'pyramid': ['requirements.txt:pyramid'],
+                'bottle': ['requirements.txt:bottle'],
+                'cherrypy': ['requirements.txt:cherrypy'],
+                'aiohttp': ['requirements.txt:aiohttp'],
+            },
+            'java': {
+                'spring': ['pom.xml:spring', 'build.gradle:spring'],
+                'maven': ['pom.xml'],
+                'gradle': ['build.gradle', 'gradlew'],
+                'android': ['AndroidManifest.xml', 'build.gradle:android'],
+                'junit': ['pom.xml:junit', 'build.gradle:junit'],
+            },
+            'rust': {
+                'cargo': ['Cargo.toml'],
+                'actix': ['Cargo.toml:actix'],
+                'rocket': ['Cargo.toml:rocket'],
+                'warp': ['Cargo.toml:warp'],
+                'tokio': ['Cargo.toml:tokio'],
+            },
+            'go': {
+                'gin': ['go.mod:gin', 'main.go:gin'],
+                'echo': ['go.mod:echo'],
+                'fiber': ['go.mod:fiber'],
+                'beego': ['go.mod:beego'],
+                'revel': ['go.mod:revel'],
+            },
         }
 
-    def _classify_project_type(
-        self, languages: Dict[str, int], frameworks: List[str], structure: Dict[str, Any]
-    ) -> str:
-        """Classify the type of project."""
+    def _build_build_system_detectors(self) -> Dict[str, List[str]]:
+        """Build system detection rules."""
+        return {
+            'npm': ['package.json', 'package-lock.json'],
+            'yarn': ['yarn.lock'],
+            'pnpm': ['pnpm-lock.yaml'],
+            'pip': ['requirements.txt', 'setup.py', 'pyproject.toml'],
+            'poetry': ['pyproject.toml', 'poetry.lock'],
+            'pipenv': ['Pipfile', 'Pipfile.lock'],
+            'conda': ['environment.yml', 'conda.yml'],
+            'maven': ['pom.xml'],
+            'gradle': ['build.gradle', 'gradlew'],
+            'sbt': ['build.sbt'],
+            'cargo': ['Cargo.toml', 'Cargo.lock'],
+            'go_modules': ['go.mod', 'go.sum'],
+            'composer': ['composer.json', 'composer.lock'],
+            'bundler': ['Gemfile', 'Gemfile.lock'],
+            'make': ['Makefile', 'makefile'],
+            'cmake': ['CMakeLists.txt'],
+            'bazel': ['WORKSPACE', 'BUILD'],
+        }
+
+    def analyze_project(self, project_root: Path) -> ProjectStructure:
+        """Perform comprehensive project analysis."""
+        logger.info("Analyzing project structure: %s", project_root)
+
+        structure = ProjectStructure(root_path=project_root)
+
+        # Language analysis
+        structure.languages = self.language_detector.analyze_project_languages(project_root)
+        if structure.languages:
+            structure.primary_language = max(structure.languages.keys(), key=lambda lang: structure.languages[lang])
+
+        # Directory structure analysis
+        self._analyze_directory_structure(project_root, structure)
+
+        # Framework detection
+        structure.frameworks = self._detect_frameworks(project_root, structure.primary_language)
+        structure.framework_hints = self._get_framework_hints(project_root)
+
+        # Build system detection
+        structure.build_system, structure.package_managers = self._detect_build_systems(project_root)
+
+        # Project type classification
+        structure.project_type = self._classify_project_type(structure)
+
+        # Quality indicators
+        structure.has_tests = self._has_tests(project_root)
+        structure.has_docs = self._has_documentation(project_root)
+        structure.has_ci = self._has_ci_cd(project_root)
+        structure.has_linting = self._has_linting_config(project_root)
+
+        logger.info("Project analysis complete: %s project with %d languages",
+                   structure.project_type, len(structure.languages))
+
+        return structure
+
+    def _analyze_directory_structure(self, project_root: Path, structure: ProjectStructure) -> None:
+        """Analyze directory structure to identify common patterns."""
+        common_source_dirs = ['src', 'lib', 'app', 'source', 'code']
+        common_test_dirs = ['test', 'tests', '__tests__', 'spec', 'specs']
+
+        for item in project_root.iterdir():
+            if item.is_dir():
+                dir_name = item.name.lower()
+
+                # Source directories
+                if dir_name in common_source_dirs or 'src' in dir_name:
+                    structure.source_directories.append(item.name)
+
+                # Test directories
+                if any(test_pattern in dir_name for test_pattern in common_test_dirs):
+                    structure.test_directories.append(item.name)
+
+            elif item.is_file():
+                # Configuration files
+                config_patterns = [
+                    '.gitignore', '.gitattributes', 'LICENSE', 'README',
+                    'setup.py', 'setup.cfg', 'pyproject.toml', 'requirements.txt',
+                    'package.json', 'package-lock.json', 'yarn.lock',
+                    'Cargo.toml', 'go.mod', 'pom.xml', 'build.gradle',
+                    'Makefile', 'CMakeLists.txt', 'Dockerfile',
+                    '.eslintrc', '.prettierrc', 'tsconfig.json',
+                ]
+
+                if any(pattern in item.name for pattern in config_patterns):
+                    structure.config_files.append(item.name)
+
+    def _detect_frameworks(self, project_root: Path, primary_language: Optional[str]) -> List[str]:
+        """Detect frameworks used in the project."""
+        if not primary_language:
+            return []
+
+        frameworks = []
+        lang_lower = primary_language.lower()
+
+        if lang_lower in self.framework_detectors:
+            for framework, indicators in self.framework_detectors[lang_lower].items():
+                if self._check_framework_indicators(project_root, indicators):
+                    frameworks.append(framework)
+
+        return frameworks
+
+    def _check_framework_indicators(self, project_root: Path, indicators: List[str]) -> bool:
+        """Check if framework indicators are present."""
+        for indicator in indicators:
+            if ':' in indicator:
+                # File content check (e.g., 'package.json:react')
+                file_name, content_pattern = indicator.split(':', 1)
+                file_path = project_root / file_name
+                if file_path.exists():
+                    try:
+                        content = file_path.read_text(encoding='utf-8', errors='ignore')
+                        if content_pattern in content:
+                            return True
+                    except (UnicodeDecodeError, PermissionError):
+                        continue
+            else:
+                # File existence check
+                if indicator.startswith('.'):
+                    # Extension check
+                    if list(project_root.rglob(f"*{indicator}")):
+                        return True
+                else:
+                    # File name check
+                    if (project_root / indicator).exists():
+                        return True
+
+        return False
+
+    def _get_framework_hints(self, project_root: Path) -> Dict[str, List[str]]:
+        """Get additional framework hints from various sources."""
+        hints = defaultdict(list)
+
+        # Package.json analysis
+        package_json = project_root / 'package.json'
+        if package_json.exists():
+            hints.update(self._analyze_package_json(package_json))
+
+        # Requirements.txt analysis
+        requirements_txt = project_root / 'requirements.txt'
+        if requirements_txt.exists():
+            hints.update(self._analyze_requirements_txt(requirements_txt))
+
+        # Cargo.toml analysis
+        cargo_toml = project_root / 'Cargo.toml'
+        if cargo_toml.exists():
+            hints.update(self._analyze_cargo_toml(cargo_toml))
+
+        return dict(hints)
+
+    def _analyze_package_json(self, package_json_path: Path) -> Dict[str, List[str]]:
+        """Analyze package.json for framework hints."""
+        try:
+            with open(package_json_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+
+            hints = defaultdict(list)
+
+            # Check dependencies
+            deps = {**data.get('dependencies', {}), **data.get('devDependencies', {})}
+
+            framework_mappings = {
+                'react': ['react', '@types/react'],
+                'vue': ['vue', 'vue-cli'],
+                'angular': ['@angular/core', '@angular/cli'],
+                'express': ['express'],
+                'next': ['next'],
+                'gatsby': ['gatsby'],
+                'electron': ['electron'],
+                'typescript': ['typescript', '@types/node'],
+                'webpack': ['webpack'],
+                'babel': ['@babel/core'],
+                'eslint': ['eslint'],
+                'jest': ['jest'],
+                'mocha': ['mocha'],
+                'cypress': ['cypress'],
+            }
+
+            for framework, packages in framework_mappings.items():
+                for package in packages:
+                    if package in deps:
+                        hints[framework].append(f"dependency: {package}")
+
+            return dict(hints)
+
+        except (OSError, PermissionError):
+            return {}
+        except Exception:  # Covers JSONDecodeError and other issues
+            return {}
+
+    def _analyze_requirements_txt(self, requirements_path: Path) -> Dict[str, List[str]]:
+        """Analyze requirements.txt for framework hints."""
+        try:
+            content = requirements_path.read_text(encoding='utf-8', errors='ignore')
+            hints = defaultdict(list)
+
+            framework_mappings = {
+                'django': ['Django', 'django'],
+                'flask': ['Flask', 'flask'],
+                'fastapi': ['fastapi', 'FastAPI'],
+                'tornado': ['tornado'],
+                'pyramid': ['pyramid'],
+                'aiohttp': ['aiohttp'],
+                'requests': ['requests'],
+                'pandas': ['pandas'],
+                'numpy': ['numpy'],
+                'tensorflow': ['tensorflow'],
+                'pytorch': ['torch', 'pytorch'],
+                'pytest': ['pytest'],
+            }
+
+            for framework, packages in framework_mappings.items():
+                for package in packages:
+                    if package in content:
+                        hints[framework].append(f"requirement: {package}")
+
+            return dict(hints)
+
+        except (FileNotFoundError, PermissionError):
+            return {}
+
+    def _analyze_cargo_toml(self, cargo_path: Path) -> Dict[str, List[str]]:
+        """Analyze Cargo.toml for framework hints."""
+        try:
+            content = cargo_path.read_text(encoding='utf-8', errors='ignore')
+            hints = defaultdict(list)
+
+            framework_mappings = {
+                'actix': ['actix-web', 'actix'],
+                'rocket': ['rocket'],
+                'warp': ['warp'],
+                'tokio': ['tokio'],
+                'serde': ['serde'],
+                'clap': ['clap'],
+                'diesel': ['diesel'],
+            }
+
+            for framework, packages in framework_mappings.items():
+                for package in packages:
+                    if package in content:
+                        hints[framework].append(f"dependency: {package}")
+
+            return dict(hints)
+
+        except (FileNotFoundError, PermissionError):
+            return {}
+
+    def _detect_build_systems(self, project_root: Path) -> Tuple[Optional[str], List[str]]:
+        """Detect build systems and package managers."""
+        detected_systems = []
+
+        for system, indicators in self.build_system_detectors.items():
+            for indicator in indicators:
+                if (project_root / indicator).exists():
+                    detected_systems.append(system)
+                    break
+
+        # Determine primary build system
+        primary_system = None
+        if detected_systems:
+            # Priority order for primary system
+            priority_order = [
+                'cargo', 'go_modules', 'maven', 'gradle', 'npm', 'yarn', 'pnpm',
+                'poetry', 'pipenv', 'pip', 'composer', 'bundler', 'make', 'cmake'
+            ]
+
+            for system in priority_order:
+                if system in detected_systems:
+                    primary_system = system
+                    break
+
+        return primary_system, detected_systems
+
+    def _classify_project_type(self, structure: ProjectStructure) -> str:
+        """Classify the type of project based on analysis."""
 
         # Web application indicators
-        if any(fw in frameworks for fw in ["react", "angular", "vue", "django", "flask"]):
-            return "web_application"
+        web_frameworks = ['react', 'vue', 'angular', 'django', 'flask', 'express', 'next', 'gatsby']
+        if any(fw in structure.frameworks for fw in web_frameworks):
+            return 'web_application'
 
         # Mobile application indicators
-        if "swift" in languages or "dart" in languages:
-            return "mobile_application"
+        mobile_indicators = ['android', 'react-native', 'flutter', 'ionic']
+        if any(ind in structure.frameworks for ind in mobile_indicators):
+            return 'mobile_application'
 
-        # System/CLI tool indicators
-        if any(lang in languages for lang in ["rust", "go", "c", "cpp"]):
-            return "system_tool"
+        # Desktop application indicators
+        desktop_indicators = ['electron', 'qt', 'gtk', 'tkinter']
+        if any(ind in structure.frameworks for ind in desktop_indicators):
+            return 'desktop_application'
 
-        # Library/SDK indicators
-        if any(build in frameworks for build in ["maven", "gradle", "cargo", "npm"]):
-            if len(structure["source_dirs"]) > 0 and not frameworks:
-                return "library"
+        # API/Service indicators
+        api_frameworks = ['fastapi', 'express', 'actix', 'gin', 'spring']
+        if any(fw in structure.frameworks for fw in api_frameworks):
+            return 'api_service'
 
-        # Data/ML project indicators
-        if "python" in languages and any(
-            config.name.endswith(".ipynb") for config in structure["config_files"]
-        ):
-            return "data_science"
+        # Library/package indicators
+        if structure.build_system in ['cargo', 'npm', 'pip', 'maven', 'gradle']:
+            setup_files = ['setup.py', 'package.json', 'Cargo.toml', 'pom.xml']
+            if any(setup_file in structure.config_files for setup_file in setup_files):
+                return 'library_package'
 
-        # Default classification
-        primary_lang = max(languages.items(), key=lambda x: x[1])[0] if languages else "unknown"
-        return f"{primary_lang}_project"
+        # CLI tool indicators
+        cli_indicators = ['click', 'argparse', 'clap', 'cobra']
+        if any(cli in str(structure.framework_hints) for cli in cli_indicators):
+            return 'cli_tool'
 
-    def _calculate_confidence(
-        self, languages: Dict[str, int], file_analysis: List[Tuple[Path, Optional[LanguageConfig]]]
-    ) -> float:
-        """Calculate confidence score for the analysis."""
-        total_files = len(file_analysis)
-        identified_files = sum(languages.values())
+        # Data science project indicators
+        ds_indicators = ['jupyter', 'pandas', 'numpy', 'tensorflow', 'pytorch']
+        if any(ds in str(structure.framework_hints) for ds in ds_indicators):
+            return 'data_science'
 
-        if total_files == 0:
-            return 0.0
+        # Game development indicators
+        game_indicators = ['unity', 'unreal', 'godot', 'pygame']
+        if any(game in str(structure.framework_hints) for game in game_indicators):
+            return 'game'
 
-        # Base confidence from identification rate
-        identification_rate = identified_files / total_files
+        return 'application'
 
-        # Boost confidence if there's a clear primary language
-        if languages:
-            max_lang_files = max(languages.values())
-            dominance = max_lang_files / identified_files if identified_files > 0 else 0
-            confidence = (identification_rate * 0.7) + (dominance * 0.3)
-        else:
-            confidence = identification_rate
+    def _has_tests(self, project_root: Path) -> bool:
+        """Check if the project has test files."""
+        test_patterns = ['*test*', '*spec*', 'tests/*', 'test/*', '__tests__/*']
 
-        return min(confidence, 1.0)
-
-
-class LanguageRouter:
-    """Routes files and analysis tasks to appropriate language-specific handlers."""
-
-    def __init__(self, project_root: Path):
-        self.project_root = Path(project_root)
-        self.analyzer = ProjectAnalyzer()
-        self.project_profile: Optional[ProjectProfile] = None
-
-    def initialize_project(self) -> ProjectProfile:
-        """Initialize and analyze the project structure."""
-        self.project_profile = self.analyzer.analyze_project(self.project_root)
-
-        logger.info("Project analysis complete:")
-        logger.info("  Primary language: %s", self.project_profile.primary_language)
-        logger.info("  Total files: %d", self.project_profile.total_files)
-        logger.info("  Languages: %s", dict(self.project_profile.languages))
-        logger.info("  Confidence: %.2f", self.project_profile.confidence_score)
-
-        return self.project_profile
-
-    def get_analysis_priority(self) -> List[str]:
-        """Get ordered list of languages by analysis priority."""
-        if not self.project_profile:
-            self.initialize_project()
-
-        # Sort languages by file count (descending)
-        return sorted(self.project_profile.languages.items(), key=lambda x: x[1], reverse=True)
-
-    def should_analyze_file(self, file_path: Path) -> bool:
-        """Determine if a file should be included in analysis."""
-        if not self.project_profile:
-            self.initialize_project()
-
-        # Check if file is in a test directory (may want to skip or analyze separately)
-        for test_dir in self.project_profile.test_directories:
-            if test_dir in file_path.parents:
-                return True  # Include tests but mark them as such
-
-        # Check if file is in a source directory
-        for source_dir in self.project_profile.source_directories:
-            if source_dir in file_path.parents:
+        for pattern in test_patterns:
+            if list(project_root.rglob(pattern)):
                 return True
 
-        # Check if file has a supported language
-        lang_config = self.analyzer.detector.detect_file_language(file_path)
-        return lang_config is not None
+        return False
 
-    def get_routing_strategy(self) -> Dict[str, Any]:
-        """Get optimal routing strategy for the project."""
-        if not self.project_profile:
-            self.initialize_project()
+    def _has_documentation(self, project_root: Path) -> bool:
+        """Check if the project has documentation."""
+        doc_files = ['README.md', 'README.rst', 'README.txt', 'CHANGELOG.md', 'docs/']
 
-        return {
-            "primary_language": self.project_profile.primary_language,
-            "multi_language": len(self.project_profile.languages) > 1,
-            "analysis_order": self.get_analysis_priority(),
-            "parallel_processing": len(self.project_profile.languages) > 2,
-            "framework_optimizations": self.project_profile.framework_hints,
-            "project_type": self.project_profile.project_type,
+        for doc_file in doc_files:
+            if (project_root / doc_file).exists():
+                return True
+
+        return False
+
+    def _has_ci_cd(self, project_root: Path) -> bool:
+        """Check if the project has CI/CD configuration."""
+        ci_files = [
+            '.github/workflows/',
+            '.gitlab-ci.yml',
+            '.travis.yml',
+            'circle.yml',
+            '.circleci/',
+            'azure-pipelines.yml',
+            'Jenkinsfile',
+            '.drone.yml',
+        ]
+
+        for ci_file in ci_files:
+            if (project_root / ci_file).exists():
+                return True
+
+        return False
+
+    def _has_linting_config(self, project_root: Path) -> bool:
+        """Check if the project has linting configuration."""
+        lint_files = [
+            '.eslintrc.js', '.eslintrc.json', '.eslintrc.yml',
+            '.pylintrc', 'pylint.cfg', 'setup.cfg',
+            '.flake8', 'tox.ini',
+            '.rustfmt.toml', 'rustfmt.toml',
+            '.golangci.yml', '.golangci.yaml',
+            'ktlint.gradle',
+        ]
+
+        for lint_file in lint_files:
+            if (project_root / lint_file).exists():
+                return True
+
+        return False
+
+    def get_optimal_parsing_strategy(self, structure: ProjectStructure) -> Dict[str, Any]:
+        """Get optimal parsing strategy based on project analysis."""
+        strategy = {
+            'primary_language': structure.primary_language,
+            'languages_to_parse': list(structure.languages.keys()),
+            'framework_optimizations': [],
+            'ignore_patterns': [],
+            'priority_directories': structure.source_directories,
+            'parsing_order': [],
         }
+
+        # Framework-specific optimizations
+        if 'react' in structure.frameworks:
+            strategy['framework_optimizations'].append('jsx_support')
+        if 'vue' in structure.frameworks:
+            strategy['framework_optimizations'].append('vue_sfc_support')
+        if 'django' in structure.frameworks:
+            strategy['framework_optimizations'].append('django_templates')
+
+        # Ignore patterns based on project type
+        common_ignores = [
+            'node_modules/*', '__pycache__/*', '.git/*',
+            'build/*', 'dist/*', 'target/*', 'out/*'
+        ]
+        strategy['ignore_patterns'].extend(common_ignores)
+
+        # Language-specific ignores
+        if 'javascript' in structure.languages:
+            strategy['ignore_patterns'].extend(['*.min.js', '*.bundle.js'])
+        if 'python' in structure.languages:
+            strategy['ignore_patterns'].extend(['*.pyc', '*.pyo', '.pytest_cache/*'])
+
+        # Parsing order (most important first)
+        if structure.source_directories:
+            strategy['parsing_order'].extend(structure.source_directories)
+        strategy['parsing_order'].append('.')  # Root directory
+        if structure.test_directories:
+            strategy['parsing_order'].extend(structure.test_directories)
+
+        return strategy
+
+
+def get_project_languages() -> List[str]:
+    """Get list of supported project languages."""
+    registry = LanguageRegistry()
+    return [config.name for config in registry.get_all_languages()]
+
+
+def analyze_project_structure(project_root: Path) -> ProjectStructure:
+    """Convenience function to analyze project structure."""
+    analyzer = ProjectAnalyzer()
+    return analyzer.analyze_project(project_root)
+
+
+def detect_file_language(file_path: Path) -> Optional[str]:
+    """Convenience function to detect file language."""
+    detector = LanguageDetector()
+    result = detector.detect_file_language(file_path)
+    return result.name if result else None
+

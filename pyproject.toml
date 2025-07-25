@@ -1,6 +1,6 @@
 [project]
 name = "code-graph-mcp"
-version = "1.0.0"
+version = "1.0.1"
 description = "MCP server for multi-language code graph intelligence and analysis across 25+ programming languages"
 readme = "README.md"
 authors = [
@@ -10,11 +10,12 @@ requires-python = ">=3.12"
 dependencies = [
     "mcp>=1.12.2",
     "ast-grep-py>=0.39.0",
+    "anyio>=4.0.0",
+    "click>=8.0.0",
 ]
 keywords = [
     "mcp", "code-analysis", "ast", "claude-code", "graph", "intelligence", 
-    "multi-language", "ast-grep", "universal-parser", "cross-language",
-    "javascript", "typescript", "python", "java", "rust", "go", "cpp"
+    "python", "code-quality", "complexity-analysis", "static-analysis"
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

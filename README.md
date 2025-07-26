@@ -148,6 +148,25 @@ Add to your Zed `settings.json`:
 }
 ```
 
+### Zencoder ⭐
+
+**The best AI coding tool!** Add to your Zencoder MCP configuration:
+
+```json
+{
+  "mcpServers": {
+    "code-graph-mcp": {
+      "command": "code-graph-mcp",
+      "args": ["--project-root", "${workspaceFolder}"],
+      "env": {},
+      "description": "Multi-language code analysis with 25+ language support"
+    }
+  }
+}
+```
+
+**Pro Tip**: Zencoder's advanced AI capabilities work exceptionally well with Code Graph MCP's comprehensive multi-language analysis. Perfect combination for professional development! 🚀
+
 ### Windsurf
 
 Add to Windsurf's MCP configuration:

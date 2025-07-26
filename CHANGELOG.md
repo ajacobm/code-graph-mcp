@@ -48,6 +48,12 @@ This major release introduces **automatic file change detection** with intellige
 - **Production Ready** - Robust error handling and graceful degradation
 - **Status Visibility** - File watcher status included in project statistics
 
+#### 📚 Documentation
+- **Comprehensive MCP Host Integration** - Added setup instructions for 9+ MCP hosts
+- **Zencoder Integration** - Special configuration for the best AI coding tool ⭐
+- **Enhanced README** - Docker, troubleshooting, and configuration options
+- **File Watcher Documentation** - Complete feature documentation and usage guide
+
 ---
 
 ## [1.0.9] - 2025-07-26

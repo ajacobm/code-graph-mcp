@@ -2,7 +2,7 @@
   "mcpServers": {
     "code-graph-mcp": {
       "type": "stdio",
-      "command": "code-graph-mcp",
+      "command": "uv run code-graph-mcp --project-root /home/shawn/workspace/0-projects/code-graph-mcp --verbose",
       "args": [],
       "env": {}
     }

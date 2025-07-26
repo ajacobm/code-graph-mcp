@@ -813,6 +813,7 @@ class RustworkxCodeGraph:
 
     def clear(self) -> None:
         """Clear all data from the graph."""
+        logger.info(f"CLEARING GRAPH: {len(self.nodes)} nodes, {len(self.relationships)} relationships")
         self.graph.clear()
         self.nodes.clear()
         self.relationships.clear()
@@ -823,6 +824,7 @@ class RustworkxCodeGraph:
         self._nodes_by_type.clear()
         self._nodes_by_language.clear()
         self.metadata.clear()
+        logger.info("GRAPH CLEARED: now has 0 nodes")
 
     # ========================= SERIALIZATION =========================
 

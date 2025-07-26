@@ -39,15 +39,16 @@ class UniversalAnalysisEngine:
 
     def _ensure_analyzed(self):
         """Ensure the project has been analyzed."""
-        if not self._is_analyzed:
-            logger.info("Analyzing project with UniversalParser...")
-            self.analyzer.analyze_project()
-            self._is_analyzed = True
+        logger.info("Analyzing project with UniversalParser...")
+        self.analyzer.analyze_project()
 
     def get_project_stats(self) -> Dict[str, Any]:
         """Get comprehensive project statistics."""
+        logger.info(f"BEFORE _ensure_analyzed: graph has {len(self.graph.nodes)} nodes")
         self._ensure_analyzed()
+        logger.info(f"AFTER _ensure_analyzed: graph has {len(self.graph.nodes)} nodes")
         stats = self.graph.get_statistics()
+        logger.info(f"get_statistics returned: {stats.get('total_nodes', 0)} nodes")
 
         return {
             "total_files": stats.get("total_files", 0),
@@ -63,8 +64,8 @@ class UniversalAnalysisEngine:
         """Find definition of a symbol using UniversalGraph."""
         self._ensure_analyzed()
 
-        # Find nodes by name
-        nodes = self.graph.find_nodes_by_name(symbol, exact_match=True)
+        # Find nodes by name (partial match for better results)
+        nodes = self.graph.find_nodes_by_name(symbol, exact_match=False)
         results = []
 
         for node in nodes:
@@ -85,7 +86,7 @@ class UniversalAnalysisEngine:
         self._ensure_analyzed()
 
         # Find the symbol definition first
-        definition_nodes = self.graph.find_nodes_by_name(symbol, exact_match=True)
+        definition_nodes = self.graph.find_nodes_by_name(symbol, exact_match=False)
         results = []
 
         for def_node in definition_nodes:
@@ -112,7 +113,7 @@ class UniversalAnalysisEngine:
 
         # Find function nodes
         function_nodes = [
-            node for node in self.graph.find_nodes_by_name(function_name, exact_match=True)
+            node for node in self.graph.find_nodes_by_name(function_name, exact_match=False)
             if node.node_type == NodeType.FUNCTION
         ]
 
@@ -141,7 +142,7 @@ class UniversalAnalysisEngine:
 
         # Find the function node
         function_nodes = [
-            node for node in self.graph.find_nodes_by_name(function_name, exact_match=True)
+            node for node in self.graph.find_nodes_by_name(function_name, exact_match=False)
             if node.node_type == NodeType.FUNCTION
         ]
 
@@ -332,10 +333,6 @@ async def ensure_analysis_engine_ready(project_root: Path) -> UniversalAnalysisE
 
 async def handle_analyze_codebase(engine: UniversalAnalysisEngine, arguments: dict) -> list[types.TextContent]:
     """Handle analyze_codebase tool."""
-    rebuild_graph = arguments.get("rebuild_graph", False)
-    if rebuild_graph:
-        # Force re-analysis by resetting the flag
-        engine._is_analyzed = False
 
     stats = engine.get_project_stats()
     result = f"""# Comprehensive Codebase Analysis

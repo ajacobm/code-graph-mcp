@@ -869,27 +869,27 @@ class UniversalParser:
             '.sass-cache', '.cache', 'tmp', 'temp', '.tmp', '.temp',
             'logs', '.logs', '.idea', '.vscode', '.vs', '.DS_Store'
         }
-        
+
         # Check if any part of the path contains common skip directories
         if any(part in common_skip_dirs for part in file_path.parts):
             return True
-        
+
         # Check .gitignore patterns
         gitignore_path = project_root / '.gitignore'
         if not gitignore_path.exists():
             return False
-            
+
         try:
             with open(gitignore_path, 'r', encoding='utf-8') as f:
                 patterns = [line.strip() for line in f if line.strip() and not line.startswith('#')]
         except Exception:
             return False
-            
+
         # Convert file path to relative path from project root
         try:
             relative_path = file_path.relative_to(project_root)
             path_str = str(relative_path)
-            
+
             # Check against each gitignore pattern
             for pattern in patterns:
                 if fnmatch.fnmatch(path_str, pattern) or fnmatch.fnmatch(path_str, pattern + '/*'):
@@ -897,11 +897,11 @@ class UniversalParser:
                 # Handle directory patterns
                 if pattern.endswith('/') and path_str.startswith(pattern[:-1] + '/'):
                     return True
-                    
+
         except ValueError:
             # Path is not relative to project root
             pass
-            
+
         return False
 
     def parse_directory(self, directory: Path, recursive: bool = True) -> int:
@@ -910,8 +910,10 @@ class UniversalParser:
             logger.error("Not a directory: %s", directory)
             return 0
 
+        logger.info(f"Starting parse_directory for: {directory}")
         parsed_count = 0
         supported_extensions = self.registry.get_supported_extensions()
+        logger.info(f"Supported extensions: {list(supported_extensions)[:10]}...")
 
         if recursive:
             files = directory.rglob("*")
@@ -921,11 +923,15 @@ class UniversalParser:
         for file_path in files:
             # Skip files ignored by .gitignore
             if self._should_ignore_path(file_path, directory):
+                logger.debug(f"Skipping ignored path: {file_path}")
                 continue
-                
+
             if file_path.is_file() and file_path.suffix.lower() in supported_extensions:
+                logger.debug(f"Parsing file: {file_path}")
                 if self.parse_file(file_path):
                     parsed_count += 1
+                else:
+                    logger.debug(f"Failed to parse: {file_path}")
 
         logger.info("Parsed %d files in %s", parsed_count, directory)
         return parsed_count

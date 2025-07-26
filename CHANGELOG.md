@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.9] - 2025-07-26
+
+### Symbol Search Fix Release
+
+#### 🔧 Fixed
+- **Symbol Search Functionality** - Fixed critical bug where exact_match=True prevented partial symbol matching
+- **MCP Tool Responses** - All 8 MCP tools now properly find and return code symbols and definitions
+- **Search Coverage** - Symbol searches now find partial matches (e.g., "CodeGraph" finds "RustworkxCodeGraph")
+- **Function Discovery** - find_definition, find_references, find_callers, and find_callees now work correctly
+
+#### 🚀 Performance
+- **Removed Analysis Caching** - Eliminated _is_analyzed flag that prevented fresh analysis on each request
+- **Real-time Analysis** - Each MCP tool call now performs fresh project analysis for accurate results
+- **Debug Logging** - Added comprehensive logging for troubleshooting file discovery and parsing
+
+#### 📊 Verification
+- **Direct Testing** - Verified 20+ files parsed with 600+ nodes and 800+ relationships
+- **Symbol Coverage** - Confirmed detection of classes, functions, and modules across codebase
+- **Search Accuracy** - Multiple symbol searches now return expected results with proper file locations
+
+## [1.0.8] - 2025-07-26
+
+### Critical Performance and Reliability Fixes
+
+#### 🔥 Critical Fixes
+- **File Discovery Performance** - Added comprehensive .gitignore pattern matching and common directory exclusion
+- **Tool Timeout Resolution** - Fixed 2+ minute timeouts by preventing analysis of massive REFERENCE directories
+- **Warning Spam Elimination** - Changed "Cannot add relationship: missing nodes" from WARNING to DEBUG level
+- **Clojure Language Removal** - Eliminated clojure support that was causing ast-grep crashes
+
+#### ⚡ Performance Improvements  
+- **Directory Filtering** - Skip build/cache/dependency directories: __pycache__, node_modules, .git, dist, build
+- **Pattern Matching** - Efficient fnmatch-based .gitignore pattern implementation
+- **Response Times** - All 8 MCP tools now complete in under 30 seconds (previously 2+ minutes)
+
+#### 🛠️ Technical Changes
+- **File Path Filtering** - Enhanced _should_ignore_path with comprehensive skip patterns
+- **Logging Levels** - Reduced noise by moving debug messages to appropriate log levels
+- **Error Handling** - Improved robustness for large codebases with proper timeout management
+
+#### ✅ Verification
+- **8/8 Tools Working** - All MCP tools verified functional with proper response times
+- **No Timeouts** - Eliminated hanging and timeout issues completely
+- **Clean Output** - Removed warning spam for better user experience
+
 ## [1.0.7] - 2025-07-25
 
 ### Performance Optimization Release

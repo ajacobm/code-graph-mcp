@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2025-07-26
+
+### 📚 Documentation Release: Enhanced MCP Host Integration
+
+This patch release updates documentation with comprehensive MCP host integration instructions and special recognition for Zencoder.
+
+#### 📖 Enhanced
+- **Zencoder Integration** - Added special configuration for the best AI coding tool ⭐
+- **9+ MCP Hosts Supported** - Comprehensive setup instructions for all major MCP clients
+- **Enhanced Configuration** - Added file watcher options, environment variables, and troubleshooting
+- **Docker Integration** - Complete containerized deployment examples
+- **Professional Documentation** - Improved formatting and user experience
+
+#### 🔧 MCP Hosts Added
+- **Claude Desktop** - CLI and manual configuration
+- **VS Code Extensions** - Cline, Continue, Cursor
+- **Editors** - Zed, Windsurf
+- **AI Assistants** - Zencoder ⭐, Aider, Open WebUI
+- **Generic MCP Client** - Universal configuration template
+
+#### 🎯 User Experience
+- **Copy-Paste Ready** - All configuration examples ready to use
+- **Platform Aware** - OS-specific paths and commands
+- **Troubleshooting Guide** - Common issues and debug instructions
+- **File Watcher Documentation** - Complete v1.1.0 feature guide
+
+---
+
 ## [1.1.0] - 2025-07-26
 
 ### 🚀 Major Feature Release: Debounced File Watcher

@@ -6,6 +6,7 @@ A Model Context Protocol server providing comprehensive
 code analysis, navigation, and quality assessment capabilities.
 """
 
+import asyncio
 import logging
 import time
 from pathlib import Path
@@ -17,6 +18,7 @@ import mcp.types as types
 from mcp.server.lowlevel import Server
 from mcp.server.stdio import stdio_server
 
+from .file_watcher import DebouncedFileWatcher
 from .universal_ast import UniversalASTAnalyzer
 from .universal_graph import NodeType, RelationshipType
 
@@ -30,22 +32,153 @@ logger = logging.getLogger(__name__)
 class UniversalAnalysisEngine:
     """Code analysis engine with comprehensive project analysis capabilities."""
 
-    def __init__(self, project_root: Path):
+    def __init__(self, project_root: Path, enable_file_watcher: bool = True):
         self.project_root = project_root
         self.analyzer = UniversalASTAnalyzer(project_root)
         self.parser = self.analyzer.parser
         self.graph = self.parser.graph
         self._is_analyzed = False
+        self._last_analysis_time = 0
 
-    def _ensure_analyzed(self):
+        # File watcher for automatic updates
+        self._file_watcher: Optional[DebouncedFileWatcher] = None
+        self._enable_file_watcher = enable_file_watcher
+
+    def _clear_all_caches(self):
+        """Clear all LRU caches to ensure fresh data."""
+        logger.info("Clearing all LRU caches...")
+
+        # Clear analyzer caches
+        if hasattr(self.analyzer, 'analyze_complexity'):
+            self.analyzer.analyze_complexity.cache_clear()
+
+        # Clear graph caches
+        if hasattr(self.graph, 'find_nodes_by_name'):
+            self.graph.find_nodes_by_name.cache_clear()
+        if hasattr(self.graph, 'get_nodes_by_type'):
+            self.graph.get_nodes_by_type.cache_clear()
+        if hasattr(self.graph, 'calculate_centrality'):
+            self.graph.calculate_centrality.cache_clear()
+        if hasattr(self.graph, 'calculate_pagerank'):
+            self.graph.calculate_pagerank.cache_clear()
+        if hasattr(self.graph, 'calculate_closeness_centrality'):
+            self.graph.calculate_closeness_centrality.cache_clear()
+        if hasattr(self.graph, 'calculate_eigenvector_centrality'):
+            self.graph.calculate_eigenvector_centrality.cache_clear()
+
+        # Clear any other caches
+        if hasattr(self.analyzer, '_analysis_cache'):
+            self.analyzer._analysis_cache.clear()
+
+    async def _on_file_change(self):
+        """Callback for file watcher - triggers re-analysis."""
+        logger.info("File changes detected by watcher, triggering re-analysis...")
+        self._is_analyzed = False
+        self._last_analysis_time = 0
+        # Don't await here to avoid blocking the file watcher
+        asyncio.create_task(self._ensure_analyzed())
+
+    async def start_file_watcher(self):
+        """Start the file watcher for automatic updates."""
+        if not self._enable_file_watcher or self._file_watcher:
+            return
+
+        try:
+            self._file_watcher = DebouncedFileWatcher(
+                project_root=self.project_root,
+                callback=self._on_file_change,
+                debounce_delay=2.0,  # 2 second debounce
+                should_ignore_path=self.parser._should_ignore_path,
+                supported_extensions=set(self.parser.registry.get_supported_extensions())
+            )
+            await self._file_watcher.start()
+            logger.info("File watcher started successfully")
+        except Exception as e:
+            logger.error(f"Failed to start file watcher: {e}")
+            self._file_watcher = None
+
+    async def stop_file_watcher(self):
+        """Stop the file watcher."""
+        if self._file_watcher:
+            await self._file_watcher.stop()
+            self._file_watcher = None
+            logger.info("File watcher stopped")
+
+    def _should_reanalyze(self) -> bool:
+        """Check if project should be re-analyzed based on file changes."""
+        if not self._is_analyzed:
+            return True
+
+        # Check if any source files have been modified since last analysis
+        try:
+            latest_mtime = 0
+            for file_path in self.project_root.rglob("*"):
+                if file_path.is_file() and not self.parser._should_ignore_path(file_path, self.project_root):
+                    if file_path.suffix.lower() in self.parser.registry.get_supported_extensions():
+                        mtime = file_path.stat().st_mtime
+                        latest_mtime = max(latest_mtime, mtime)
+
+            return latest_mtime > self._last_analysis_time
+        except Exception as e:
+            logger.warning(f"Error checking file modification times: {e}")
+            return False
+
+    async def _ensure_analyzed(self):
         """Ensure the project has been analyzed."""
-        logger.info("Analyzing project with UniversalParser...")
-        self.analyzer.analyze_project()
+        # Check if we need to re-analyze due to file changes
+        if self._should_reanalyze():
+            logger.info("Re-analyzing project due to file changes or first run...")
 
-    def get_project_stats(self) -> Dict[str, Any]:
+            # Clear all caches before re-analysis
+            self._clear_all_caches()
+
+            # Run the analysis in a thread pool to avoid blocking the event loop
+            loop = asyncio.get_event_loop()
+            try:
+                # Add timeout to prevent hanging
+                await asyncio.wait_for(
+                    loop.run_in_executor(None, self.analyzer.analyze_project),
+                    timeout=300.0  # 5 minute timeout
+                )
+                self._is_analyzed = True
+                self._last_analysis_time = time.time()
+                logger.info("Analysis completed successfully")
+
+                # Start file watcher after first successful analysis
+                if not self._file_watcher:
+                    await self.start_file_watcher()
+            except asyncio.TimeoutError:
+                logger.error("Analysis timed out after 5 minutes")
+                raise Exception("Project analysis timed out - project may be too large")
+        else:
+            logger.debug("Using cached analysis results")
+
+    async def force_reanalysis(self):
+        """Force a complete re-analysis, clearing all caches."""
+        logger.info("Forcing complete re-analysis...")
+        self._is_analyzed = False
+        self._last_analysis_time = 0
+        await self._ensure_analyzed()
+
+    def get_file_watcher_stats(self) -> Dict[str, Any]:
+        """Get file watcher statistics."""
+        if not self._file_watcher:
+            return {
+                "enabled": self._enable_file_watcher,
+                "running": False,
+                "stats": None
+            }
+
+        return {
+            "enabled": self._enable_file_watcher,
+            "running": self._file_watcher.is_running,
+            "stats": self._file_watcher.get_stats()
+        }
+
+    async def get_project_stats(self) -> Dict[str, Any]:
         """Get comprehensive project statistics."""
         logger.info(f"BEFORE _ensure_analyzed: graph has {len(self.graph.nodes)} nodes")
-        self._ensure_analyzed()
+        await self._ensure_analyzed()
         logger.info(f"AFTER _ensure_analyzed: graph has {len(self.graph.nodes)} nodes")
         stats = self.graph.get_statistics()
         logger.info(f"get_statistics returned: {stats.get('total_nodes', 0)} nodes")
@@ -58,11 +191,17 @@ class UniversalAnalysisEngine:
             "languages": stats.get("languages", {}),
             "last_analysis": time.strftime("%Y-%m-%d %H:%M:%S"),
             "project_root": str(self.project_root),
+            "file_watcher": self.get_file_watcher_stats(),
         }
 
-    def find_symbol_definition(self, symbol: str) -> List[Dict[str, Any]]:
+    async def cleanup(self):
+        """Clean up resources, including stopping the file watcher."""
+        logger.info("Cleaning up analysis engine...")
+        await self.stop_file_watcher()
+
+    async def find_symbol_definition(self, symbol: str) -> List[Dict[str, Any]]:
         """Find definition of a symbol using UniversalGraph."""
-        self._ensure_analyzed()
+        await self._ensure_analyzed()
 
         # Find nodes by name (partial match for better results)
         nodes = self.graph.find_nodes_by_name(symbol, exact_match=False)
@@ -81,9 +220,9 @@ class UniversalAnalysisEngine:
 
         return results
 
-    def find_symbol_references(self, symbol: str) -> List[Dict[str, Any]]:
+    async def find_symbol_references(self, symbol: str) -> List[Dict[str, Any]]:
         """Find all references to a symbol using UniversalGraph."""
-        self._ensure_analyzed()
+        await self._ensure_analyzed()
 
         # Find the symbol definition first
         definition_nodes = self.graph.find_nodes_by_name(symbol, exact_match=False)
@@ -107,9 +246,9 @@ class UniversalAnalysisEngine:
 
         return results
 
-    def find_function_callers(self, function_name: str) -> List[Dict[str, Any]]:
+    async def find_function_callers(self, function_name: str) -> List[Dict[str, Any]]:
         """Find all functions that call the specified function."""
-        self._ensure_analyzed()
+        await self._ensure_analyzed()
 
         # Find function nodes
         function_nodes = [
@@ -136,9 +275,9 @@ class UniversalAnalysisEngine:
 
         return results
 
-    def find_function_callees(self, function_name: str) -> List[Dict[str, Any]]:
+    async def find_function_callees(self, function_name: str) -> List[Dict[str, Any]]:
         """Find all functions called by the specified function."""
-        self._ensure_analyzed()
+        await self._ensure_analyzed()
 
         # Find the function node
         function_nodes = [
@@ -165,9 +304,9 @@ class UniversalAnalysisEngine:
 
         return results
 
-    def analyze_complexity(self, threshold: int = 10) -> List[Dict[str, Any]]:
+    async def analyze_complexity(self, threshold: int = 10) -> List[Dict[str, Any]]:
         """Analyze code complexity using UniversalASTAnalyzer."""
-        self._ensure_analyzed()
+        await self._ensure_analyzed()
 
         complexity_data = self.analyzer.analyze_complexity(threshold)
         results = []
@@ -186,9 +325,9 @@ class UniversalAnalysisEngine:
 
         return results
 
-    def get_dependency_graph(self) -> Dict[str, Any]:
+    async def get_dependency_graph(self) -> Dict[str, Any]:
         """Get dependency analysis using rustworkx advanced algorithms."""
-        self._ensure_analyzed()
+        await self._ensure_analyzed()
 
         deps = self.analyzer.analyze_dependencies()
 
@@ -207,9 +346,9 @@ class UniversalAnalysisEngine:
             "graph_density": self.graph.get_statistics().get("density", 0),
         }
 
-    def get_code_insights(self) -> Dict[str, Any]:
+    async def get_code_insights(self) -> Dict[str, Any]:
         """Get comprehensive code insights using advanced rustworkx analytics."""
-        self._ensure_analyzed()
+        await self._ensure_analyzed()
 
         # Calculate multiple centrality measures for comprehensive analysis
         betweenness_centrality = self.graph.calculate_centrality()
@@ -331,10 +470,18 @@ async def ensure_analysis_engine_ready(project_root: Path) -> UniversalAnalysisE
     return analysis_engine
 
 
+async def cleanup_analysis_engine():
+    """Clean up the global analysis engine."""
+    global analysis_engine
+    if analysis_engine is not None:
+        await analysis_engine.cleanup()
+        analysis_engine = None
+
+
 async def handle_analyze_codebase(engine: UniversalAnalysisEngine, arguments: dict) -> list[types.TextContent]:
     """Handle analyze_codebase tool."""
 
-    stats = engine.get_project_stats()
+    stats = await engine.get_project_stats()
     result = f"""# Comprehensive Codebase Analysis
 
 ## Project Overview
@@ -361,7 +508,7 @@ async def handle_analyze_codebase(engine: UniversalAnalysisEngine, arguments: di
 async def handle_find_definition(engine: UniversalAnalysisEngine, arguments: dict) -> list[types.TextContent]:
     """Handle find_definition tool."""
     symbol = arguments["symbol"]
-    definitions = engine.find_symbol_definition(symbol)
+    definitions = await engine.find_symbol_definition(symbol)
 
     if not definitions:
         result = f"❌ No definitions found for symbol: `{symbol}`"
@@ -382,7 +529,7 @@ async def handle_find_definition(engine: UniversalAnalysisEngine, arguments: dic
 async def handle_complexity_analysis(engine: UniversalAnalysisEngine, arguments: dict) -> list[types.TextContent]:
     """Handle complexity_analysis tool."""
     threshold = arguments.get("threshold", 10)
-    complex_functions = engine.analyze_complexity(threshold)
+    complex_functions = await engine.analyze_complexity(threshold)
 
     result = f"# Complexity Analysis (Threshold: {threshold})\n\n"
     result += f"Found **{len(complex_functions)}** functions requiring attention:\n\n"
@@ -400,7 +547,7 @@ async def handle_complexity_analysis(engine: UniversalAnalysisEngine, arguments:
 async def handle_find_references(engine: UniversalAnalysisEngine, arguments: dict) -> list[types.TextContent]:
     """Handle find_references tool."""
     symbol = arguments["symbol"]
-    references = engine.find_symbol_references(symbol)
+    references = await engine.find_symbol_references(symbol)
 
     if not references:
         result = f"❌ No references found for symbol: `{symbol}`"
@@ -419,7 +566,7 @@ async def handle_find_references(engine: UniversalAnalysisEngine, arguments: dic
 async def handle_find_callers(engine: UniversalAnalysisEngine, arguments: dict) -> list[types.TextContent]:
     """Handle find_callers tool."""
     function = arguments["function"]
-    callers = engine.find_function_callers(function)
+    callers = await engine.find_function_callers(function)
 
     if not callers:
         result = f"❌ No callers found for function: `{function}`"
@@ -437,7 +584,7 @@ async def handle_find_callers(engine: UniversalAnalysisEngine, arguments: dict) 
 async def handle_find_callees(engine: UniversalAnalysisEngine, arguments: dict) -> list[types.TextContent]:
     """Handle find_callees tool."""
     function = arguments["function"]
-    callees = engine.find_function_callees(function)
+    callees = await engine.find_function_callees(function)
 
     if not callees:
         result = f"❌ No callees found for function: `{function}`"
@@ -455,7 +602,7 @@ async def handle_find_callees(engine: UniversalAnalysisEngine, arguments: dict) 
 
 async def handle_dependency_analysis(engine: UniversalAnalysisEngine, arguments: dict) -> list[types.TextContent]:
     """Handle dependency_analysis tool with advanced rustworkx analytics."""
-    deps = engine.get_dependency_graph()
+    deps = await engine.get_dependency_graph()
 
     result = "# Advanced Dependency Analysis (Powered by rustworkx)\n\n"
     result += f"- **Total Files**: {deps['total_files']}\n"
@@ -486,8 +633,8 @@ async def handle_dependency_analysis(engine: UniversalAnalysisEngine, arguments:
 
 async def handle_project_statistics(engine: UniversalAnalysisEngine, arguments: dict) -> list[types.TextContent]:
     """Handle project_statistics tool with advanced rustworkx insights."""
-    stats = engine.get_project_stats()
-    insights = engine.get_code_insights()
+    stats = await engine.get_project_stats()
+    insights = await engine.get_code_insights()
 
     result = "# Advanced Project Statistics (Powered by rustworkx)\n\n"
     result += "## Overview\n"
@@ -650,25 +797,7 @@ def get_tool_handlers():
     }
 
 
-async def create_call_tool_handler(root_path: Path):
-    """Create the call tool handler with access to root_path."""
-    handlers = get_tool_handlers()
 
-    async def call_tool_handler(name: str, arguments: dict) -> list[types.TextContent]:
-        """Handle tool calls."""
-        try:
-            engine = await ensure_analysis_engine_ready(root_path)
-            handler = handlers.get(name)
-            if handler:
-                return await handler(engine, arguments)
-            else:
-                raise ValueError(f"Unknown tool: {name}")
-
-        except Exception as e:
-            logger.exception("Error in tool %s", name)
-            return [types.TextContent(type="text", text=f"❌ Error executing {name}: {str(e)}")]
-
-    return call_tool_handler
 
 
 def main(project_root: Optional[str], verbose: bool) -> int:
@@ -684,14 +813,31 @@ def main(project_root: Optional[str], verbose: bool) -> int:
         """List available tools."""
         return get_tool_definitions()
 
-    async def setup_and_run():
-        handler = await create_call_tool_handler(root_path)
-        app.call_tool()(handler)
+    @app.call_tool()
+    async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
+        """Handle tool calls."""
+        logger.info(f"Received tool call: {name} with arguments: {arguments}")
+        try:
+            engine = await ensure_analysis_engine_ready(root_path)
+            handlers = get_tool_handlers()
+            handler = handlers.get(name)
+            if handler:
+                logger.info(f"Executing handler for tool: {name}")
+                result = await handler(engine, arguments)
+                logger.info(f"Tool {name} completed successfully")
+                return result
+            else:
+                raise ValueError(f"Unknown tool: {name}")
 
+        except Exception as e:
+            logger.exception("Error in tool %s", name)
+            return [types.TextContent(type="text", text=f"❌ Error executing {name}: {str(e)}")]
+
+    async def arun():
         async with stdio_server() as streams:
             await app.run(streams[0], streams[1], app.create_initialization_options())
 
-    anyio.run(setup_and_run)
+    anyio.run(arun)
     return 0
 
 

@@ -861,13 +861,11 @@ class UniversalParser:
 
     def _should_ignore_path(self, file_path: Path, project_root: Path) -> bool:
         """Check if a path should be ignored based on .gitignore patterns and common skip patterns."""
-        # Always skip common build/cache/dependency directories
+        # Always skip system/cache directories that should never be analyzed
         common_skip_dirs = {
-            '__pycache__', '.git', 'node_modules', '.venv', 'venv', 'env',
-            'build', 'dist', '.next', '.nuxt', 'target', 'out', 'bin', 'obj',
-            '.pytest_cache', '.mypy_cache', '.tox', 'coverage', '.coverage',
-            '.sass-cache', '.cache', 'tmp', 'temp', '.tmp', '.temp',
-            'logs', '.logs', '.idea', '.vscode', '.vs', '.DS_Store'
+            '__pycache__', '.git', '.svn', '.hg', '.bzr',
+            '.pytest_cache', '.mypy_cache', '.tox', '.coverage',
+            '.sass-cache', '.cache', '.DS_Store', '.idea', '.vscode', '.vs'
         }
 
         # Check if any part of the path contains common skip directories
@@ -920,13 +918,26 @@ class UniversalParser:
         else:
             files = directory.iterdir()
 
+        total_files = 0
         for file_path in files:
+            total_files += 1
+            if total_files % 100 == 0:
+                logger.info(f"Processed {total_files} files, parsed {parsed_count} successfully")
+
             # Skip files ignored by .gitignore
             if self._should_ignore_path(file_path, directory):
                 logger.debug(f"Skipping ignored path: {file_path}")
                 continue
 
             if file_path.is_file() and file_path.suffix.lower() in supported_extensions:
+                # Skip files that are too large (> 1MB)
+                try:
+                    if file_path.stat().st_size > 1024 * 1024:  # 1MB limit
+                        logger.debug(f"Skipping large file: {file_path} ({file_path.stat().st_size} bytes)")
+                        continue
+                except OSError:
+                    continue
+
                 logger.debug(f"Parsing file: {file_path}")
                 if self.parse_file(file_path):
                     parsed_count += 1

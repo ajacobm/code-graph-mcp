@@ -7,16 +7,20 @@ Uses Rust-backed rustworkx for optimal performance with large codebases.
 
 import logging
 import time
+import threading
 from functools import lru_cache
 from typing import Any, Dict, List, Optional, Set, Tuple
+from contextlib import contextmanager
 
 import rustworkx as rx
 
 from .universal_graph import (
     UniversalNode,
     UniversalRelationship,
+    UniversalLocation,
     NodeType,
-    RelationshipType
+    RelationshipType,
+    CacheConfig
 )
 
 logger = logging.getLogger(__name__)
@@ -24,16 +28,20 @@ logger = logging.getLogger(__name__)
 
 class RustworkxCodeGraph:
     """
-    High-performance code graph using rustworkx for advanced analytics.
+    Thread-safe, high-performance code graph using rustworkx for advanced analytics.
 
     Provides:
     - 10-100x faster graph operations
     - Advanced graph algorithms (centrality, shortest paths, cycles)
     - Memory-efficient storage for large codebases
-    - Sophisticated code analytics
+    - Thread-safe operations with proper locking
+    - Corruption-resistant index mapping
     """
 
     def __init__(self):
+        # Thread safety lock
+        self._lock = threading.RLock()
+
         # Create directed graph for code relationships
         self.graph = rx.PyDiGraph()
 
@@ -41,62 +49,141 @@ class RustworkxCodeGraph:
         self.nodes: Dict[str, UniversalNode] = {}
         self.relationships: Dict[str, UniversalRelationship] = {}
 
-        # Mapping between our IDs and rustworkx node indices
-        self.node_id_to_index: Dict[str, int] = {}
-        self.index_to_node_id: Dict[int, str] = {}
-
-        # Edge mapping for relationships
-        self.edge_id_to_index: Dict[str, int] = {}
-        self.index_to_edge_id: Dict[int, str] = {}
+        # REDESIGNED: Store rustworkx indices directly in node data
+        # This eliminates the need for separate mapping dictionaries
+        # and prevents corruption from index reuse
 
         # Performance indexes
         self._nodes_by_type: Dict[NodeType, Set[str]] = {}
         self._nodes_by_language: Dict[str, Set[str]] = {}
 
+        # Track processed files with thread safety
+        self._processed_files: Set[str] = set()
+        self._file_to_nodes: Dict[str, Set[str]] = {}  # Track which nodes came from which files
+
         # Graph metadata
         self.metadata: Dict[str, Any] = {}
 
+        # Generation counter to detect stale operations
+        self._generation = 0
+
+    @contextmanager
+    def _thread_safe_operation(self):
+        """Context manager for thread-safe graph operations."""
+        with self._lock:
+            generation_start = self._generation
+            try:
+                yield
+            finally:
+                # Increment generation to invalidate stale caches
+                if self._generation == generation_start:
+                    self._generation += 1
+                    # Clear LRU caches when graph structure changes
+                    self._clear_method_caches()
+
+    def _clear_method_caches(self):
+        """Clear all LRU caches to prevent stale data."""
+        methods_with_cache = [
+            'find_nodes_by_name', 'get_nodes_by_type', 'calculate_centrality',
+            'calculate_pagerank', 'calculate_closeness_centrality',
+            'calculate_eigenvector_centrality', 'get_statistics'
+        ]
+        for method_name in methods_with_cache:
+            if hasattr(self, method_name):
+                method = getattr(self, method_name)
+                if hasattr(method, 'cache_clear'):
+                    method.cache_clear()
+
     def add_node(self, node: UniversalNode) -> None:
-        """Add a node to the high-performance graph."""
-        # Store node data
-        self.nodes[node.id] = node
+        """Add a node to the high-performance graph with thread safety."""
+        with self._thread_safe_operation():
+            # Check if node already exists to prevent duplicates
+            if node.id in self.nodes:
+                logger.debug(f"Node {node.id} already exists, updating...")
+                self._remove_node_internal(node.id)
 
-        # Add to rustworkx graph with node data
-        node_index = self.graph.add_node(node)
+            # Store node data
+            self.nodes[node.id] = node
 
-        # Update mapping
-        self.node_id_to_index[node.id] = node_index
-        self.index_to_node_id[node_index] = node.id
+            # Add to rustworkx graph - store the node ID as node data
+            # This eliminates the need for separate index mapping
+            node_index = self.graph.add_node(node.id)
 
-        # Update performance indexes
-        if node.node_type not in self._nodes_by_type:
-            self._nodes_by_type[node.node_type] = set()
-        self._nodes_by_type[node.node_type].add(node.id)
+            # Store the rustworkx index in the node for direct access
+            # This prevents index mapping corruption
+            node._rustworkx_index = node_index
 
-        if node.language:
-            if node.language not in self._nodes_by_language:
-                self._nodes_by_language[node.language] = set()
-            self._nodes_by_language[node.language].add(node.id)
+            # Update performance indexes
+            if node.node_type not in self._nodes_by_type:
+                self._nodes_by_type[node.node_type] = set()
+            self._nodes_by_type[node.node_type].add(node.id)
 
-    def add_relationship(self, relationship: UniversalRelationship) -> None:
-        """Add a relationship to the high-performance graph."""
-        # Store relationship data
-        self.relationships[relationship.id] = relationship
+            if node.language:
+                if node.language not in self._nodes_by_language:
+                    self._nodes_by_language[node.language] = set()
+                self._nodes_by_language[node.language].add(node.id)
 
-        # Get node indices
-        source_index = self.node_id_to_index.get(relationship.source_id)
-        target_index = self.node_id_to_index.get(relationship.target_id)
+            # Track file association for proper cleanup
+            file_path = node.location.file_path
+            if file_path not in self._file_to_nodes:
+                self._file_to_nodes[file_path] = set()
+            self._file_to_nodes[file_path].add(node.id)
 
-        if source_index is None or target_index is None:
-            logger.debug(f"Cannot add relationship {relationship.id}: missing nodes")
+    def _remove_node_internal(self, node_id: str) -> None:
+        """Internal method to remove a node without locking (already locked)."""
+        if node_id not in self.nodes:
             return
 
-        # Add edge to rustworkx graph
-        edge_index = self.graph.add_edge(source_index, target_index, relationship)
+        node = self.nodes[node_id]
 
-        # Update edge mapping
-        self.edge_id_to_index[relationship.id] = edge_index
-        self.index_to_edge_id[edge_index] = relationship.id
+        # Remove from rustworkx graph if it has an index
+        if hasattr(node, '_rustworkx_index'):
+            try:
+                self.graph.remove_node(node._rustworkx_index)
+            except Exception as e:
+                logger.debug(f"Failed to remove node from rustworkx: {e}")
+
+        # Remove from our storage
+        del self.nodes[node_id]
+
+        # Remove from performance indexes
+        if node.node_type in self._nodes_by_type:
+            self._nodes_by_type[node.node_type].discard(node_id)
+        if node.language and node.language in self._nodes_by_language:
+            self._nodes_by_language[node.language].discard(node_id)
+
+        # Remove from file tracking
+        file_path = node.location.file_path
+        if file_path in self._file_to_nodes:
+            self._file_to_nodes[file_path].discard(node_id)
+
+    def add_relationship(self, relationship: UniversalRelationship) -> None:
+        """Add a relationship to the high-performance graph with thread safety."""
+        with self._thread_safe_operation():
+            # Store relationship data
+            self.relationships[relationship.id] = relationship
+
+            # Get nodes and their indices directly
+            source_node = self.nodes.get(relationship.source_id)
+            target_node = self.nodes.get(relationship.target_id)
+
+            if not source_node or not target_node:
+                logger.debug(f"Cannot add relationship {relationship.id}: missing nodes")
+                return
+
+            # Get indices from nodes directly (no mapping corruption possible)
+            source_index = getattr(source_node, '_rustworkx_index', None)
+            target_index = getattr(target_node, '_rustworkx_index', None)
+
+            if source_index is None or target_index is None:
+                logger.debug(f"Cannot add relationship {relationship.id}: nodes not in rustworkx graph")
+                return
+
+            # Add edge to rustworkx graph - store relationship ID as edge data
+            edge_index = self.graph.add_edge(source_index, target_index, relationship.id)
+
+            # Store edge index in relationship for direct access
+            relationship._rustworkx_edge_index = edge_index
 
     def get_node(self, node_id: str) -> Optional[UniversalNode]:
         """Get a node by ID."""
@@ -106,7 +193,7 @@ class RustworkxCodeGraph:
         """Get a relationship by ID."""
         return self.relationships.get(relationship_id)
 
-    @lru_cache(maxsize=100000)
+    @lru_cache(maxsize=CacheConfig.XLARGE_CACHE)
     def find_nodes_by_name(self, name: str, exact_match: bool = True) -> List[UniversalNode]:
         """Find nodes by name with LRU caching for performance optimization."""
         results = []
@@ -121,7 +208,7 @@ class RustworkxCodeGraph:
 
         return results
 
-    @lru_cache(maxsize=5000)
+    @lru_cache(maxsize=CacheConfig.LARGE_CACHE)
     def get_nodes_by_type(self, node_type: NodeType) -> List[UniversalNode]:
         """Get all nodes of a specific type with LRU caching."""
         node_ids = self._nodes_by_type.get(node_type, set())
@@ -129,33 +216,37 @@ class RustworkxCodeGraph:
 
     def get_relationships_from(self, node_id: str) -> List[UniversalRelationship]:
         """Get all relationships originating from a node."""
-        node_index = self.node_id_to_index.get(node_id)
-        if node_index is None:
-            return []
+        with self._lock:
+            node = self.nodes.get(node_id)
+            if not node or not hasattr(node, '_rustworkx_index'):
+                return []
 
-        relationships = []
-        # Get outgoing edges
-        for edge in self.graph.out_edges(node_index):
-            source_idx, target_idx, edge_data = edge
-            if isinstance(edge_data, UniversalRelationship):
-                relationships.append(edge_data)
+            relationships = []
+            # Get outgoing edges
+            for edge in self.graph.out_edges(node._rustworkx_index):
+                source_idx, target_idx, edge_data = edge
+                # edge_data now contains relationship ID
+                if isinstance(edge_data, str) and edge_data in self.relationships:
+                    relationships.append(self.relationships[edge_data])
 
-        return relationships
+            return relationships
 
     def get_relationships_to(self, node_id: str) -> List[UniversalRelationship]:
         """Get all relationships targeting a node."""
-        node_index = self.node_id_to_index.get(node_id)
-        if node_index is None:
-            return []
+        with self._lock:
+            node = self.nodes.get(node_id)
+            if not node or not hasattr(node, '_rustworkx_index'):
+                return []
 
-        relationships = []
-        # Get incoming edges
-        for edge in self.graph.in_edges(node_index):
-            source_idx, target_idx, edge_data = edge
-            if isinstance(edge_data, UniversalRelationship):
-                relationships.append(edge_data)
+            relationships = []
+            # Get incoming edges
+            for edge in self.graph.in_edges(node._rustworkx_index):
+                source_idx, target_idx, edge_data = edge
+                # edge_data now contains relationship ID
+                if isinstance(edge_data, str) and edge_data in self.relationships:
+                    relationships.append(self.relationships[edge_data])
 
-        return relationships
+            return relationships
 
     def get_relationships_by_type(self, relationship_type: RelationshipType) -> List[UniversalRelationship]:
         """Get all relationships of a specific type."""
@@ -166,119 +257,264 @@ class RustworkxCodeGraph:
 
     def find_shortest_path(self, source_id: str, target_id: str) -> List[str]:
         """Find shortest path between two nodes."""
-        source_index = self.node_id_to_index.get(source_id)
-        target_index = self.node_id_to_index.get(target_id)
+        with self._lock:
+            source_node = self.nodes.get(source_id)
+            target_node = self.nodes.get(target_id)
 
-        if source_index is None or target_index is None:
-            return []
+            if not source_node or not target_node:
+                return []
 
-        try:
-            # Use dijkstra shortest path
-            path_indices = rx.dijkstra_shortest_paths(
-                self.graph, source_index, target_index, lambda _: 1
-            )
-            if path_indices:
-                # Convert first path indices back to node IDs
-                return [self.index_to_node_id[idx] for idx in path_indices[0] if idx in self.index_to_node_id]
-            return []
-        except Exception:
-            return []
+            source_index = getattr(source_node, '_rustworkx_index', None)
+            target_index = getattr(target_node, '_rustworkx_index', None)
+
+            if source_index is None or target_index is None:
+                return []
+
+            try:
+                # Use dijkstra shortest path
+                path_indices = rx.dijkstra_shortest_paths(
+                    self.graph, source_index, target_index, lambda _: 1
+                )
+                if path_indices and target_index in path_indices:
+                    # Convert indices to node IDs using graph data
+                    return [self.graph[idx] for idx in path_indices[target_index] if idx < len(self.graph)]
+                return []
+            except Exception:
+                return []
 
     def find_all_paths(self, source_id: str, target_id: str, max_length: int = 10) -> List[List[str]]:
         """Find all paths between two nodes up to max_length."""
-        source_index = self.node_id_to_index.get(source_id)
-        target_index = self.node_id_to_index.get(target_id)
+        with self._lock:
+            source_node = self.nodes.get(source_id)
+            target_node = self.nodes.get(target_id)
 
-        if source_index is None or target_index is None:
-            return []
+            if not source_node or not target_node:
+                return []
 
-        try:
-            paths = rx.all_simple_paths(self.graph, source_index, target_index, min_depth=1, cutoff=max_length)
-            # Convert indices back to node IDs
-            return [[self.index_to_node_id[idx] for idx in path] for path in paths]
-        except Exception:
-            return []
+            source_index = getattr(source_node, '_rustworkx_index', None)
+            target_index = getattr(target_node, '_rustworkx_index', None)
+
+            if source_index is None or target_index is None:
+                return []
+
+            try:
+                paths = rx.all_simple_paths(self.graph, source_index, target_index, min_depth=1, cutoff=max_length)
+                # Convert indices to node IDs using graph data
+                return [[self.graph[idx] for idx in path if idx < len(self.graph)] for path in paths]
+            except Exception:
+                return []
 
     def detect_cycles(self) -> List[List[str]]:
-        """Detect cycles in the code graph (circular dependencies)."""
-        try:
-            cycles = rx.simple_cycles(self.graph)
-            # Convert indices back to node IDs
-            return [[self.index_to_node_id[idx] for idx in cycle] for cycle in cycles]
-        except Exception:
-            return []
+        """Detect meaningful cycles in the code graph, filtering out legitimate recursion."""
+        with self._lock:
+            try:
+                # Get all cycles from rustworkx
+                all_cycles = list(rx.simple_cycles(self.graph))
+                meaningful_cycles = []
+
+                for cycle in all_cycles:
+                    # Filter out single-node cycles (self-loops) which are often legitimate recursion
+                    if len(cycle) == 1:
+                        node_index = cycle[0]
+                        node_id = self.graph[node_index]  # Get node ID from graph data
+                        node = self.nodes.get(node_id)
+
+                        if node and self._is_legitimate_recursion(node):
+                            continue  # Skip legitimate recursive functions
+
+                    # Convert indices to node IDs using graph data (no mapping corruption)
+                    cycle_node_ids = []
+                    for idx in cycle:
+                        node_id = self.graph[idx]  # Get node ID from graph data
+                        if node_id:
+                            cycle_node_ids.append(node_id)
+
+                    if len(cycle_node_ids) > 1:  # Only report multi-node cycles
+                        meaningful_cycles.append(cycle_node_ids)
+
+                return meaningful_cycles
+
+            except Exception as e:
+                logger.error(f"Cycle detection failed: {e}")
+                return []
+
+    def _is_legitimate_recursion(self, node: UniversalNode) -> bool:
+        """Check if a self-loop represents legitimate recursion rather than a circular dependency."""
+        # Recursive functions are legitimate if they:
+        # 1. Are actual functions (not modules/classes)
+        # 2. Have recursive patterns in their name or are common recursive algorithms
+        if node.node_type != NodeType.FUNCTION:
+            return False
+
+        # Common recursive function patterns
+        recursive_patterns = [
+            'recursive', 'recurse', 'factorial', 'fibonacci', 'traverse',
+            'walk', 'visit', 'search', 'sort', 'merge', 'quick', 'binary'
+        ]
+
+        node_name_lower = node.name.lower()
+        return any(pattern in node_name_lower for pattern in recursive_patterns)
+
+    def remove_file_nodes(self, file_path: str) -> int:
+        """Remove all nodes associated with a specific file and return count removed."""
+        with self._thread_safe_operation():
+            if file_path not in self._file_to_nodes:
+                return 0
+
+            nodes_to_remove = list(self._file_to_nodes[file_path])
+            removed_count = 0
+
+            for node_id in nodes_to_remove:
+                if node_id in self.nodes:
+                    self._remove_node_internal(node_id)
+                    removed_count += 1
+
+            # Clean up file tracking
+            del self._file_to_nodes[file_path]
+            self._processed_files.discard(file_path)
+
+            logger.debug(f"Removed {removed_count} nodes from file: {file_path}")
+            return removed_count
+
+    def mark_file_processed(self, file_path: str) -> None:
+        """Mark a file as processed for tracking."""
+        with self._lock:
+            self._processed_files.add(file_path)
+
+    def is_file_processed(self, file_path: str) -> bool:
+        """Check if a file has been processed."""
+        with self._lock:
+            return file_path in self._processed_files
+
+    def get_processed_files(self) -> Set[str]:
+        """Get set of all processed files."""
+        with self._lock:
+            return self._processed_files.copy()
+
+    def get_file_node_count(self, file_path: str) -> int:
+        """Get the number of nodes associated with a file."""
+        with self._lock:
+            return len(self._file_to_nodes.get(file_path, set()))
 
     def get_strongly_connected_components(self) -> List[List[str]]:
         """Find strongly connected components (circular dependency groups)."""
-        try:
-            components = rx.strongly_connected_components(self.graph)
-            # Convert indices back to node IDs
-            return [[self.index_to_node_id[idx] for idx in component] for component in components]
-        except Exception:
-            return []
+        with self._lock:
+            try:
+                components = rx.strongly_connected_components(self.graph)
+                # Convert indices to node IDs using graph data
+                result = []
+                for component in components:
+                    component_ids = []
+                    for idx in component:
+                        if idx < len(self.graph):
+                            node_id = self.graph[idx]
+                            if node_id:
+                                component_ids.append(node_id)
+                    if component_ids:
+                        result.append(component_ids)
+                return result
+            except Exception as e:
+                logger.error(f"Strongly connected components calculation failed: {e}")
+                return []
 
-    @lru_cache(maxsize=1000)
+    @lru_cache(maxsize=CacheConfig.SMALL_CACHE)
     def calculate_centrality(self) -> Dict[str, float]:
         """Calculate betweenness centrality with LRU caching for performance."""
-        try:
-            centrality = rx.betweenness_centrality(self.graph)
-            # Convert indices back to node IDs
-            return {self.index_to_node_id[idx]: score for idx, score in centrality.items()}
-        except Exception:
-            return {}
+        with self._lock:
+            try:
+                # Use the correct API for directed graphs
+                centrality = rx.digraph_betweenness_centrality(self.graph)
+                # Convert indices to node IDs using graph data
+                result = {}
+                for idx, score in centrality.items():
+                    if idx < len(self.graph):
+                        node_id = self.graph[idx]
+                        if node_id:
+                            result[node_id] = score
+                return result
+            except Exception as e:
+                logger.error(f"Centrality calculation failed: {e}")
+                return {}
 
-    @lru_cache(maxsize=10000)
+    @lru_cache(maxsize=CacheConfig.MEDIUM_CACHE)
     def calculate_pagerank(self, alpha: float = 0.85, max_iter: int = 100, tol: float = 1e-6) -> Dict[str, float]:
         """Calculate PageRank with LRU caching for optimal performance."""
-        try:
-            # Use optimized PageRank with configurable damping factor and convergence
-            pagerank_scores = rx.pagerank(
-                self.graph,
-                alpha=alpha,        # Damping factor (0.85 is standard)
-                max_iter=max_iter,  # Maximum iterations for convergence
-                tol=tol            # Convergence tolerance
-            )
-            # Convert indices back to node IDs
-            return {self.index_to_node_id[idx]: score for idx, score in pagerank_scores.items()}
-        except Exception as e:
-            logger.warning(f"PageRank calculation failed: {e}")
-            return {}
+        with self._lock:
+            try:
+                # Use optimized PageRank with configurable damping factor and convergence
+                pagerank_scores = rx.pagerank(
+                    self.graph,
+                    alpha=alpha,        # Damping factor (0.85 is standard)
+                    max_iter=max_iter,  # Maximum iterations for convergence
+                    tol=tol            # Convergence tolerance
+                )
+                # Convert indices to node IDs using graph data
+                result = {}
+                for idx, score in pagerank_scores.items():
+                    if idx < len(self.graph):
+                        node_id = self.graph[idx]
+                        if node_id:
+                            result[node_id] = score
+                return result
+            except rx.FailedToConverge as e:
+                logger.warning(f"PageRank failed to converge: {e}")
+                return {}
+            except Exception as e:
+                logger.error(f"PageRank calculation failed: {e}")
+                return {}
 
     def find_ancestors(self, node_id: str) -> Set[str]:
         """Find all nodes that can reach this node."""
-        node_index = self.node_id_to_index.get(node_id)
-        if node_index is None:
-            return set()
+        with self._lock:
+            node = self.nodes.get(node_id)
+            if not node or not hasattr(node, '_rustworkx_index'):
+                return set()
 
-        try:
-            ancestor_indices = rx.ancestors(self.graph, node_index)
-            return {self.index_to_node_id[idx] for idx in ancestor_indices}
-        except Exception:
-            return set()
+            try:
+                ancestor_indices = rx.ancestors(self.graph, node._rustworkx_index)
+                result = set()
+                for idx in ancestor_indices:
+                    if idx < len(self.graph):
+                        ancestor_id = self.graph[idx]
+                        if ancestor_id:
+                            result.add(ancestor_id)
+                return result
+            except Exception:
+                return set()
 
     def find_descendants(self, node_id: str) -> Set[str]:
         """Find all nodes reachable from this node."""
-        node_index = self.node_id_to_index.get(node_id)
-        if node_index is None:
-            return set()
+        with self._lock:
+            node = self.nodes.get(node_id)
+            if not node or not hasattr(node, '_rustworkx_index'):
+                return set()
 
-        try:
-            descendant_indices = rx.descendants(self.graph, node_index)
-            return {self.index_to_node_id[idx] for idx in descendant_indices}
-        except Exception:
-            return set()
+            try:
+                descendant_indices = rx.descendants(self.graph, node._rustworkx_index)
+                result = set()
+                for idx in descendant_indices:
+                    if idx < len(self.graph):
+                        descendant_id = self.graph[idx]
+                        if descendant_id:
+                            result.add(descendant_id)
+                return result
+            except Exception:
+                return set()
 
     def get_node_degree(self, node_id: str) -> Tuple[int, int, int]:
         """Get node degree (in_degree, out_degree, total_degree)."""
-        node_index = self.node_id_to_index.get(node_id)
-        if node_index is None:
-            return (0, 0, 0)
+        with self._lock:
+            node = self.nodes.get(node_id)
+            if not node or not hasattr(node, '_rustworkx_index'):
+                return (0, 0, 0)
 
-        in_degree = self.graph.in_degree(node_index)
-        out_degree = self.graph.out_degree(node_index)
-        total_degree = in_degree + out_degree
-
-        return (in_degree, out_degree, total_degree)
+            try:
+                in_degree = self.graph.in_degree(node._rustworkx_index)
+                out_degree = self.graph.out_degree(node._rustworkx_index)
+                total_degree = in_degree + out_degree
+                return (in_degree, out_degree, total_degree)
+            except Exception:
+                return (0, 0, 0)
 
     def is_directed_acyclic(self) -> bool:
         """Check if the graph is a DAG (no circular dependencies)."""
@@ -286,42 +522,70 @@ class RustworkxCodeGraph:
 
     def topological_sort(self) -> List[str]:
         """Get topological ordering of nodes (dependency order)."""
-        try:
-            sorted_indices = rx.topological_sort(self.graph)
-            return [self.index_to_node_id[idx] for idx in sorted_indices]
-        except Exception:
-            return []
+        with self._lock:
+            try:
+                sorted_indices = rx.topological_sort(self.graph)
+                result = []
+                for idx in sorted_indices:
+                    if idx < len(self.graph):
+                        node_id = self.graph[idx]
+                        if node_id:
+                            result.append(node_id)
+                return result
+            except Exception:
+                return []
 
-    @lru_cache(maxsize=1000)
+    @lru_cache(maxsize=CacheConfig.SMALL_CACHE)
     def calculate_closeness_centrality(self) -> Dict[str, float]:
         """Calculate closeness centrality with LRU caching."""
-        try:
-            centrality = rx.closeness_centrality(self.graph)
-            return {self.index_to_node_id[idx]: score for idx, score in centrality.items()}
-        except Exception as e:
-            logger.warning(f"Closeness centrality calculation failed: {e}")
-            return {}
+        with self._lock:
+            try:
+                centrality = rx.closeness_centrality(self.graph)
+                result = {}
+                for idx, score in centrality.items():
+                    if idx < len(self.graph):
+                        node_id = self.graph[idx]
+                        if node_id:
+                            result[node_id] = score
+                return result
+            except Exception as e:
+                logger.warning(f"Closeness centrality calculation failed: {e}")
+                return {}
 
-    @lru_cache(maxsize=5000)
+    @lru_cache(maxsize=CacheConfig.LARGE_CACHE)
     def calculate_eigenvector_centrality(self, max_iter: int = 100, tol: float = 1e-6) -> Dict[str, float]:
         """Calculate eigenvector centrality with LRU caching."""
-        try:
-            centrality = rx.eigenvector_centrality(self.graph, max_iter=max_iter, tol=tol)
-            return {self.index_to_node_id[idx]: score for idx, score in centrality.items()}
-        except Exception as e:
-            logger.warning(f"Eigenvector centrality calculation failed: {e}")
-            return {}
+        with self._lock:
+            try:
+                centrality = rx.eigenvector_centrality(self.graph, max_iter=max_iter, tol=tol)
+                result = {}
+                for idx, score in centrality.items():
+                    if idx < len(self.graph):
+                        node_id = self.graph[idx]
+                        if node_id:
+                            result[node_id] = score
+                return result
+            except Exception as e:
+                logger.warning(f"Eigenvector centrality calculation failed: {e}")
+                return {}
 
     def find_articulation_points(self) -> List[str]:
         """Find articulation points (nodes whose removal increases connected components)."""
-        try:
-            # Convert to undirected for articulation point analysis
-            undirected = self.graph.to_undirected()
-            articulation_indices = rx.articulation_points(undirected)
-            return [self.index_to_node_id[idx] for idx in articulation_indices if idx in self.index_to_node_id]
-        except Exception as e:
-            logger.warning(f"Articulation points calculation failed: {e}")
-            return []
+        with self._lock:
+            try:
+                # Convert to undirected for articulation point analysis
+                undirected = self.graph.to_undirected()
+                articulation_indices = rx.articulation_points(undirected)
+                result = []
+                for idx in articulation_indices:
+                    if idx < len(self.graph):
+                        node_id = self.graph[idx]
+                        if node_id:
+                            result.append(node_id)
+                return result
+            except Exception as e:
+                logger.warning(f"Articulation points calculation failed: {e}")
+                return []
 
     def find_bridges(self) -> List[tuple]:
         """Find bridge edges (edges whose removal increases connected components)."""
@@ -332,8 +596,8 @@ class RustworkxCodeGraph:
             bridges = []
             for edge in bridge_edges:
                 if len(edge) >= 2:  # Ensure edge has at least 2 elements
-                    source_id = self.index_to_node_id.get(edge[0])
-                    target_id = self.index_to_node_id.get(edge[1])
+                    source_id = self.graph[edge[0]]  # Get node ID from graph data
+                    target_id = self.graph[edge[1]]  # Get node ID from graph data
                     if source_id and target_id:
                         bridges.append((source_id, target_id))
             return bridges
@@ -346,13 +610,17 @@ class RustworkxCodeGraph:
         try:
             distance_matrix = rx.floyd_warshall_numpy(self.graph)
             result = {}
-            for i, source_id in enumerate(self.index_to_node_id.values()):
-                result[source_id] = {}
-                for j, target_id in enumerate(self.index_to_node_id.values()):
-                    if i < len(distance_matrix) and j < len(distance_matrix[i]):
-                        distance = distance_matrix[i][j]
-                        if distance != float('inf'):
-                            result[source_id][target_id] = distance
+            # Iterate through all node indices in the graph
+            for i in range(len(self.graph)):
+                source_id = self.graph[i]  # Get node ID from graph data
+                if source_id:
+                    result[source_id] = {}
+                    for j in range(len(self.graph)):
+                        target_id = self.graph[j]  # Get node ID from graph data
+                        if target_id and i < len(distance_matrix) and j < len(distance_matrix[i]):
+                            distance = distance_matrix[i][j]
+                            if distance != float('inf'):
+                                result[source_id][target_id] = distance
             return result
         except Exception as e:
             logger.warning(f"Distance matrix calculation failed: {e}")
@@ -376,13 +644,13 @@ class RustworkxCodeGraph:
 
             result = {}
             for source_idx, target_distances in paths_result.items():
-                source_id = self.index_to_node_id.get(source_idx)
+                source_id = self.graph[source_idx]  # Get node ID from graph data
                 if source_id:
                     result[source_id] = {}
 
                     # Convert target indices to node IDs
                     for target_idx, distance in target_distances.items():
-                        target_id = self.index_to_node_id.get(target_idx)
+                        target_id = self.graph[target_idx]  # Get node ID from graph data
                         if target_id:
                             result[source_id][target_id] = distance
 
@@ -435,7 +703,11 @@ class RustworkxCodeGraph:
             Dictionary with distances and paths to all reachable nodes
         """
         try:
-            source_index = self.node_id_to_index.get(source_id)
+            source_node = self.nodes.get(source_id)
+            if not source_node:
+                return {}
+
+            source_index = getattr(source_node, '_rustworkx_index', None)
             if source_index is None:
                 return {}
 
@@ -454,7 +726,7 @@ class RustworkxCodeGraph:
             }
 
             for target_idx, distance in distances.items():
-                target_id = self.index_to_node_id.get(target_idx)
+                target_id = self.graph[target_idx]  # Get node ID from graph data
                 if target_id:
                     result["distances"][target_id] = distance
 
@@ -573,28 +845,31 @@ class RustworkxCodeGraph:
         Returns:
             List of node IDs in DFS order
         """
-        try:
-            source_index = self.node_id_to_index.get(source_id)
-            if source_index is None:
+        with self._lock:
+            try:
+                source_node = self.nodes.get(source_id)
+                if not source_node or not hasattr(source_node, '_rustworkx_index'):
+                    return []
+
+                # Perform DFS traversal
+                dfs_edges = rx.dfs_edges(self.graph, source_node._rustworkx_index)
+
+                # Extract unique nodes in DFS order
+                visited_nodes = [source_id]  # Start with source
+                for edge in dfs_edges:
+                    target_idx = edge[1]
+                    if target_idx < len(self.graph):
+                        target_id = self.graph[target_idx]
+                        if target_id and target_id not in visited_nodes:
+                            visited_nodes.append(target_id)
+                            if visitor_fn:
+                                visitor_fn(target_id)
+
+                return visited_nodes
+
+            except Exception as e:
+                logger.warning(f"DFS traversal failed: {e}")
                 return []
-
-            # Perform DFS traversal
-            dfs_edges = rx.dfs_edges(self.graph, source_index)
-
-            # Extract unique nodes in DFS order
-            visited_nodes = [source_id]  # Start with source
-            for edge in dfs_edges:
-                target_id = self.index_to_node_id.get(edge[1])
-                if target_id and target_id not in visited_nodes:
-                    visited_nodes.append(target_id)
-                    if visitor_fn:
-                        visitor_fn(target_id)
-
-            return visited_nodes
-
-        except Exception as e:
-            logger.warning(f"DFS traversal failed: {e}")
-            return []
 
     def breadth_first_search(self, source_id: str, visitor_fn=None) -> List[str]:
         """
@@ -607,33 +882,36 @@ class RustworkxCodeGraph:
         Returns:
             List of node IDs in BFS order
         """
-        try:
-            source_index = self.node_id_to_index.get(source_id)
-            if source_index is None:
+        with self._lock:
+            try:
+                source_node = self.nodes.get(source_id)
+                if not source_node or not hasattr(source_node, '_rustworkx_index'):
+                    return []
+
+                # Perform BFS traversal using successor iteration
+                source_index = source_node._rustworkx_index
+                visited = set([source_index])
+                queue = [source_index]
+                visited_nodes = [source_id]
+
+                while queue:
+                    current_index = queue.pop(0)
+                    for successor in self.graph.successors(current_index):
+                        if successor not in visited:
+                            visited.add(successor)
+                            queue.append(successor)
+                            if successor < len(self.graph):
+                                successor_id = self.graph[successor]
+                                if successor_id:
+                                    visited_nodes.append(successor_id)
+                                    if visitor_fn:
+                                        visitor_fn(successor_id)
+
+                return visited_nodes
+
+            except Exception as e:
+                logger.warning(f"BFS traversal failed: {e}")
                 return []
-
-            # Perform BFS traversal using successor iteration
-            visited = set([source_index])
-            queue = [source_index]
-            visited_nodes = [source_id]
-
-            while queue:
-                current_index = queue.pop(0)
-                for successor in self.graph.successors(current_index):
-                    if successor not in visited:
-                        visited.add(successor)
-                        queue.append(successor)
-                        successor_id = self.index_to_node_id.get(successor)
-                        if successor_id:
-                            visited_nodes.append(successor_id)
-                            if visitor_fn:
-                                visitor_fn(successor_id)
-
-            return visited_nodes
-
-        except Exception as e:
-            logger.warning(f"BFS traversal failed: {e}")
-            return []
 
     def find_node_layers(self, source_id: str) -> Dict[int, List[str]]:
         """
@@ -646,7 +924,11 @@ class RustworkxCodeGraph:
             Dictionary mapping layer number to list of node IDs at that layer
         """
         try:
-            source_index = self.node_id_to_index.get(source_id)
+            source_node = self.nodes.get(source_id)
+            if not source_node:
+                return {}
+
+            source_index = getattr(source_node, '_rustworkx_index', None)
             if source_index is None:
                 return {}
 
@@ -655,7 +937,7 @@ class RustworkxCodeGraph:
 
             layers = {}
             for target_index, distance in distances.items():
-                target_id = self.index_to_node_id.get(target_index)
+                target_id = self.graph[target_index]  # Get node ID from graph data
                 if target_id:
                     layer = int(distance)
                     if layer not in layers:
@@ -676,27 +958,30 @@ class RustworkxCodeGraph:
         Returns:
             List of node IDs forming a dominating set
         """
-        try:
-            # Check if dominating_set is available
-            if hasattr(rx, 'dominating_set'):
-                dominating_indices = getattr(rx, 'dominating_set')(self.graph)
-                return [
-                    self.index_to_node_id[idx]
-                    for idx in dominating_indices
-                    if idx in self.index_to_node_id
-                ]
-            else:
-                # Fallback: return nodes with highest degree as approximation
-                node_degrees = [(node_id, self.get_node_degree(node_id)[2])
-                               for node_id in self.nodes.keys()]
-                node_degrees.sort(key=lambda x: x[1], reverse=True)
-                # Return top 10% of nodes by degree
-                top_count = max(1, len(node_degrees) // 10)
-                return [node_id for node_id, _ in node_degrees[:top_count]]
+        with self._lock:
+            try:
+                # Check if dominating_set is available
+                if hasattr(rx, 'dominating_set'):
+                    dominating_indices = getattr(rx, 'dominating_set')(self.graph)
+                    result = []
+                    for idx in dominating_indices:
+                        if idx < len(self.graph):
+                            node_id = self.graph[idx]
+                            if node_id:
+                                result.append(node_id)
+                    return result
+                else:
+                    # Fallback: return nodes with highest degree as approximation
+                    node_degrees = [(node_id, self.get_node_degree(node_id)[2])
+                                   for node_id in self.nodes.keys()]
+                    node_degrees.sort(key=lambda x: x[1], reverse=True)
+                    # Return top 10% of nodes by degree
+                    top_count = max(1, len(node_degrees) // 10)
+                    return [node_id for node_id, _ in node_degrees[:top_count]]
 
-        except Exception as e:
-            logger.warning(f"Dominating set calculation failed: {e}")
-            return []
+            except Exception as e:
+                logger.warning(f"Dominating set calculation failed: {e}")
+                return []
 
     def analyze_node_connectivity(self, node_id: str) -> Dict[str, Any]:
         """
@@ -773,7 +1058,7 @@ class RustworkxCodeGraph:
 
     # ========================= STATISTICS =========================
 
-    @lru_cache(maxsize=10000)
+    @lru_cache(maxsize=CacheConfig.MEDIUM_CACHE)
     def get_statistics(self) -> Dict[str, Any]:
         """Get comprehensive graph statistics with LRU caching."""
         total_nodes = len(self.nodes)
@@ -799,9 +1084,13 @@ class RustworkxCodeGraph:
         is_dag = self.is_directed_acyclic()
         num_cycles = len(self.detect_cycles()) if not is_dag else 0
 
+        file_count = len(self._processed_files)
+        logger.debug(f"get_statistics: {total_nodes} nodes, {total_relationships} relationships, {file_count} files")
+
         return {
             "total_nodes": total_nodes,
             "total_relationships": total_relationships,
+            "total_files": file_count,
             "node_types": node_types,
             "languages": languages,
             "relationship_types": relationship_types,
@@ -811,20 +1100,31 @@ class RustworkxCodeGraph:
             "average_degree": (2 * total_relationships) / total_nodes if total_nodes > 0 else 0,
         }
 
+    def add_processed_file(self, file_path: str) -> None:
+        """Track a processed file."""
+        self._processed_files.add(file_path)
+
     def clear(self) -> None:
-        """Clear all data from the graph."""
-        logger.info(f"CLEARING GRAPH: {len(self.nodes)} nodes, {len(self.relationships)} relationships")
-        self.graph.clear()
-        self.nodes.clear()
-        self.relationships.clear()
-        self.node_id_to_index.clear()
-        self.index_to_node_id.clear()
-        self.edge_id_to_index.clear()
-        self.index_to_edge_id.clear()
-        self._nodes_by_type.clear()
-        self._nodes_by_language.clear()
-        self.metadata.clear()
-        logger.info("GRAPH CLEARED: now has 0 nodes")
+        """Clear all data from the graph with proper thread safety and state reset."""
+        with self._thread_safe_operation():
+            logger.info(f"CLEARING GRAPH: {len(self.nodes)} nodes, {len(self.relationships)} relationships, {len(self._processed_files)} files")
+
+            # Clear rustworkx graph completely
+            self.graph.clear()
+
+            # Clear all our data structures
+            self.nodes.clear()
+            self.relationships.clear()
+            self._processed_files.clear()
+            self._file_to_nodes.clear()
+            self._nodes_by_type.clear()
+            self._nodes_by_language.clear()
+            self.metadata.clear()
+
+            # Increment generation to invalidate all caches
+            self._generation += 1
+
+            logger.info("GRAPH CLEARED: now has 0 nodes, all state reset")
 
     # ========================= SERIALIZATION =========================
 
@@ -1046,32 +1346,82 @@ class RustworkxCodeGraph:
             # Recreate graph from node-link format
             if hasattr(rx, 'node_link_graph'):
                 self.graph = getattr(rx, 'node_link_graph')(data)
+                # TODO: Extract node and relationship objects from rustworkx graph data
             else:
+                # Manual reconstruction from JSON data
                 self.graph = rx.PyDiGraph()
+
+                # First, recreate all node objects from JSON data
                 for node_data in data.get('nodes', []):
-                    node_id = node_data['id']
-                    if node_id in self.nodes:
-                        node_index = self.graph.add_node(self.nodes[node_id])
-                        self.node_id_to_index[node_id] = node_index
-                        self.index_to_node_id[node_index] = node_id
+                    try:
+                        # Reconstruct UniversalLocation
+                        location = UniversalLocation(
+                            file_path=node_data.get('file', ''),
+                            start_line=int(node_data.get('line', 1)),
+                            end_line=int(node_data.get('end_line', node_data.get('line', 1))),
+                            language=node_data.get('language', '')
+                        )
 
+                        # Reconstruct UniversalNode
+                        node = UniversalNode(
+                            id=node_data['id'],
+                            name=node_data.get('name', ''),
+                            node_type=NodeType(node_data.get('type', 'function')),
+                            location=location,
+                            language=node_data.get('language', ''),
+                            complexity=int(node_data.get('complexity', 0))
+                        )
+
+                        # Add to our nodes dictionary
+                        self.nodes[node.id] = node
+
+                        # Add to rustworkx graph with node ID as data
+                        node_index = self.graph.add_node(node.id)
+
+                        # Store rustworkx index in node object
+                        node._rustworkx_index = node_index
+
+                    except (KeyError, ValueError, TypeError) as e:
+                        logger.warning(f"Failed to reconstruct node {node_data.get('id', 'unknown')}: {e}")
+                        continue
+
+                # Then, recreate all relationship objects and edges
                 for edge_data in data.get('edges', []):
-                    rel_id = edge_data['id']
-                    if rel_id in self.relationships:
-                        rel = self.relationships[rel_id]
-                        source_idx = self.node_id_to_index.get(rel.source_id)
-                        target_idx = self.node_id_to_index.get(rel.target_id)
-                        if source_idx is not None and target_idx is not None:
-                            edge_index = self.graph.add_edge(source_idx, target_idx, rel)
-                            self.edge_id_to_index[rel_id] = edge_index
-                            self.index_to_edge_id[edge_index] = rel_id
+                    try:
+                        # Reconstruct UniversalRelationship
+                        rel = UniversalRelationship(
+                            id=edge_data['id'],
+                            source_id=edge_data['source'],
+                            target_id=edge_data['target'],
+                            relationship_type=RelationshipType(edge_data.get('type', 'calls')),
+                            strength=float(edge_data.get('strength', 1.0))
+                        )
 
-            # Rebuild our mappings
-            for i, node_data in enumerate(data.get('nodes', [])):
-                node_id = node_data.get('id')
-                if node_id:
-                    self.node_id_to_index[node_id] = i
-                    self.index_to_node_id[i] = node_id
+                        # Add to our relationships dictionary
+                        self.relationships[rel.id] = rel
+
+                        # Find source and target node indices
+                        source_node = self.nodes.get(rel.source_id)
+                        target_node = self.nodes.get(rel.target_id)
+
+                        if source_node and target_node:
+                            source_idx = getattr(source_node, '_rustworkx_index', None)
+                            target_idx = getattr(target_node, '_rustworkx_index', None)
+
+                            if source_idx is not None and target_idx is not None:
+                                # Add edge to rustworkx graph
+                                edge_index = self.graph.add_edge(source_idx, target_idx, rel.id)
+
+                                # Store edge index in relationship object
+                                rel._rustworkx_edge_index = edge_index
+                            else:
+                                logger.warning(f"Could not find indices for relationship {rel.id}")
+                        else:
+                            logger.warning(f"Could not find nodes for relationship {rel.id}")
+
+                    except (KeyError, ValueError, TypeError) as e:
+                        logger.warning(f"Failed to reconstruct relationship {edge_data.get('id', 'unknown')}: {e}")
+                        continue
 
             logger.info("Graph loaded from JSON successfully")
             return True

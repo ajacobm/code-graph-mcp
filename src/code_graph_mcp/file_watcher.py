@@ -152,10 +152,14 @@ class DebouncedFileWatcher:
 
     def _cleanup_recent_changes_if_needed(self) -> None:
         """Clean up recent changes if enough time has passed."""
-        if (self._change_cleanup_timer and 
+        if (self._change_cleanup_timer and
             time.time() > self._change_cleanup_timer):
+            # Log cleanup for monitoring
+            changes_count = len(self._recent_changes)
             self._recent_changes.clear()
             self._change_cleanup_timer = None
+            if changes_count > 0:
+                logger.debug(f"File watcher cleanup: cleared {changes_count} recent changes")
 
     async def _debounced_callback(self) -> None:
         """Execute the callback after the debounce delay."""
@@ -170,7 +174,7 @@ class DebouncedFileWatcher:
                 await asyncio.sleep(remaining_delay)
 
             logger.info(f"Triggering callback after {self.debounce_delay}s debounce delay")
-            
+
             # Handle both sync and async callbacks
             result = self.callback()
             if asyncio.iscoroutine(result):
@@ -178,8 +182,10 @@ class DebouncedFileWatcher:
 
         except asyncio.CancelledError:
             logger.debug("Debounced callback cancelled")
+            raise  # Re-raise to properly handle cancellation
         except Exception as e:
             logger.error(f"Error in debounced callback: {e}")
+            # Don't re-raise to prevent crashing the file watcher
 
     async def start(self) -> None:
         """Start watching for file changes."""
@@ -190,7 +196,7 @@ class DebouncedFileWatcher:
         try:
             # Store the current event loop
             self._loop = asyncio.get_running_loop()
-            
+
             self._observer = Observer()
             event_handler = self._EventHandler(self)
 

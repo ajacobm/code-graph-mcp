@@ -15,8 +15,7 @@ import json
 import pytest
 import tempfile
 import os
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 # Import our code
 from code_graph_mcp.rustworkx_graph import RustworkxCodeGraph
@@ -33,7 +32,7 @@ class TestRustworkxCodeGraph:
     def sample_graph(self):
         """Create a sample graph with nodes and relationships for testing."""
         graph = RustworkxCodeGraph()
-        
+
         # Create sample nodes
         nodes = [
             UniversalNode(
@@ -90,11 +89,11 @@ class TestRustworkxCodeGraph:
                 language="Python"
             )
         ]
-        
+
         # Add nodes to graph
         for node in nodes:
             graph.add_node(node)
-        
+
         # Create sample relationships
         relationships = [
             UniversalRelationship(
@@ -123,28 +122,31 @@ class TestRustworkxCodeGraph:
                 metadata={"call_line": 15}
             )
         ]
-        
+
         # Add relationships to graph
         for rel in relationships:
             graph.add_relationship(rel)
-        
+
         return graph
 
     def test_graph_initialization(self):
         """Test basic graph initialization."""
         graph = RustworkxCodeGraph()
-        
+
         assert len(graph.nodes) == 0
         assert len(graph.relationships) == 0
-        assert len(graph.node_id_to_index) == 0
-        assert len(graph.index_to_node_id) == 0
+        assert len(graph.graph) == 0  # rustworkx graph should be empty
+        assert len(graph._processed_files) == 0
 
     def test_add_node(self, sample_graph):
         """Test adding nodes to the graph."""
         assert len(sample_graph.nodes) == 4
-        assert len(sample_graph.node_id_to_index) == 4
-        assert len(sample_graph.index_to_node_id) == 4
-        
+        assert len(sample_graph.graph) == 4  # rustworkx graph should have 4 nodes
+
+        # Verify nodes have rustworkx indices
+        for node in sample_graph.nodes.values():
+            assert hasattr(node, '_rustworkx_index')
+
         # Test node retrieval
         main_node = sample_graph.get_node("function:main.py:main:10")
         assert main_node is not None
@@ -154,8 +156,11 @@ class TestRustworkxCodeGraph:
     def test_add_relationship(self, sample_graph):
         """Test adding relationships to the graph."""
         assert len(sample_graph.relationships) == 4
-        assert len(sample_graph.edge_id_to_index) == 4
-        
+
+        # Verify relationships have rustworkx edge indices
+        for rel in sample_graph.relationships.values():
+            assert hasattr(rel, '_rustworkx_edge_index')
+
         # Test relationship retrieval
         calls_rel = sample_graph.relationships["calls:main:helper"]
         assert calls_rel.relationship_type == RelationshipType.CALLS
@@ -167,11 +172,11 @@ class TestRustworkxCodeGraph:
         main_nodes = sample_graph.find_nodes_by_name("main", exact_match=True)
         assert len(main_nodes) == 1
         assert main_nodes[0].name == "main"
-        
+
         # Fuzzy match
         main_fuzzy = sample_graph.find_nodes_by_name("mai", exact_match=False)
         assert len(main_fuzzy) >= 1
-        
+
         # Non-existent node
         nonexistent = sample_graph.find_nodes_by_name("nonexistent", exact_match=True)
         assert len(nonexistent) == 0
@@ -180,11 +185,11 @@ class TestRustworkxCodeGraph:
         """Test filtering nodes by type."""
         functions = sample_graph.get_nodes_by_type(NodeType.FUNCTION)
         assert len(functions) == 2
-        
+
         classes = sample_graph.get_nodes_by_type(NodeType.CLASS)
         assert len(classes) == 1
         assert classes[0].name == "TestClass"
-        
+
         modules = sample_graph.get_nodes_by_type(NodeType.MODULE)
         assert len(modules) == 1
 
@@ -193,7 +198,7 @@ class TestRustworkxCodeGraph:
         # Test relationships from file node
         file_rels = sample_graph.get_relationships_from("file:main.py")
         assert len(file_rels) == 3  # Contains 3 elements
-        
+
         # Test relationships to helper function
         helper_rels = sample_graph.get_relationships_to("function:main.py:helper:25")
         assert len(helper_rels) == 2  # Contained by file, called by main
@@ -204,20 +209,20 @@ class TestRustworkxCodeGraph:
         betweenness = sample_graph.calculate_centrality()
         assert isinstance(betweenness, dict)
         assert len(betweenness) > 0
-        
+
         # Test PageRank
         pagerank = sample_graph.calculate_pagerank()
         assert isinstance(pagerank, dict)
         assert len(pagerank) > 0
-        
+
         # Test with custom parameters
         pagerank_custom = sample_graph.calculate_pagerank(alpha=0.9, max_iter=50, tol=1e-4)
         assert isinstance(pagerank_custom, dict)
-        
+
         # Test closeness centrality
         closeness = sample_graph.calculate_closeness_centrality()
         assert isinstance(closeness, dict)
-        
+
         # Test eigenvector centrality
         eigenvector = sample_graph.calculate_eigenvector_centrality()
         assert isinstance(eigenvector, dict)
@@ -227,19 +232,19 @@ class TestRustworkxCodeGraph:
         # Test articulation points
         articulation_points = sample_graph.find_articulation_points()
         assert isinstance(articulation_points, list)
-        
+
         # Test bridges
         bridges = sample_graph.find_bridges()
         assert isinstance(bridges, list)
-        
+
         # Test strongly connected components
         components = sample_graph.get_strongly_connected_components()
         assert isinstance(components, list)
-        
+
         # Test cycle detection
         cycles = sample_graph.detect_cycles()
         assert isinstance(cycles, list)
-        
+
         # Test DAG check
         is_dag = sample_graph.is_directed_acyclic()
         assert isinstance(is_dag, bool)
@@ -248,11 +253,11 @@ class TestRustworkxCodeGraph:
         """Test path finding and analysis methods."""
         # Test shortest path
         path = sample_graph.find_shortest_path(
-            "file:main.py", 
+            "file:main.py",
             "function:main.py:helper:25"
         )
         assert isinstance(path, list)
-        
+
         # Test all paths
         all_paths = sample_graph.find_all_paths(
             "file:main.py",
@@ -260,11 +265,11 @@ class TestRustworkxCodeGraph:
             max_length=5
         )
         assert isinstance(all_paths, list)
-        
+
         # Test ancestors and descendants
         ancestors = sample_graph.find_ancestors("function:main.py:helper:25")
         assert isinstance(ancestors, set)
-        
+
         descendants = sample_graph.find_descendants("file:main.py")
         assert isinstance(descendants, set)
 
@@ -275,7 +280,7 @@ class TestRustworkxCodeGraph:
         assert isinstance(dfs_nodes, list)
         assert len(dfs_nodes) > 0
         assert "file:main.py" in dfs_nodes
-        
+
         # Test BFS (may fail with some rustworkx configurations, handle gracefully)
         bfs_nodes = sample_graph.breadth_first_search("file:main.py")
         assert isinstance(bfs_nodes, list)
@@ -285,12 +290,12 @@ class TestRustworkxCodeGraph:
             assert bfs_nodes == []
         else:
             assert "file:main.py" in bfs_nodes
-        
+
         # Test with visitor function
         visited_nodes = []
         def visitor(node_id):
             visited_nodes.append(node_id)
-        
+
         sample_graph.depth_first_search("file:main.py", visitor_fn=visitor)
         # Visitor may not be called if traversal fails, but shouldn't crash
 
@@ -319,7 +324,7 @@ class TestRustworkxCodeGraph:
         file_degree = sample_graph.get_node_degree("file:main.py")
         assert isinstance(file_degree, tuple)
         assert len(file_degree) == 3  # (in_degree, out_degree, total_degree)
-        
+
         # File node should have outgoing edges (contains relationships)
         in_deg, out_deg, total_deg = file_degree
         assert out_deg > 0
@@ -329,12 +334,12 @@ class TestRustworkxCodeGraph:
         """Test comprehensive connectivity analysis."""
         connectivity = sample_graph.analyze_graph_connectivity()
         assert isinstance(connectivity, dict)
-        
+
         # Check expected structure
         assert "basic_metrics" in connectivity
         assert "connectivity_metrics" in connectivity
         assert "distance_metrics" in connectivity
-        
+
         basic_metrics = connectivity["basic_metrics"]
         assert "num_nodes" in basic_metrics
         assert "num_edges" in basic_metrics
@@ -344,7 +349,7 @@ class TestRustworkxCodeGraph:
         """Test individual node connectivity analysis."""
         node_analysis = sample_graph.analyze_node_connectivity("file:main.py")
         assert isinstance(node_analysis, dict)
-        
+
         # Check expected structure
         assert "degree_analysis" in node_analysis
         assert "reachability" in node_analysis
@@ -355,14 +360,14 @@ class TestRustworkxCodeGraph:
         """Test graph statistics generation."""
         stats = sample_graph.get_statistics()
         assert isinstance(stats, dict)
-        
+
         # Check expected fields
         assert "total_nodes" in stats
         assert "total_relationships" in stats
         assert "node_types" in stats
         assert "languages" in stats
         assert "relationship_types" in stats
-        
+
         assert stats["total_nodes"] == 4
         assert stats["total_relationships"] == 4
 
@@ -372,11 +377,11 @@ class TestRustworkxCodeGraph:
         json_str = sample_graph.to_json()
         assert isinstance(json_str, str)
         assert len(json_str) > 0
-        
+
         # Test that it's valid JSON
         json_data = json.loads(json_str)
         assert isinstance(json_data, dict)
-        
+
         # Test with indentation
         json_pretty = sample_graph.to_json(indent=2)
         assert isinstance(json_pretty, str)
@@ -388,14 +393,14 @@ class TestRustworkxCodeGraph:
         assert isinstance(dot_str, str)
         assert "digraph" in dot_str.lower()
         assert len(dot_str) > 0
-        
+
         # Test with custom attributes
         def custom_node_attr(node):
             return {"label": f"Custom_{node.name}", "color": "red"}
-        
+
         def custom_edge_attr(edge):
             return {"label": edge.relationship_type.value, "style": "dashed"}
-        
+
         custom_dot = sample_graph.to_dot(
             node_attr_fn=custom_node_attr,
             edge_attr_fn=custom_edge_attr
@@ -407,11 +412,11 @@ class TestRustworkxCodeGraph:
         """Test GraphML serialization."""
         with tempfile.NamedTemporaryFile(mode='w', suffix='.graphml', delete=False) as f:
             temp_filename = f.name
-        
+
         try:
             success = sample_graph.to_graphml(temp_filename)
             assert success is True
-            
+
             # Check that file was created and has content
             assert os.path.exists(temp_filename)
             with open(temp_filename, 'r') as f:
@@ -427,11 +432,11 @@ class TestRustworkxCodeGraph:
         """Test JSON deserialization (loading from JSON)."""
         # Serialize to JSON
         json_str = sample_graph.to_json()
-        
+
         # Create new graph and load from JSON
         new_graph = RustworkxCodeGraph()
         success = new_graph.from_json(json_str)
-        
+
         # Note: from_json is a simplified implementation
         # We mainly test that it doesn't crash and follows expected behavior
         assert isinstance(success, bool)
@@ -440,11 +445,11 @@ class TestRustworkxCodeGraph:
         """Test comprehensive analysis report export."""
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
             temp_filename = f.name
-        
+
         try:
             success = sample_graph.export_analysis_report(temp_filename, format="json")
             assert success is True
-            
+
             # Check that file was created and has valid JSON
             assert os.path.exists(temp_filename)
             with open(temp_filename, 'r') as f:
@@ -460,17 +465,17 @@ class TestRustworkxCodeGraph:
     def test_error_handling(self, sample_graph):
         """Test error handling for various edge cases."""
         graph = RustworkxCodeGraph()
-        
+
         # Test with empty graph
         assert graph.calculate_centrality() == {}
         assert graph.find_shortest_path("nonexistent1", "nonexistent2") == []
         assert graph.find_ancestors("nonexistent") == set()
         assert graph.get_node_degree("nonexistent") == (0, 0, 0)
-        
+
         # Test malformed operations
         empty_json = graph.to_json()
         assert isinstance(empty_json, str)
-        
+
         # Test clear functionality
         sample_graph.clear()
         assert len(sample_graph.nodes) == 0
@@ -479,7 +484,7 @@ class TestRustworkxCodeGraph:
     def test_large_graph_performance(self):
         """Test performance with a larger graph."""
         graph = RustworkxCodeGraph()
-        
+
         # Create a moderately sized graph (100 nodes, ~200 relationships)
         nodes = []
         for i in range(100):
@@ -489,8 +494,8 @@ class TestRustworkxCodeGraph:
                 node_type=NodeType.FUNCTION,
                 location=UniversalLocation(
                     file_path=f"/test/file_{i//10}.py",
-                    start_line=i,
-                    end_line=i+5,
+                    start_line=i+1,  # Line numbers start at 1
+                    end_line=i+6,
                     language="Python"
                 ),
                 language="Python",
@@ -498,7 +503,7 @@ class TestRustworkxCodeGraph:
             )
             nodes.append(node)
             graph.add_node(node)
-        
+
         # Add relationships (each node calls next 2 nodes)
         for i in range(98):
             for j in range(1, 3):
@@ -510,14 +515,14 @@ class TestRustworkxCodeGraph:
                         relationship_type=RelationshipType.CALLS
                     )
                     graph.add_relationship(rel)
-        
+
         # Test that operations complete without errors
         stats = graph.get_statistics()
         assert stats["total_nodes"] == 100
-        
+
         centrality = graph.calculate_centrality()
         assert len(centrality) > 0
-        
+
         pagerank = graph.calculate_pagerank()
         assert len(pagerank) > 0
 
@@ -526,12 +531,12 @@ class TestRustworkxCodeGraph:
         """Test fallback mechanisms when rustworkx functions are unavailable."""
         # Mock rustworkx function to raise AttributeError
         mock_node_link_json.side_effect = AttributeError("Function not available")
-        
+
         # Test JSON serialization fallback
         json_str = sample_graph.to_json()
         assert isinstance(json_str, str)
         assert len(json_str) > 0
-        
+
         # Should use fallback implementation
         json_data = json.loads(json_str)
         assert "nodes" in json_data
@@ -544,18 +549,18 @@ class TestRustworkxCodeGraph:
             if hasattr(edge_data, 'strength'):
                 return edge_data.strength
             return 1.0
-        
+
         # Test Bellman-Ford path lengths
         paths = sample_graph.calculate_bellman_ford_path_lengths(weight_fn)
         assert isinstance(paths, dict)
-        
+
         # Test weighted shortest paths
         weighted_paths = sample_graph.calculate_weighted_shortest_paths(
-            "file:main.py", 
+            "file:main.py",
             weight_fn
         )
         assert isinstance(weighted_paths, dict)
-        
+
         # Test negative cycle detection
         has_negative_cycles = sample_graph.detect_negative_cycles(weight_fn)
         assert isinstance(has_negative_cycles, bool)
@@ -565,13 +570,13 @@ class TestRustworkxCodeGraph:
         # Test topological sort
         topo_order = sample_graph.topological_sort()
         assert isinstance(topo_order, list)
-        
+
     def test_distance_matrix(self, sample_graph):
         """Test distance matrix calculations."""
         # Test Floyd-Warshall distance matrix
         distance_matrix = sample_graph.calculate_graph_distance_matrix()
         assert isinstance(distance_matrix, dict)
-        
+
         # Should have entries for reachable node pairs
         if distance_matrix:
             # Pick first entry to validate structure
@@ -583,7 +588,7 @@ class TestRustworkxCodeGraph:
 # Integration tests that require actual rustworkx
 class TestRustworkxIntegration:
     """Integration tests that test actual rustworkx functionality."""
-    
+
     def test_rustworkx_available(self):
         """Test that rustworkx is available and working."""
         try:
@@ -598,7 +603,7 @@ class TestRustworkxIntegration:
         """Test operations with real rustworkx backend."""
         try:
             graph = RustworkxCodeGraph()
-            
+
             # Add a simple node
             node = UniversalNode(
                 id="test_node",
@@ -613,15 +618,18 @@ class TestRustworkxIntegration:
                 language="Python"
             )
             graph.add_node(node)
-            
+
             # Test that rustworkx graph operations work
             assert len(graph.nodes) == 1
-            assert len(graph.node_id_to_index) == 1
-            
+            assert len(graph.graph) == 1  # rustworkx graph should have 1 node
+
+            # Verify node has rustworkx index
+            assert hasattr(node, '_rustworkx_index')
+
             # Test rustworkx-specific functionality
             stats = graph.get_statistics()
             assert stats["total_nodes"] == 1
-            
+
         except ImportError:
             pytest.skip("rustworkx not available")
 

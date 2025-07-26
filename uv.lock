@@ -161,7 +161,7 @@ wheels = [
 
 [[package]]
 name = "code-graph-mcp"
-version = "1.1.1"
+version = "1.2.3"
 source = { editable = "." }
 dependencies = [
     { name = "anyio" },
@@ -186,6 +186,8 @@ test = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
     { name = "twine" },
 ]
 
@@ -207,7 +209,11 @@ requires-dist = [
 provides-extras = ["dev", "test"]
 
 [package.metadata.requires-dev]
-dev = [{ name = "twine", specifier = ">=6.1.0" }]
+dev = [
+    { name = "pytest", specifier = ">=8.4.1" },
+    { name = "pytest-asyncio", specifier = ">=1.1.0" },
+    { name = "twine", specifier = ">=6.1.0" },
+]
 
 [[package]]
 name = "colorama"

@@ -9,6 +9,14 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set
 
+# Standardized cache sizes for consistent memory usage
+class CacheConfig:
+    """Centralized cache size configuration for consistent memory management."""
+    SMALL_CACHE = 1000      # For infrequent operations
+    MEDIUM_CACHE = 10000    # For moderate frequency operations
+    LARGE_CACHE = 50000     # For high frequency operations
+    XLARGE_CACHE = 100000   # For very high frequency operations
+
 
 class NodeType(Enum):
     """Universal node types that work across all programming languages."""
@@ -55,6 +63,19 @@ class UniversalLocation:
     start_column: int = 0
     end_column: int = 0
     language: str = ""
+
+    def __post_init__(self):
+        """Validate location data after initialization."""
+        if not self.file_path:
+            raise ValueError("file_path cannot be empty")
+        if self.start_line < 1:
+            raise ValueError(f"start_line must be >= 1, got {self.start_line}")
+        if self.end_line < self.start_line:
+            raise ValueError(f"end_line ({self.end_line}) cannot be less than start_line ({self.start_line})")
+        if self.start_column < 0:
+            raise ValueError(f"start_column must be >= 0, got {self.start_column}")
+        if self.end_column < 0:
+            raise ValueError(f"end_column must be >= 0, got {self.end_column}")
 
 
 @dataclass

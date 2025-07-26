@@ -308,7 +308,9 @@ class UniversalASTAnalyzer:
             "documentation_ratio": round(doc_ratio, 2),
             "code_duplication_ratio": round(duplication_ratio, 2),
             "total_code_smells": total_smells,
-            "quality_score": round((maintainability + doc_ratio + test_coverage_estimate - debt_ratio - duplication_ratio) / 5, 2)
+            "quality_score": round(self._calculate_normalized_quality_score(
+                maintainability, doc_ratio, test_coverage_estimate, debt_ratio, duplication_ratio
+            ), 2)
         }
 
     def get_language_distribution(self) -> Dict[str, Any]:
@@ -355,6 +357,25 @@ class UniversalASTAnalyzer:
             "total_languages": len(language_stats),
             "polyglot_score": min(len(language_stats), 10) * 10  # 0-100 score
         }
+
+    def _calculate_normalized_quality_score(self, maintainability: float, doc_ratio: float,
+                                          test_coverage: float, debt_ratio: float,
+                                          duplication_ratio: float) -> float:
+        """Calculate a normalized quality score between 0 and 100."""
+        # Normalize all inputs to 0-100 scale
+        maintainability = max(0, min(100, maintainability))
+        doc_ratio = max(0, min(100, doc_ratio))
+        test_coverage = max(0, min(100, test_coverage))
+        debt_ratio = max(0, min(100, debt_ratio))
+        duplication_ratio = max(0, min(100, duplication_ratio))
+
+        # Calculate weighted score (positive factors - negative factors)
+        positive_score = (maintainability * 0.4 + doc_ratio * 0.2 + test_coverage * 0.3)
+        negative_score = (debt_ratio * 0.3 + duplication_ratio * 0.2)
+
+        # Final score between 0 and 100
+        quality_score = positive_score - negative_score
+        return max(0, min(100, quality_score))
 
     def find_similar_functions(self, function_name: str, similarity_threshold: float = 0.7) -> List[Dict[str, Any]]:
         """Find functions similar to the given function."""

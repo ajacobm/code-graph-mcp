@@ -58,7 +58,50 @@ class LanguageDetector:
         self.content_signatures = self._build_content_signatures()
 
     def _build_mime_mappings(self) -> Dict[str, str]:
-        """Build MIME type to language mappings."""
+        """Build comprehensive MIME type to language mappings."""
+        # Initialize system MIME types for better detection
+        mimetypes.init()
+
+        # Add custom MIME types for programming languages
+        custom_types = [
+            ('.py', 'text/x-python'),
+            ('.pyw', 'text/x-python'),
+            ('.java', 'text/x-java-source'),
+            ('.c', 'text/x-c'),
+            ('.h', 'text/x-c'),
+            ('.cpp', 'text/x-c++src'),
+            ('.cxx', 'text/x-c++src'),
+            ('.cc', 'text/x-c++src'),
+            ('.hpp', 'text/x-c++src'),
+            ('.cs', 'text/x-csharp'),
+            ('.js', 'application/javascript'),
+            ('.mjs', 'application/javascript'),
+            ('.ts', 'application/typescript'),
+            ('.tsx', 'application/typescript'),
+            ('.go', 'text/x-go'),
+            ('.rs', 'text/x-rust'),
+            ('.rb', 'text/x-ruby'),
+            ('.php', 'text/x-php'),
+            ('.swift', 'text/x-swift'),
+            ('.kt', 'text/x-kotlin'),
+            ('.scala', 'text/x-scala'),
+            ('.hs', 'text/x-haskell'),
+            ('.lua', 'text/x-lua'),
+            ('.pl', 'text/x-perl'),
+            ('.sql', 'text/x-sql'),
+            ('.html', 'text/html'),
+            ('.htm', 'text/html'),
+            ('.css', 'text/css'),
+            ('.scss', 'text/x-scss'),
+            ('.sass', 'text/x-sass'),
+            ('.less', 'text/x-less'),
+            ('.vue', 'text/x-vue'),
+            ('.jsx', 'text/x-jsx'),
+        ]
+
+        for ext, mime_type in custom_types:
+            mimetypes.add_type(mime_type, ext)
+
         return {
             'text/x-python': 'python',
             'text/x-java-source': 'java',
@@ -81,6 +124,11 @@ class LanguageDetector:
             'text/x-sql': 'sql',
             'text/html': 'html',
             'text/css': 'css',
+            'text/x-scss': 'scss',
+            'text/x-sass': 'sass',
+            'text/x-less': 'less',
+            'text/x-vue': 'vue',
+            'text/x-jsx': 'jsx',
         }
 
     def _build_shebang_patterns(self) -> Dict[str, str]:

@@ -10,20 +10,20 @@ async def test_single_tool():
         command="code-graph-mcp",
         args=["--project-root", "."],
     )
-    
+
     async with stdio_client(server_params) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            
+
             # Test project_statistics tool
             result = await session.call_tool("project_statistics", {})
-            
+
             content = ""
             if result.content:
                 for item in result.content:
                     if hasattr(item, 'text'):
                         content += item.text
-            
+
             print("🎯 project_statistics result:")
             print(content[:500])
             print(f"\n✅ SUCCESS: {len(content)} characters returned")

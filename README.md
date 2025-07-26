@@ -4,6 +4,13 @@ Model Context Protocol server providing comprehensive code analysis, navigation,
 
 ## Features
 
+🎯 **Enhanced Tool Guidance & AI Optimization** ⭐ *NEW in v1.2.0*
+- **Comprehensive Usage Guide** - Built-in `get_usage_guide` tool with workflows, best practices, and examples
+- **Rich Tool Descriptions** - Visual hierarchy with 🎯 PURPOSE, 🔧 USAGE, ⚡ PERFORMANCE, 🔄 WORKFLOW, 💡 TIP sections
+- **Performance-Aware Design** - Clear expectations for Fast (<3s), Moderate (3-15s), and Expensive (10-60s) operations
+- **Workflow Orchestration** - Optimal tool sequences for Code Exploration, Refactoring Analysis, and Architecture Analysis
+- **AI Model Optimization** - Reduces trial-and-error, improves tool orchestration, enables strategic usage patterns
+
 🌍 **Multi-Language Support**
 - **25+ Programming Languages**: JavaScript, TypeScript, Python, Java, C#, C++, C, Rust, Go, Kotlin, Scala, Swift, Dart, Ruby, PHP, Elixir, Elm, Lua, HTML, CSS, SQL, YAML, JSON, XML, Markdown, Haskell, OCaml, F#
 - **Intelligent Language Detection**: Extension-based, MIME type, shebang, and content signature analysis
@@ -51,14 +58,27 @@ pip install code-graph-mcp ast-grep-py rustworkx
 ### Claude Desktop
 
 #### Method 1: Using Claude CLI (Recommended)
+
+**For PyPI installation:**
 ```bash
 # Project-specific installation
 claude mcp add --scope project code-graph-mcp code-graph-mcp
 
 # User-wide installation  
 claude mcp add --scope user code-graph-mcp code-graph-mcp
+```
 
-# Verify installation
+**For development installation:**
+```bash
+# Project-specific installation
+claude mcp add --scope project code-graph-mcp uv run code-graph-mcp
+
+# User-wide installation  
+claude mcp add --scope user code-graph-mcp uv run code-graph-mcp
+```
+
+**Verify installation:**
+```bash
 claude mcp list
 ```
 
@@ -72,8 +92,7 @@ Add to your Claude Desktop configuration file:
 {
   "mcpServers": {
     "code-graph-mcp": {
-      "command": "code-graph-mcp",
-      "args": ["--project-root", "."]
+      "command": "code-graph-mcp"
     }
   }
 }
@@ -91,8 +110,7 @@ Add to your Cline MCP settings in VS Code:
 {
   "cline.mcp.servers": {
     "code-graph-mcp": {
-      "command": "code-graph-mcp",
-      "args": ["--project-root", "${workspaceFolder}"]
+      "command": "code-graph-mcp"
     }
   }
 }
@@ -108,7 +126,6 @@ Add to your `~/.continue/config.json`:
     {
       "name": "code-graph-mcp",
       "command": "code-graph-mcp",
-      "args": ["--project-root", "."],
       "env": {}
     }
   ]
@@ -126,8 +143,7 @@ Add to Cursor's MCP configuration:
 ```json
 {
   "name": "code-graph-mcp",
-  "command": "code-graph-mcp", 
-  "args": ["--project-root", "."]
+  "command": "code-graph-mcp"
 }
 ```
 
@@ -140,8 +156,7 @@ Add to your Zed `settings.json`:
   "assistant": {
     "mcp_servers": {
       "code-graph-mcp": {
-        "command": "code-graph-mcp",
-        "args": ["--project-root", "."]
+        "command": "code-graph-mcp"
       }
     }
   }
@@ -157,7 +172,6 @@ Add to your Zed `settings.json`:
   "mcpServers": {
     "code-graph-mcp": {
       "command": "code-graph-mcp",
-      "args": ["--project-root", "${workspaceFolder}"],
       "env": {},
       "description": "Multi-language code analysis with 25+ language support"
     }
@@ -175,8 +189,7 @@ Add to Windsurf's MCP configuration:
 {
   "mcpServers": {
     "code-graph-mcp": {
-      "command": "code-graph-mcp",
-      "args": ["--project-root", "${workspaceRoot}"]
+      "command": "code-graph-mcp"
     }
   }
 }
@@ -187,7 +200,7 @@ Add to Windsurf's MCP configuration:
 Use with Aider AI coding assistant:
 
 ```bash
-aider --mcp-server code-graph-mcp --mcp-args "--project-root ."
+aider --mcp-server code-graph-mcp
 ```
 
 ### Open WebUI
@@ -199,7 +212,6 @@ For Open WebUI integration, add to your MCP configuration:
   "mcp_servers": {
     "code-graph-mcp": {
       "command": "code-graph-mcp",
-      "args": ["--project-root", "/workspace"],
       "env": {}
     }
   }
@@ -214,10 +226,7 @@ For any MCP-compatible client, use these connection details:
 {
   "name": "code-graph-mcp",
   "command": "code-graph-mcp",
-  "args": ["--project-root", "/path/to/your/project"],
-  "env": {
-    "PYTHONPATH": "/path/to/code-graph-mcp/src"
-  }
+  "env": {}
 }
 ```
 
@@ -228,12 +237,12 @@ Run as a containerized MCP server:
 ```dockerfile
 FROM python:3.12-slim
 RUN pip install code-graph-mcp ast-grep-py rustworkx
-EXPOSE 3000
-CMD ["code-graph-mcp", "--project-root", "/workspace"]
+WORKDIR /workspace
+CMD ["code-graph-mcp"]
 ```
 
 ```bash
-docker run -v $(pwd):/workspace -p 3000:3000 code-graph-mcp
+docker run -v $(pwd):/workspace code-graph-mcp
 ```
 
 ### Development Installation
@@ -247,12 +256,20 @@ uv sync --dev
 uv build
 ```
 
-Then use the development version in your MCP client:
+**Add to Claude Code (development):**
+```bash
+# Project-specific
+claude mcp add --scope project code-graph-mcp uv run code-graph-mcp
 
+# User-wide
+claude mcp add --scope user code-graph-mcp uv run code-graph-mcp
+```
+
+**For other MCP clients, use:**
 ```json
 {
   "command": "uv",
-  "args": ["run", "code-graph-mcp", "--project-root", "."]
+  "args": ["run", "code-graph-mcp"]
 }
 ```
 
@@ -265,9 +282,8 @@ code-graph-mcp --help
 ```
 
 Available options:
-- `--project-root PATH`: Root directory of your project (required)
+- `--project-root PATH`: Root directory of your project (optional, defaults to current directory)
 - `--verbose`: Enable detailed logging
-- `--port PORT`: Custom port for server (default: auto)
 - `--no-file-watcher`: Disable automatic file change detection
 
 ### Environment Variables
@@ -321,9 +337,9 @@ The server includes an intelligent file watcher that automatically updates the c
    pip install code-graph-mcp ast-grep-py rustworkx
    ```
 
-4. **Large project timeouts**: Increase timeout or exclude directories
+4. **Large project performance**: Use verbose mode for debugging
    ```bash
-   code-graph-mcp --project-root . --timeout 300
+   code-graph-mcp --verbose
    ```
 
 #### Debug Mode
@@ -331,7 +347,7 @@ The server includes an intelligent file watcher that automatically updates the c
 Enable verbose logging for troubleshooting:
 
 ```bash
-code-graph-mcp --project-root . --verbose
+code-graph-mcp --verbose
 ```
 
 #### Supported File Types
@@ -346,22 +362,70 @@ The server automatically detects and analyzes these file extensions:
 
 ## Available Tools
 
-The MCP server provides 8 comprehensive analysis tools that work across all 25+ supported languages:
+The MCP server provides **9 comprehensive analysis tools** with enhanced guidance that work across all 25+ supported languages:
 
-| Tool | Description | Multi-Language Features |
-|------|-------------|------------------------|
-| `analyze_codebase` | Complete project analysis with structure metrics and complexity assessment | Language detection, framework identification, cross-language dependency mapping |
-| `find_definition` | Locate symbol definitions with detailed metadata and documentation | Universal AST traversal, language-agnostic symbol resolution |  
-| `find_references` | Find all references to symbols throughout the codebase | Cross-file and cross-language reference tracking |
-| `find_callers` | Identify all functions that call a specified function | Multi-language call graph analysis |
-| `find_callees` | List all functions called by a specified function | Universal function call detection across languages |
-| `complexity_analysis` | Analyze code complexity with refactoring recommendations | Language-specific complexity patterns, universal metrics |
-| `dependency_analysis` | Generate module dependency graphs and import relationships | Cross-language dependency detection, circular dependency analysis |
-| `project_statistics` | Comprehensive project health metrics and statistics | Multi-language project profiling, maintainability indexing |
+### 🎯 **Enhanced Tool Experience** ⭐ *NEW in v1.2.0*
+
+Each tool now includes **rich guidance** with visual hierarchy:
+- **🎯 PURPOSE** - Clear explanation of what the tool does
+- **🔧 USAGE** - When and how to use the tool effectively  
+- **⚡ PERFORMANCE** - Speed expectations and caching information
+- **🔄 WORKFLOW** - Optimal tool sequencing recommendations
+- **💡 TIP** - Pro tips for maximum effectiveness
+
+### 📚 **Usage Guide Tool**
+| Tool | Description | Key Features |
+|------|-------------|--------------|
+| `get_usage_guide` | **NEW** - Comprehensive guidance with workflows, best practices, and examples | Complete documentation, workflow patterns, performance guidelines |
+
+### 🛠️ **Analysis Tools**
+| Tool | Description | Multi-Language Features | Performance |
+|------|-------------|------------------------|-------------|
+| `analyze_codebase` | Complete project analysis with structure metrics and complexity assessment | Language detection, framework identification, cross-language dependency mapping | ⚡ Expensive (10-60s) |
+| `find_definition` | Locate symbol definitions with detailed metadata and documentation | Universal AST traversal, language-agnostic symbol resolution | ⚡ Fast (<3s) |
+| `find_references` | Find all references to symbols throughout the codebase | Cross-file and cross-language reference tracking | ⚡ Fast (<3s) |
+| `find_callers` | Identify all functions that call a specified function | Multi-language call graph analysis | ⚡ Fast (<3s) |
+| `find_callees` | List all functions called by a specified function | Universal function call detection across languages | ⚡ Fast (<3s) |
+| `complexity_analysis` | Analyze code complexity with refactoring recommendations | Language-specific complexity patterns, universal metrics | ⚡ Moderate (5-15s) |
+| `dependency_analysis` | Generate module dependency graphs and import relationships | Cross-language dependency detection, circular dependency analysis | ⚡ Moderate (3-10s) |
+| `project_statistics` | Comprehensive project health metrics and statistics | Multi-language project profiling, maintainability indexing | ⚡ Fast (<3s) |
 
 ## Usage Examples
 
-Once installed, you can use the tools directly in Claude Code for multi-language projects:
+### 🎯 **Getting Started with Enhanced Guidance** ⭐ *NEW in v1.2.0*
+
+```
+First, get comprehensive guidance on using the tools effectively:
+get_usage_guide
+```
+
+### 🔍 **Multi-Language Analysis Workflows**
+
+**Code Exploration Workflow:**
+```
+1. analyze_codebase (build the foundation)
+2. project_statistics (get overview)  
+3. find_definition("MyClass") (locate specific symbols)
+4. find_references("MyClass") (understand usage patterns)
+```
+
+**Refactoring Analysis Workflow:**
+```
+1. analyze_codebase
+2. complexity_analysis (threshold=15 for critical issues)
+3. find_callers("complex_function") (impact analysis)
+4. find_callees("complex_function") (dependency analysis)
+```
+
+**Architecture Analysis Workflow:**
+```
+1. analyze_codebase
+2. dependency_analysis (identify circular dependencies)
+3. project_statistics (health metrics)
+4. complexity_analysis (quality assessment)
+```
+
+### 💬 **Natural Language Examples**
 
 ```
 Analyze this React/TypeScript frontend with Python backend - show me the overall structure and complexity metrics
@@ -397,8 +461,8 @@ Detect code smells and duplicate patterns across the entire multi-language codeb
 # Install dependencies
 uv sync
 
-# Run the server directly
-uv run code-graph-mcp --project-root /path/to/your/project --verbose
+# Run the server directly (auto-detects current directory)
+uv run code-graph-mcp --verbose
 
 # Test with help
 uv run code-graph-mcp --help

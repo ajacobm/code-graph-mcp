@@ -395,8 +395,8 @@ class UniversalParser:
             return False
 
         try:
-            # Read file content
-            content = file_path.read_text(encoding='utf-8', errors='ignore')
+            # Read file content with proper encoding detection
+            content = self._read_file_with_encoding_detection(file_path)
 
             # Parse with ast-grep
             if SgRoot is None:
@@ -407,6 +407,10 @@ class UniversalParser:
             # Create file node
             file_node = self._create_file_node(file_path, language_config, content)
             self.graph.add_node(file_node)
+
+            # Track processed file
+            self.graph.add_processed_file(str(file_path))
+            logger.debug(f"Added file to tracking: {file_path} (total: {len(self.graph._processed_files)})")
 
             # Parse language-specific constructs
             self._parse_functions(sg_root, file_path, language_config)
@@ -659,15 +663,43 @@ class UniversalParser:
     def _should_process_line(self, line: str, language_config: LanguageConfig) -> bool:
         """Check if a line should be processed for function calls."""
         line_stripped = line.strip()
-        return bool(line_stripped and
-                    not line_stripped.startswith(language_config.comment_patterns))
+
+        # Skip empty lines and comments
+        if not line_stripped or line_stripped.startswith(language_config.comment_patterns):
+            return False
+
+        # Skip function/class definitions - these are not function calls
+        definition_keywords = ['def ', 'function ', 'func ', 'fn ', 'class ', 'struct ', 'interface ', 'public ', 'private ', 'static ']
+        if any(keyword in line_stripped for keyword in definition_keywords):
+            return False
+
+        return True
 
     def _find_calling_function(self, line_number: int, file_functions: Dict[int, UniversalNode]) -> Optional[UniversalNode]:
         """Find the function that contains the given line number."""
-        for func_line, func_node in file_functions.items():
-            if func_line <= line_number <= (func_node.location.end_line or func_line + 50):
-                return func_node
-        return None
+        # Sort functions by line number to find the correct containing function
+        sorted_functions = sorted(file_functions.items(), key=lambda x: x[0])
+
+        containing_function = None
+        for i, (func_line, func_node) in enumerate(sorted_functions):
+            if func_line <= line_number:
+                # Check if this function contains the line
+                if func_node.location.end_line and line_number <= func_node.location.end_line:
+                    containing_function = func_node
+                elif not func_node.location.end_line:
+                    # If no end_line, check if there's a next function
+                    if i + 1 < len(sorted_functions):
+                        next_func_line = sorted_functions[i + 1][0]
+                        if line_number < next_func_line:
+                            containing_function = func_node
+                    else:
+                        # Last function in file, assume it contains remaining lines
+                        containing_function = func_node
+            else:
+                # We've passed the line, stop searching
+                break
+
+        return containing_function
 
     def _process_function_calls_in_line(self, line: str, line_number: int, calling_function: UniversalNode, language_config: LanguageConfig) -> None:
         """Process function calls found in a single line."""
@@ -682,6 +714,24 @@ class UniversalParser:
 
     def _create_function_call_relationship(self, calling_function: UniversalNode, target_node: UniversalNode, line_number: int, line: str) -> None:
         """Create a CALLS relationship between two functions."""
+        # Prevent false self-loops - only allow if it's a genuine recursive call
+        if calling_function.id == target_node.id:
+            # Check if this is a genuine recursive call by looking at the context
+            function_name = calling_function.name
+            line_stripped = line.strip()
+
+            # Skip if this looks like a false positive:
+            # 1. Function name appears at the start (likely a definition)
+            # 2. Line contains definition keywords
+            # 3. Line is too short to be a meaningful call
+            if (line_stripped.startswith(function_name) or
+                any(keyword in line_stripped for keyword in ['def ', 'function ', 'func ', 'class ']) or
+                len(line_stripped) < 10):
+                logger.debug(f"Skipping false self-loop for {function_name}: {line_stripped}")
+                return
+
+            logger.debug(f"Creating recursive call relationship for {function_name}: {line_stripped}")
+
         rel = UniversalRelationship(
             id=f"calls:{calling_function.id}:{target_node.id}:{line_number}",
             source_id=calling_function.id,
@@ -689,7 +739,8 @@ class UniversalParser:
             relationship_type=RelationshipType.CALLS,
             metadata={
                 "call_line": line_number,
-                "call_context": line.strip()
+                "call_context": line.strip(),
+                "is_recursive": calling_function.id == target_node.id
             }
         )
         self.graph.add_relationship(rel)
@@ -803,20 +854,45 @@ class UniversalParser:
         import re
         calls = []
 
-        # Common function call patterns across languages
-        patterns = [
-            r'(\w+)\s*\(',  # function_name(
-            r'(\w+)\s*\[\s*\]',  # function_name[] (some languages)
-        ]
+        # More precise function call pattern - must have opening parenthesis
+        # and not be preceded by definition keywords or be part of a class definition
+        pattern = r'(?<!def\s)(?<!function\s)(?<!func\s)(?<!fn\s)(?<!class\s)(?<!struct\s)\b(\w+)\s*\('
 
-        for pattern in patterns:
-            matches = re.findall(pattern, line)
-            for match in matches:
-                # Filter out keywords and common constructs
-                if match not in ['if', 'for', 'while', 'class', 'def', 'function', 'var', 'let', 'const']:
-                    calls.append(match)
+        matches = re.findall(pattern, line)
+        for match in matches:
+            # Filter out keywords, control structures, and common constructs
+            excluded_keywords = {
+                'if', 'for', 'while', 'class', 'def', 'function', 'var', 'let', 'const',
+                'return', 'import', 'from', 'try', 'except', 'catch', 'finally',
+                'with', 'as', 'assert', 'raise', 'throw', 'new', 'delete',
+                'typeof', 'instanceof', 'in', 'of', 'is', 'not', 'and', 'or'
+            }
+
+            if match.lower() not in excluded_keywords and len(match) > 1:
+                calls.append(match)
 
         return calls
+
+    def _read_file_with_encoding_detection(self, file_path: Path) -> str:
+        """Read file with proper encoding detection."""
+        # Try common encodings in order of likelihood
+        encodings = ['utf-8', 'utf-8-sig', 'latin1', 'cp1252', 'iso-8859-1']
+
+        for encoding in encodings:
+            try:
+                return file_path.read_text(encoding=encoding)
+            except UnicodeDecodeError:
+                continue
+            except Exception as e:
+                logger.warning(f"Error reading {file_path} with {encoding}: {e}")
+                continue
+
+        # Last resort: read as binary and decode with errors='replace'
+        try:
+            return file_path.read_text(encoding='utf-8', errors='replace')
+        except Exception as e:
+            logger.error(f"Failed to read file {file_path}: {e}")
+            raise
 
     @lru_cache(maxsize=300000)
     def _extract_variable_references(self, line: str, language_config: LanguageConfig, known_variables: frozenset) -> List[str]:

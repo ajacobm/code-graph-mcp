@@ -44,39 +44,102 @@ class UniversalAnalysisEngine:
         self._file_watcher: Optional[DebouncedFileWatcher] = None
         self._enable_file_watcher = enable_file_watcher
 
+        # Prevent concurrent re-analyses
+        self._analysis_lock = asyncio.Lock()
+        self._analysis_task: Optional[asyncio.Task] = None
+
     def _clear_all_caches(self):
         """Clear all LRU caches to ensure fresh data."""
         logger.info("Clearing all LRU caches...")
 
-        # Clear analyzer caches
-        if hasattr(self.analyzer, 'analyze_complexity'):
-            self.analyzer.analyze_complexity.cache_clear()
+        # Define cache methods to clear
+        cache_methods = [
+            (self.analyzer, 'analyze_complexity'),
+            (self.graph, 'find_nodes_by_name'),
+            (self.graph, 'get_nodes_by_type'),
+            (self.graph, 'calculate_centrality'),
+            (self.graph, 'calculate_pagerank'),
+            (self.graph, 'calculate_closeness_centrality'),
+            (self.graph, 'calculate_eigenvector_centrality'),
+        ]
 
-        # Clear graph caches
-        if hasattr(self.graph, 'find_nodes_by_name'):
-            self.graph.find_nodes_by_name.cache_clear()
-        if hasattr(self.graph, 'get_nodes_by_type'):
-            self.graph.get_nodes_by_type.cache_clear()
-        if hasattr(self.graph, 'calculate_centrality'):
-            self.graph.calculate_centrality.cache_clear()
-        if hasattr(self.graph, 'calculate_pagerank'):
-            self.graph.calculate_pagerank.cache_clear()
-        if hasattr(self.graph, 'calculate_closeness_centrality'):
-            self.graph.calculate_closeness_centrality.cache_clear()
-        if hasattr(self.graph, 'calculate_eigenvector_centrality'):
-            self.graph.calculate_eigenvector_centrality.cache_clear()
+        cleared_count = 0
+        for obj, method_name in cache_methods:
+            try:
+                method = getattr(obj, method_name, None)
+                if method and hasattr(method, 'cache_clear'):
+                    method.cache_clear()
+                    cleared_count += 1
+                    logger.debug(f"Cleared cache for {method_name}")
+            except Exception as e:
+                logger.warning(f"Failed to clear cache for {method_name}: {e}")
 
-        # Clear any other caches
-        if hasattr(self.analyzer, '_analysis_cache'):
-            self.analyzer._analysis_cache.clear()
+        # Clear analysis cache
+        try:
+            if hasattr(self.analyzer, '_analysis_cache'):
+                self.analyzer._analysis_cache.clear()
+                cleared_count += 1
+        except Exception as e:
+            logger.warning(f"Failed to clear analysis cache: {e}")
 
-    async def _on_file_change(self):
-        """Callback for file watcher - triggers re-analysis."""
-        logger.info("File changes detected by watcher, triggering re-analysis...")
-        self._is_analyzed = False
-        self._last_analysis_time = 0
-        # Don't await here to avoid blocking the file watcher
-        asyncio.create_task(self._ensure_analyzed())
+        logger.info(f"Cleared {cleared_count} caches")
+
+    def _thread_safe_analyze_project(self):
+        """Thread-safe wrapper for project analysis."""
+        try:
+            return self.analyzer.analyze_project()
+        except Exception as e:
+            logger.error(f"Analysis failed in thread: {e}")
+            raise
+
+    async def _on_file_change(self, changed_files: Optional[List[str]] = None):
+        """Callback for file watcher - triggers incremental re-analysis."""
+        logger.info("File changes detected by watcher, triggering incremental re-analysis...")
+
+        # Cancel any existing analysis task
+        if self._analysis_task and not self._analysis_task.done():
+            logger.info("Cancelling existing analysis task...")
+            self._analysis_task.cancel()
+
+        # If we have specific changed files, do incremental update
+        if changed_files and self._is_analyzed:
+            logger.info(f"Performing incremental update for {len(changed_files)} files")
+            self._analysis_task = asyncio.create_task(self._incremental_update(changed_files))
+        else:
+            # Full re-analysis
+            self._is_analyzed = False
+            self._last_analysis_time = 0
+            self._analysis_task = asyncio.create_task(self._ensure_analyzed())
+
+    async def _incremental_update(self, changed_files: List[str]):
+        """Perform incremental update for specific changed files."""
+        async with self._analysis_lock:
+            try:
+                logger.info(f"Starting incremental update for {len(changed_files)} files")
+
+                # Remove nodes from changed files
+                removed_count = 0
+                for file_path in changed_files:
+                    count = self.graph.remove_file_nodes(file_path)
+                    removed_count += count
+
+                logger.info(f"Removed {removed_count} nodes from changed files")
+
+                # Re-parse changed files
+                for file_path in changed_files:
+                    if Path(file_path).exists():
+                        await asyncio.get_event_loop().run_in_executor(
+                            None, self.parser.parse_file, Path(file_path)
+                        )
+                        self.graph.mark_file_processed(file_path)
+
+                logger.info("Incremental update completed successfully")
+
+            except Exception as e:
+                logger.error(f"Incremental update failed: {e}")
+                # Fall back to full re-analysis
+                self._is_analyzed = False
+                await self._ensure_analyzed()
 
     async def start_file_watcher(self):
         """Start the file watcher for automatic updates."""
@@ -125,33 +188,35 @@ class UniversalAnalysisEngine:
 
     async def _ensure_analyzed(self):
         """Ensure the project has been analyzed."""
-        # Check if we need to re-analyze due to file changes
-        if self._should_reanalyze():
-            logger.info("Re-analyzing project due to file changes or first run...")
+        async with self._analysis_lock:
+            # Double-check if we still need to re-analyze (another task might have completed it)
+            if self._should_reanalyze():
+                logger.info("Re-analyzing project due to file changes or first run...")
 
-            # Clear all caches before re-analysis
-            self._clear_all_caches()
+                # Clear all caches before re-analysis
+                self._clear_all_caches()
 
-            # Run the analysis in a thread pool to avoid blocking the event loop
-            loop = asyncio.get_event_loop()
-            try:
-                # Add timeout to prevent hanging
-                await asyncio.wait_for(
-                    loop.run_in_executor(None, self.analyzer.analyze_project),
-                    timeout=300.0  # 5 minute timeout
-                )
-                self._is_analyzed = True
-                self._last_analysis_time = time.time()
-                logger.info("Analysis completed successfully")
+                # Run the analysis in a thread pool to avoid blocking the event loop
+                # Note: This is safe because analyze_project is read-only after initialization
+                loop = asyncio.get_event_loop()
+                try:
+                    # Add timeout to prevent hanging
+                    await asyncio.wait_for(
+                        loop.run_in_executor(None, self._thread_safe_analyze_project),
+                        timeout=300.0  # 5 minute timeout
+                    )
+                    self._is_analyzed = True
+                    self._last_analysis_time = time.time()
+                    logger.info("Analysis completed successfully")
 
-                # Start file watcher after first successful analysis
-                if not self._file_watcher:
-                    await self.start_file_watcher()
-            except asyncio.TimeoutError:
-                logger.error("Analysis timed out after 5 minutes")
-                raise Exception("Project analysis timed out - project may be too large")
-        else:
-            logger.debug("Using cached analysis results")
+                    # Start file watcher after first successful analysis
+                    if not self._file_watcher:
+                        await self.start_file_watcher()
+                except asyncio.TimeoutError:
+                    logger.error("Analysis timed out after 5 minutes")
+                    raise Exception("Project analysis timed out - project may be too large")
+            else:
+                logger.debug("Using cached analysis results")
 
     async def force_reanalysis(self):
         """Force a complete re-analysis, clearing all caches."""
@@ -197,10 +262,28 @@ class UniversalAnalysisEngine:
     async def cleanup(self):
         """Clean up resources, including stopping the file watcher."""
         logger.info("Cleaning up analysis engine...")
+
+        # Cancel any running analysis task
+        if self._analysis_task and not self._analysis_task.done():
+            logger.info("Cancelling running analysis task...")
+            self._analysis_task.cancel()
+            try:
+                await self._analysis_task
+            except asyncio.CancelledError:
+                pass
+
         await self.stop_file_watcher()
 
     async def find_symbol_definition(self, symbol: str) -> List[Dict[str, Any]]:
         """Find definition of a symbol using UniversalGraph."""
+        # Input validation
+        if not symbol or not isinstance(symbol, str):
+            raise ValueError("Symbol must be a non-empty string")
+        if len(symbol) > 200:
+            raise ValueError("Symbol name too long (max 200 characters)")
+        if not symbol.replace('_', '').replace('-', '').isalnum():
+            raise ValueError("Symbol contains invalid characters")
+
         await self._ensure_analyzed()
 
         # Find nodes by name (partial match for better results)
@@ -222,6 +305,14 @@ class UniversalAnalysisEngine:
 
     async def find_symbol_references(self, symbol: str) -> List[Dict[str, Any]]:
         """Find all references to a symbol using UniversalGraph."""
+        # Input validation
+        if not symbol or not isinstance(symbol, str):
+            raise ValueError("Symbol must be a non-empty string")
+        if len(symbol) > 200:
+            raise ValueError("Symbol name too long (max 200 characters)")
+        if not symbol.replace('_', '').replace('-', '').isalnum():
+            raise ValueError("Symbol contains invalid characters")
+
         await self._ensure_analyzed()
 
         # Find the symbol definition first
@@ -478,6 +569,132 @@ async def cleanup_analysis_engine():
         analysis_engine = None
 
 
+async def handle_get_usage_guide(engine: UniversalAnalysisEngine, arguments: dict) -> list[types.TextContent]:
+    """Handle usage guide requests."""
+    guide_content = """
+# 📚 Code Graph Intelligence - Tool Usage Guide
+
+## 🚀 Quick Start Workflow
+
+### **Essential First Steps**
+1. **`analyze_codebase`** - ALWAYS run this first to build the code graph
+2. **`project_statistics`** - Get high-level project overview
+3. Use specific analysis tools based on your needs
+
+### **Optimal Tool Sequences**
+
+#### 🔍 **Code Exploration Workflow**
+```
+analyze_codebase → project_statistics → find_definition → find_references
+```
+
+#### 🔧 **Refactoring Analysis Workflow**
+```
+analyze_codebase → complexity_analysis → find_callers → find_callees → dependency_analysis
+```
+
+#### 📊 **Architecture Analysis Workflow**
+```
+analyze_codebase → dependency_analysis → project_statistics → complexity_analysis
+```
+
+## 🛠️ Tool Categories & When to Use
+
+### **🏗️ Foundation Tools (Use First)**
+- **`analyze_codebase`** - Builds code graph, REQUIRED for all other tools
+- **`project_statistics`** - Project overview, health metrics, language distribution
+
+### **🎯 Symbol Analysis Tools**
+- **`find_definition`** - Locate where symbols are defined
+- **`find_references`** - Find all usages of a symbol
+- **`find_callers`** - Who calls this function?
+- **`find_callees`** - What does this function call?
+
+### **📈 Quality Analysis Tools**
+- **`complexity_analysis`** - Identify refactoring opportunities
+- **`dependency_analysis`** - Module relationships and circular dependencies
+
+## ⚡ Performance Guidelines
+
+### **Fast Operations (< 3s)**
+- `find_definition`, `find_references`, `find_callers`, `find_callees`, `project_statistics`
+- Use these freely for exploration
+
+### **Moderate Operations (3-15s)**
+- `complexity_analysis`, `dependency_analysis`
+- Use strategically, results are cached
+
+### **Expensive Operations (10-60s)**
+- `analyze_codebase` - Only run when needed, results persist
+- Use `rebuild_graph=true` only if code changed significantly
+
+## 💡 Best Practices
+
+### **🎯 Symbol Search Tips**
+- Use partial names: `"MyClass"` finds `MyClass`, `MyClassImpl`, etc.
+- Include context for methods: `"ClassName.methodName"`
+- Start broad, then narrow down with exact names
+
+### **🔧 Complexity Analysis Strategy**
+- Start with `threshold=15` for critical issues
+- Use `threshold=10` for comprehensive analysis
+- Focus on functions with complexity >20 first
+
+### **📊 Dependency Analysis Insights**
+- Look for circular dependencies (architectural red flags)
+- High fan-in/fan-out ratios indicate coupling issues
+- Use with complexity analysis for refactoring priorities
+
+### **🔄 Workflow Optimization**
+1. **Always start with `analyze_codebase`** - it's the foundation
+2. **Use `project_statistics`** to understand project scale
+3. **Follow the logical flow**: definition → references → callers/callees
+4. **Combine tools**: complexity + dependencies = refactoring roadmap
+
+## 🚨 Common Pitfalls to Avoid
+
+❌ **Don't skip `analyze_codebase`** - other tools won't work properly
+❌ **Don't use `rebuild_graph=true` unnecessarily** - it's expensive
+❌ **Don't ignore performance hints** - some operations are costly
+❌ **Don't analyze in isolation** - combine tools for complete insights
+
+## 🎯 Use Case Examples
+
+### **"I want to understand this codebase"**
+```
+1. analyze_codebase
+2. project_statistics
+3. dependency_analysis
+4. complexity_analysis (threshold=15)
+```
+
+### **"I need to refactor function X"**
+```
+1. find_definition("X")
+2. find_callers("X")
+3. find_callees("X")
+4. complexity_analysis (focus on X's complexity)
+```
+
+### **"I'm looking for code smells"**
+```
+1. analyze_codebase
+2. complexity_analysis (threshold=10)
+3. dependency_analysis (look for circular deps)
+4. Use find_callers/find_callees on high-complexity functions
+```
+
+## 📞 Need Help?
+- Each tool description includes specific usage guidance
+- Performance expectations are clearly marked
+- Workflow suggestions guide optimal tool sequencing
+
+**Remember: Quality analysis is iterative - start broad, then drill down into specific areas of interest!**
+"""
+
+    return [types.TextContent(type="text", text=guide_content)]
+
+
 async def handle_analyze_codebase(engine: UniversalAnalysisEngine, arguments: dict) -> list[types.TextContent]:
     """Handle analyze_codebase tool."""
 
@@ -688,27 +905,50 @@ def get_tool_definitions() -> list[types.Tool]:
     """Get the list of available MCP tools."""
     return [
             types.Tool(
+                name="get_usage_guide",
+                description="""📚 Get comprehensive guidance on effectively using code analysis tools.
+
+🎯 PURPOSE: Provides detailed instructions, best practices, and workflow recommendations for optimal tool usage.
+🔧 USAGE: Call this FIRST if you need guidance on tool selection, sequencing, or best practices.
+⚡ PERFORMANCE: Lightweight operation - provides strategic guidance without analysis overhead.
+🔄 WORKFLOW: Use before starting complex analysis tasks to understand optimal tool orchestration.""",
+                inputSchema={"type": "object", "properties": {}},
+            ),
+            types.Tool(
                 name="analyze_codebase",
-                description="Perform comprehensive codebase analysis with metrics and structure overview",
+                description="""🔍 Perform comprehensive codebase analysis with metrics and structure overview.
+
+🎯 PURPOSE: Builds the foundational code graph and provides project-wide insights including file counts, language distribution, complexity metrics, and architectural overview.
+🔧 USAGE: Run this FIRST before using other analysis tools - it builds the code graph that powers all subsequent operations.
+⚡ PERFORMANCE: Expensive operation (10-60s for large codebases) - results are cached for subsequent tool calls. Progress is shown during analysis.
+🔄 WORKFLOW: analyze_codebase → specific analysis tools (find_definition, complexity_analysis, etc.) → insights and recommendations.
+💡 TIP: Use rebuild_graph=true only if code has changed significantly since last analysis.""",
                 inputSchema={
                     "type": "object",
                     "properties": {
                         "rebuild_graph": {
                             "type": "boolean",
-                            "description": "Force rebuild of code graph",
+                            "description": "Force rebuild of code graph (use only if code has changed significantly)",
+                            "default": False,
                         }
                     },
                 },
             ),
             types.Tool(
                 name="find_definition",
-                description="Find the definition of a symbol (function, class, variable)",
+                description="""🎯 Find the definition location of a symbol (function, class, variable, method).
+
+🎯 PURPOSE: Locates where a symbol is originally defined, providing file path, line number, and context.
+🔧 USAGE: Use after analyze_codebase when you need to understand where a specific symbol is implemented.
+⚡ PERFORMANCE: Fast operation (sub-second) - leverages cached code graph for instant lookups.
+🔄 WORKFLOW: analyze_codebase → find_definition → examine definition context → find_references/find_callers for usage patterns.
+💡 TIP: Works with partial names - 'MyClass' will find 'MyClass', 'MyClassImpl', etc. Use exact names for precision.""",
                 inputSchema={
                     "type": "object",
                     "properties": {
                         "symbol": {
                             "type": "string",
-                            "description": "Symbol name to find definition for",
+                            "description": "Symbol name to find definition for (supports partial matching)",
                         }
                     },
                     "required": ["symbol"],
@@ -716,13 +956,19 @@ def get_tool_definitions() -> list[types.Tool]:
             ),
             types.Tool(
                 name="find_references",
-                description="Find all references to a symbol throughout the codebase",
+                description="""📍 Find all references to a symbol throughout the codebase.
+
+🎯 PURPOSE: Discovers everywhere a symbol is used, imported, or referenced, showing usage patterns and dependencies.
+🔧 USAGE: Use after find_definition to understand how a symbol is used across the codebase.
+⚡ PERFORMANCE: Fast operation (1-3s) - efficiently searches the indexed code graph.
+🔄 WORKFLOW: find_definition → find_references → analyze usage patterns → complexity_analysis for refactoring insights.
+💡 TIP: Essential for impact analysis before refactoring - shows all code that would be affected by changes.""",
                 inputSchema={
                     "type": "object",
                     "properties": {
                         "symbol": {
                             "type": "string",
-                            "description": "Symbol name to find references for",
+                            "description": "Symbol name to find references for (exact or partial match)",
                         }
                     },
                     "required": ["symbol"],
@@ -730,13 +976,19 @@ def get_tool_definitions() -> list[types.Tool]:
             ),
             types.Tool(
                 name="find_callers",
-                description="Find all functions that call the specified function",
+                description="""📞 Find all functions that call the specified function.
+
+🎯 PURPOSE: Identifies the call hierarchy - which functions depend on the target function, essential for understanding code dependencies.
+🔧 USAGE: Use when analyzing function dependencies, planning refactoring, or understanding code flow patterns.
+⚡ PERFORMANCE: Fast operation (1-2s) - uses pre-built call graph for efficient traversal.
+🔄 WORKFLOW: find_definition → find_callers → analyze call patterns → find_callees for complete dependency picture.
+💡 TIP: Crucial for refactoring - shows all functions that would break if you change the target function's signature.""",
                 inputSchema={
                     "type": "object",
                     "properties": {
                         "function": {
                             "type": "string",
-                            "description": "Function name to find callers for",
+                            "description": "Function name to find callers for (supports method names with class context)",
                         }
                     },
                     "required": ["function"],
@@ -744,13 +996,19 @@ def get_tool_definitions() -> list[types.Tool]:
             ),
             types.Tool(
                 name="find_callees",
-                description="Find all functions called by the specified function",
+                description="""📱 Find all functions called by the specified function.
+
+🎯 PURPOSE: Maps function dependencies - what other functions does the target function rely on, revealing complexity and coupling.
+🔧 USAGE: Use to understand function complexity, identify potential extraction opportunities, or analyze dependency chains.
+⚡ PERFORMANCE: Fast operation (1-2s) - leverages indexed call relationships for instant results.
+🔄 WORKFLOW: find_definition → find_callees → complexity_analysis → identify refactoring opportunities.
+💡 TIP: High callee count often indicates functions that are doing too much and could benefit from decomposition.""",
                 inputSchema={
                     "type": "object",
                     "properties": {
                         "function": {
                             "type": "string",
-                            "description": "Function name to find callees for",
+                            "description": "Function name to find callees for (include class context for methods)",
                         }
                     },
                     "required": ["function"],
@@ -758,13 +1016,19 @@ def get_tool_definitions() -> list[types.Tool]:
             ),
             types.Tool(
                 name="complexity_analysis",
-                description="Analyze code complexity and refactoring opportunities",
+                description="""📊 Analyze code complexity and identify refactoring opportunities.
+
+🎯 PURPOSE: Calculates cyclomatic complexity, identifies code smells, and suggests specific refactoring opportunities with priority rankings.
+🔧 USAGE: Use after basic analysis to identify problematic code areas that need attention. Essential for code quality assessment.
+⚡ PERFORMANCE: Moderate operation (5-15s) - analyzes complexity metrics across the entire codebase.
+🔄 WORKFLOW: analyze_codebase → complexity_analysis → examine high-complexity functions → find_callers/find_callees for refactoring impact.
+💡 TIP: Start with threshold=15 for critical issues, lower to 10 for comprehensive analysis. Focus on functions with complexity >20 first.""",
                 inputSchema={
                     "type": "object",
                     "properties": {
                         "threshold": {
                             "type": "integer",
-                            "description": "Minimum complexity threshold to report",
+                            "description": "Minimum complexity threshold to report (10=comprehensive, 15=critical issues only, 20=severe problems)",
                             "default": 10,
                         }
                     },
@@ -772,12 +1036,24 @@ def get_tool_definitions() -> list[types.Tool]:
             ),
             types.Tool(
                 name="dependency_analysis",
-                description="Analyze module dependencies and import relationships",
+                description="""🔗 Analyze module dependencies and import relationships.
+
+🎯 PURPOSE: Maps module interdependencies, identifies circular dependencies, and reveals architectural patterns and potential issues.
+🔧 USAGE: Use for architectural analysis, identifying tightly coupled modules, or planning module restructuring.
+⚡ PERFORMANCE: Moderate operation (3-10s) - analyzes import relationships and builds dependency graph.
+🔄 WORKFLOW: analyze_codebase → dependency_analysis → identify problematic dependencies → complexity_analysis for detailed insights.
+💡 TIP: Look for circular dependencies and modules with high fan-in/fan-out ratios - these often indicate architectural problems.""",
                 inputSchema={"type": "object", "properties": {}},
             ),
             types.Tool(
                 name="project_statistics",
-                description="Get comprehensive project statistics and health metrics",
+                description="""📈 Get comprehensive project statistics and health metrics.
+
+🎯 PURPOSE: Provides high-level project overview including file counts, language distribution, complexity trends, and overall health score.
+🔧 USAGE: Use for project assessment, progress tracking, or generating project reports. Great for understanding project scale and characteristics.
+⚡ PERFORMANCE: Fast operation (1-3s) - aggregates pre-calculated metrics from the code graph.
+🔄 WORKFLOW: analyze_codebase → project_statistics → drill down with specific analysis tools based on findings.
+💡 TIP: Use regularly to track code quality trends over time. Health score below 7/10 indicates areas needing attention.""",
                 inputSchema={"type": "object", "properties": {}},
             ),
         ]
@@ -786,6 +1062,7 @@ def get_tool_definitions() -> list[types.Tool]:
 def get_tool_handlers():
     """Get mapping of tool names to handler functions."""
     return {
+        "get_usage_guide": handle_get_usage_guide,
         "analyze_codebase": handle_analyze_codebase,
         "find_definition": handle_find_definition,
         "find_references": handle_find_references,

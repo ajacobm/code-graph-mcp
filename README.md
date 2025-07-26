@@ -26,11 +26,12 @@ Model Context Protocol server providing comprehensive code analysis, navigation,
 - Call graph generation across entire project
 
 ⚡ **Performance Optimized**
+- **Debounced File Watcher** - Automatic re-analysis when files change with 2-second intelligent debouncing
+- **Real-time Updates** - Code graph automatically updates during active development
 - Aggressive LRU caching with 50-90% speed improvements on repeated operations
 - Cache sizes optimized for 500+ file codebases (up to 300K entries)
 - Sub-microsecond response times on cache hits
 - Memory-efficient universal graph building
-- Comprehensive performance benchmarks and monitoring
 
 🏢 **Enterprise Ready**
 - Production-quality error handling across all languages
@@ -39,59 +40,290 @@ Model Context Protocol server providing comprehensive code analysis, navigation,
 
 ## Installation
 
-### Method 1: Install from PyPI (Recommended)
+### Quick Start (PyPI)
 
-1. **Install the package with multi-language support:**
 ```bash
 pip install code-graph-mcp ast-grep-py rustworkx
 ```
 
-2. **Add to Claude Code using CLI:**
+## MCP Host Integration
+
+### Claude Desktop
+
+#### Method 1: Using Claude CLI (Recommended)
 ```bash
+# Project-specific installation
 claude mcp add --scope project code-graph-mcp code-graph-mcp
-```
 
-3. **Verify installation:**
-```bash
+# User-wide installation  
+claude mcp add --scope user code-graph-mcp code-graph-mcp
+
+# Verify installation
 claude mcp list
-code-graph-mcp --help
 ```
 
-### Method 2: Install from Source
+#### Method 2: Manual Configuration
+Add to your Claude Desktop configuration file:
 
-1. **Clone and setup the project:**
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "code-graph-mcp": {
+      "command": "code-graph-mcp",
+      "args": ["--project-root", "."]
+    }
+  }
+}
+```
+
+### Cline (VS Code Extension)
+
+Add to your Cline MCP settings in VS Code:
+
+1. Open VS Code Settings (Ctrl/Cmd + ,)
+2. Search for "Cline MCP"
+3. Add server configuration:
+
+```json
+{
+  "cline.mcp.servers": {
+    "code-graph-mcp": {
+      "command": "code-graph-mcp",
+      "args": ["--project-root", "${workspaceFolder}"]
+    }
+  }
+}
+```
+
+### Continue (VS Code Extension)
+
+Add to your `~/.continue/config.json`:
+
+```json
+{
+  "mcpServers": [
+    {
+      "name": "code-graph-mcp",
+      "command": "code-graph-mcp",
+      "args": ["--project-root", "."],
+      "env": {}
+    }
+  ]
+}
+```
+
+### Cursor
+
+Add to Cursor's MCP configuration:
+
+1. Open Cursor Settings
+2. Navigate to Extensions → MCP
+3. Add server:
+
+```json
+{
+  "name": "code-graph-mcp",
+  "command": "code-graph-mcp", 
+  "args": ["--project-root", "."]
+}
+```
+
+### Zed Editor
+
+Add to your Zed `settings.json`:
+
+```json
+{
+  "assistant": {
+    "mcp_servers": {
+      "code-graph-mcp": {
+        "command": "code-graph-mcp",
+        "args": ["--project-root", "."]
+      }
+    }
+  }
+}
+```
+
+### Windsurf
+
+Add to Windsurf's MCP configuration:
+
+```json
+{
+  "mcpServers": {
+    "code-graph-mcp": {
+      "command": "code-graph-mcp",
+      "args": ["--project-root", "${workspaceRoot}"]
+    }
+  }
+}
+```
+
+### Aider
+
+Use with Aider AI coding assistant:
+
 ```bash
-git clone <repository-url>
-cd code-graph-mcp
-uv sync  # Install dependencies including ast-grep-py
+aider --mcp-server code-graph-mcp --mcp-args "--project-root ."
 ```
 
-2. **Add to your Claude Code configuration:**
+### Open WebUI
 
-For **local project** configuration (recommended):
+For Open WebUI integration, add to your MCP configuration:
+
+```json
+{
+  "mcp_servers": {
+    "code-graph-mcp": {
+      "command": "code-graph-mcp",
+      "args": ["--project-root", "/workspace"],
+      "env": {}
+    }
+  }
+}
+```
+
+### Generic MCP Client
+
+For any MCP-compatible client, use these connection details:
+
+```json
+{
+  "name": "code-graph-mcp",
+  "command": "code-graph-mcp",
+  "args": ["--project-root", "/path/to/your/project"],
+  "env": {
+    "PYTHONPATH": "/path/to/code-graph-mcp/src"
+  }
+}
+```
+
+### Docker Integration
+
+Run as a containerized MCP server:
+
+```dockerfile
+FROM python:3.12-slim
+RUN pip install code-graph-mcp ast-grep-py rustworkx
+EXPOSE 3000
+CMD ["code-graph-mcp", "--project-root", "/workspace"]
+```
+
 ```bash
-# This creates/updates .mcp.json in your current project
-claude mcp add --scope project code-graph-mcp uv run code-graph-mcp
+docker run -v $(pwd):/workspace -p 3000:3000 code-graph-mcp
 ```
 
-For **user-wide** configuration:
-```bash
-# This configures across all your projects
-claude mcp add --scope user code-graph-mcp uv run code-graph-mcp
-```
+### Development Installation
 
-3. **Restart Claude Code**
-
-### Method 3: Development Installation
-
-For contributing to the project:
+For contributing or custom builds:
 
 ```bash
 git clone <repository-url>
 cd code-graph-mcp
 uv sync --dev
-uv build  # Creates wheel and source distribution
+uv build
 ```
+
+Then use the development version in your MCP client:
+
+```json
+{
+  "command": "uv",
+  "args": ["run", "code-graph-mcp", "--project-root", "."]
+}
+```
+
+## Configuration Options
+
+### Command Line Arguments
+
+```bash
+code-graph-mcp --help
+```
+
+Available options:
+- `--project-root PATH`: Root directory of your project (required)
+- `--verbose`: Enable detailed logging
+- `--port PORT`: Custom port for server (default: auto)
+- `--no-file-watcher`: Disable automatic file change detection
+
+### Environment Variables
+
+```bash
+export CODE_GRAPH_MCP_LOG_LEVEL=DEBUG
+export CODE_GRAPH_MCP_CACHE_SIZE=500000
+export CODE_GRAPH_MCP_MAX_FILES=10000
+export CODE_GRAPH_MCP_FILE_WATCHER=true
+export CODE_GRAPH_MCP_DEBOUNCE_DELAY=2.0
+```
+
+### File Watcher (v1.1.0+)
+
+The server includes an intelligent file watcher that automatically updates the code graph when files change:
+
+- **Automatic Detection**: Monitors all supported file types in your project
+- **Smart Debouncing**: 2-second delay prevents excessive re-analysis during rapid changes
+- **Efficient Filtering**: Respects `.gitignore` patterns and only watches relevant files
+- **Thread-Safe**: Runs in background without blocking analysis operations
+- **Zero Configuration**: Starts automatically after first analysis
+
+**File Watcher Features:**
+- Real-time graph updates during development
+- Batch processing of multiple rapid changes
+- Duplicate change prevention
+- Graceful error recovery
+- Resource cleanup on shutdown
+
+### Troubleshooting
+
+#### Common Issues
+
+1. **"Command not found"**: Ensure `code-graph-mcp` is in your PATH
+   ```bash
+   pip install --upgrade code-graph-mcp
+   which code-graph-mcp
+   ```
+
+2. **"ast-grep not found"**: Install the required dependency
+   ```bash
+   pip install ast-grep-py
+   ```
+
+3. **Permission errors**: Use virtual environment
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # Linux/Mac
+   # or
+   venv\Scripts\activate     # Windows
+   pip install code-graph-mcp ast-grep-py rustworkx
+   ```
+
+4. **Large project timeouts**: Increase timeout or exclude directories
+   ```bash
+   code-graph-mcp --project-root . --timeout 300
+   ```
+
+#### Debug Mode
+
+Enable verbose logging for troubleshooting:
+
+```bash
+code-graph-mcp --project-root . --verbose
+```
+
+#### Supported File Types
+
+The server automatically detects and analyzes these file extensions:
+- **Web**: `.js`, `.ts`, `.jsx`, `.tsx`, `.html`, `.css`
+- **Backend**: `.py`, `.java`, `.cs`, `.cpp`, `.c`, `.rs`, `.go`
+- **Mobile**: `.swift`, `.dart`, `.kt`
+- **Scripting**: `.rb`, `.php`, `.lua`, `.pl`
+- **Config**: `.json`, `.yaml`, `.yml`, `.toml`, `.xml`
+- **Docs**: `.md`, `.rst`, `.txt`
 
 ## Available Tools
 

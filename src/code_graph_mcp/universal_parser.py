@@ -257,17 +257,6 @@ class LanguageRegistry:
             variable_patterns=["-define"],
             import_patterns=["-import", "-include"]
         ),
-        "clojure": LanguageConfig(
-            name="Clojure",
-            extensions=[".clj", ".cljs", ".cljc"],
-            ast_grep_id="clojure",
-            comment_patterns=[";", ";;"],
-            string_patterns=['"'],
-            function_patterns=["defn", "defn-", "fn"],
-            class_patterns=["defprotocol", "defrecord", "deftype"],
-            variable_patterns=["def", "defonce"],
-            import_patterns=["require", "import", "use"]
-        ),
         "r": LanguageConfig(
             name="R",
             extensions=[".r", ".R"],

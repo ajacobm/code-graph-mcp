@@ -385,18 +385,9 @@ async def handle_project_statistics(engine: UniversalAnalysisEngine, arguments: 
     return [types.TextContent(type="text", text=result)]
 
 
-def main(project_root: Optional[str], verbose: bool) -> int:
-    """Main entry point for the MCP server."""
-    if verbose:
-        logging.getLogger().setLevel(logging.DEBUG)
-
-    app = Server("code-graph-intelligence")
-    root_path = Path(project_root) if project_root else Path.cwd()
-
-    @app.list_tools()
-    async def list_tools() -> list[types.Tool]:
-        """List available tools."""
-        return [
+def get_tool_definitions() -> list[types.Tool]:
+    """Get the list of available MCP tools."""
+    return [
             types.Tool(
                 name="analyze_codebase",
                 description="Perform comprehensive codebase analysis with metrics and structure overview",
@@ -492,28 +483,32 @@ def main(project_root: Optional[str], verbose: bool) -> int:
             ),
         ]
 
-    @app.call_tool()
-    async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
+
+def get_tool_handlers():
+    """Get mapping of tool names to handler functions."""
+    return {
+        "analyze_codebase": handle_analyze_codebase,
+        "find_definition": handle_find_definition,
+        "find_references": handle_find_references,
+        "find_callers": handle_find_callers,
+        "find_callees": handle_find_callees,
+        "complexity_analysis": handle_complexity_analysis,
+        "dependency_analysis": handle_dependency_analysis,
+        "project_statistics": handle_project_statistics,
+    }
+
+
+async def create_call_tool_handler(root_path: Path):
+    """Create the call tool handler with access to root_path."""
+    handlers = get_tool_handlers()
+
+    async def call_tool_handler(name: str, arguments: dict) -> list[types.TextContent]:
         """Handle tool calls."""
         try:
             engine = await ensure_analysis_engine_ready(root_path)
-
-            if name == "analyze_codebase":
-                return await handle_analyze_codebase(engine, arguments)
-            elif name == "find_definition":
-                return await handle_find_definition(engine, arguments)
-            elif name == "find_references":
-                return await handle_find_references(engine, arguments)
-            elif name == "find_callers":
-                return await handle_find_callers(engine, arguments)
-            elif name == "find_callees":
-                return await handle_find_callees(engine, arguments)
-            elif name == "complexity_analysis":
-                return await handle_complexity_analysis(engine, arguments)
-            elif name == "dependency_analysis":
-                return await handle_dependency_analysis(engine, arguments)
-            elif name == "project_statistics":
-                return await handle_project_statistics(engine, arguments)
+            handler = handlers.get(name)
+            if handler:
+                return await handler(engine, arguments)
             else:
                 raise ValueError(f"Unknown tool: {name}")
 
@@ -521,13 +516,30 @@ def main(project_root: Optional[str], verbose: bool) -> int:
             logger.exception("Error in tool %s", name)
             return [types.TextContent(type="text", text=f"❌ Error executing {name}: {str(e)}")]
 
-    async def arun():
-        async with stdio_server() as streams:
-            await app.run(
-                streams[0], streams[1], app.create_initialization_options()
-            )
+    return call_tool_handler
 
-    anyio.run(arun)
+
+def main(project_root: Optional[str], verbose: bool) -> int:
+    """Main entry point for the MCP server."""
+    if verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+
+    app = Server("code-graph-intelligence")
+    root_path = Path(project_root) if project_root else Path.cwd()
+
+    @app.list_tools()
+    async def list_tools() -> list[types.Tool]:
+        """List available tools."""
+        return get_tool_definitions()
+
+    async def setup_and_run():
+        handler = await create_call_tool_handler(root_path)
+        app.call_tool()(handler)
+
+        async with stdio_server() as streams:
+            await app.run(streams[0], streams[1], app.create_initialization_options())
+
+    anyio.run(setup_and_run)
     return 0
 
 

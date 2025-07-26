@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] - 2025-07-25
+
+### 🔧 Stability Release: MCP Server Integration Fixed
+
+This critical release resolves MCP server integration issues and ensures reliable functionality.
+
+#### 🐛 Fixed
+- **Import Issues** - Resolved relative import problems that prevented MCP server from loading in Claude Code
+- **Server Startup** - Fixed package execution environment compatibility issues
+- **MCP Integration** - Proper server initialization and protocol communication
+- **Development Installation** - Added editable package installation for proper module resolution
+
+#### ✅ Verified
+- **Server Functionality** - Comprehensive test suite confirms all 8 MCP tools working correctly
+- **Command Execution** - Server starts properly with `code-graph-mcp --project-root .`
+- **Protocol Initialization** - MCP server initializes correctly with debug logging
+- **Package Installation** - Development mode installation resolves all import dependencies
+
+#### 🧪 Testing
+- **Comprehensive Test Suite** - Added `test_mcp_server.py` for full MCP functionality validation
+- **Basic Functionality Test** - Added `simple_test.py` for core server verification
+- **Integration Validation** - Confirmed server works with proper package installation
+
+---
+
 ## [1.0.3] - 2025-07-25
 
 ### 📚 Documentation Release: Corrected Installation Commands

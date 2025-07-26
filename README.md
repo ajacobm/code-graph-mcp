@@ -49,7 +49,7 @@ pip install code-graph-mcp ast-grep-py
 
 2. **Add to Claude Code using CLI:**
 ```bash
-claude mcp add --scope project code-graph-mcp "code-graph-mcp --verbose"
+claude mcp add --scope project code-graph-mcp code-graph-mcp
 ```
 
 3. **Verify installation:**
@@ -72,13 +72,13 @@ uv sync  # Install dependencies including ast-grep-py
 For **local project** configuration (recommended):
 ```bash
 # This creates/updates .mcp.json in your current project
-claude mcp add --scope project code-graph-mcp "uv run code-graph-mcp --verbose"
+claude mcp add --scope project code-graph-mcp uv run code-graph-mcp
 ```
 
 For **user-wide** configuration:
 ```bash
 # This configures across all your projects
-claude mcp add --scope user code-graph-mcp "uv run code-graph-mcp --verbose"
+claude mcp add --scope user code-graph-mcp uv run code-graph-mcp
 ```
 
 3. **Restart Claude Code**

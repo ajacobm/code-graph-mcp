@@ -1,6 +1,6 @@
 [project]
 name = "code-graph-mcp"
-version = "1.0.4"
+version = "1.0.5"
 description = "MCP server for multi-language code graph intelligence and analysis across 25+ programming languages"
 readme = "README.md"
 authors = [
@@ -63,13 +63,13 @@ packages = ["src/code_graph_mcp"]
 [tool.hatch.build.targets.sdist]
 include = [
     "/src",
+    "/tests",
     "/README.md", 
     "/pyproject.toml",
-    "/test_*.py",
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["."]
+testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]

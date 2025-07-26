@@ -215,7 +215,7 @@ async def ensure_analysis_engine_ready(project_root: Path) -> UniversalAnalysisE
     return analysis_engine
 
 
-async def handle_analyze_codebase(engine: UniversalAnalysisEngine, arguments: Dict[str, Any]) -> List[types.TextContent]:
+async def handle_analyze_codebase(engine: UniversalAnalysisEngine, arguments: dict) -> list[types.TextContent]:
     """Handle analyze_codebase tool."""
     rebuild_graph = arguments.get("rebuild_graph", False)
     if rebuild_graph:
@@ -246,7 +246,7 @@ async def handle_analyze_codebase(engine: UniversalAnalysisEngine, arguments: Di
     return [types.TextContent(type="text", text=result)]
 
 
-async def handle_find_definition(engine: UniversalAnalysisEngine, arguments: Dict[str, Any]) -> List[types.TextContent]:
+async def handle_find_definition(engine: UniversalAnalysisEngine, arguments: dict) -> list[types.TextContent]:
     """Handle find_definition tool."""
     symbol = arguments["symbol"]
     definitions = engine.find_symbol_definition(symbol)
@@ -267,7 +267,7 @@ async def handle_find_definition(engine: UniversalAnalysisEngine, arguments: Dic
     return [types.TextContent(type="text", text=result)]
 
 
-async def handle_complexity_analysis(engine: UniversalAnalysisEngine, arguments: Dict[str, Any]) -> List[types.TextContent]:
+async def handle_complexity_analysis(engine: UniversalAnalysisEngine, arguments: dict) -> list[types.TextContent]:
     """Handle complexity_analysis tool."""
     threshold = arguments.get("threshold", 10)
     complex_functions = engine.analyze_complexity(threshold)
@@ -285,7 +285,7 @@ async def handle_complexity_analysis(engine: UniversalAnalysisEngine, arguments:
     return [types.TextContent(type="text", text=result)]
 
 
-async def handle_find_references(engine: UniversalAnalysisEngine, arguments: Dict[str, Any]) -> List[types.TextContent]:
+async def handle_find_references(engine: UniversalAnalysisEngine, arguments: dict) -> list[types.TextContent]:
     """Handle find_references tool."""
     symbol = arguments["symbol"]
     references = engine.find_symbol_references(symbol)
@@ -304,7 +304,7 @@ async def handle_find_references(engine: UniversalAnalysisEngine, arguments: Dic
     return [types.TextContent(type="text", text=result)]
 
 
-async def handle_find_callers(engine: UniversalAnalysisEngine, arguments: Dict[str, Any]) -> List[types.TextContent]:
+async def handle_find_callers(engine: UniversalAnalysisEngine, arguments: dict) -> list[types.TextContent]:
     """Handle find_callers tool."""
     function = arguments["function"]
     callers = engine.find_function_callers(function)
@@ -322,7 +322,7 @@ async def handle_find_callers(engine: UniversalAnalysisEngine, arguments: Dict[s
     return [types.TextContent(type="text", text=result)]
 
 
-async def handle_find_callees(engine: UniversalAnalysisEngine, arguments: Dict[str, Any]) -> List[types.TextContent]:
+async def handle_find_callees(engine: UniversalAnalysisEngine, arguments: dict) -> list[types.TextContent]:
     """Handle find_callees tool."""
     function = arguments["function"]
     callees = engine.find_function_callees(function)
@@ -341,7 +341,7 @@ async def handle_find_callees(engine: UniversalAnalysisEngine, arguments: Dict[s
     return [types.TextContent(type="text", text=result)]
 
 
-async def handle_dependency_analysis(engine: UniversalAnalysisEngine, arguments: Dict[str, Any]) -> List[types.TextContent]:
+async def handle_dependency_analysis(engine: UniversalAnalysisEngine, arguments: dict) -> list[types.TextContent]:
     """Handle dependency_analysis tool."""
     deps = engine.get_dependency_graph()
 
@@ -361,7 +361,7 @@ async def handle_dependency_analysis(engine: UniversalAnalysisEngine, arguments:
     return [types.TextContent(type="text", text=result)]
 
 
-async def handle_project_statistics(engine: UniversalAnalysisEngine, arguments: Dict[str, Any]) -> List[types.TextContent]:
+async def handle_project_statistics(engine: UniversalAnalysisEngine, arguments: dict) -> list[types.TextContent]:
     """Handle project_statistics tool."""
     stats = engine.get_project_stats()
 
@@ -394,7 +394,7 @@ def main(project_root: Optional[str], verbose: bool) -> int:
     root_path = Path(project_root) if project_root else Path.cwd()
 
     @app.list_tools()
-    async def list_tools() -> List[types.Tool]:
+    async def list_tools() -> list[types.Tool]:
         """List available tools."""
         return [
             types.Tool(
@@ -493,25 +493,27 @@ def main(project_root: Optional[str], verbose: bool) -> int:
         ]
 
     @app.call_tool()
-    async def call_tool(name: str, arguments: Dict[str, Any]) -> List[types.TextContent]:
+    async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
         """Handle tool calls."""
         try:
             engine = await ensure_analysis_engine_ready(root_path)
 
-            handlers = {
-                "analyze_codebase": handle_analyze_codebase,
-                "find_definition": handle_find_definition,
-                "find_references": handle_find_references,
-                "find_callers": handle_find_callers,
-                "find_callees": handle_find_callees,
-                "complexity_analysis": handle_complexity_analysis,
-                "dependency_analysis": handle_dependency_analysis,
-                "project_statistics": handle_project_statistics,
-            }
-
-            handler = handlers.get(name)
-            if handler:
-                return await handler(engine, arguments)
+            if name == "analyze_codebase":
+                return await handle_analyze_codebase(engine, arguments)
+            elif name == "find_definition":
+                return await handle_find_definition(engine, arguments)
+            elif name == "find_references":
+                return await handle_find_references(engine, arguments)
+            elif name == "find_callers":
+                return await handle_find_callers(engine, arguments)
+            elif name == "find_callees":
+                return await handle_find_callees(engine, arguments)
+            elif name == "complexity_analysis":
+                return await handle_complexity_analysis(engine, arguments)
+            elif name == "dependency_analysis":
+                return await handle_dependency_analysis(engine, arguments)
+            elif name == "project_statistics":
+                return await handle_project_statistics(engine, arguments)
             else:
                 raise ValueError(f"Unknown tool: {name}")
 

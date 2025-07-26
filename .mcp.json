@@ -3,10 +3,7 @@
     "code-graph-mcp": {
       "type": "stdio",
       "command": "code-graph-mcp",
-      "args": [
-        "--project-root",
-        "."
-      ],
+      "args": [],
       "env": {}
     }
   }

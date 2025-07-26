@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5] - 2025-07-25
+
+### 🚀 Critical Fix: MCP Tool Exposure Resolved
+
+This critical release fixes the MCP tool exposure issue that prevented tools from being accessible in Claude Code.
+
+#### 🐛 Fixed
+- **CRITICAL MCP Tool Exposure** - Fixed issue where MCP tools were not properly accessible through Claude Code interface
+- **SDK Compliance** - Updated function signatures to match official Python SDK patterns exactly
+- **Type Annotations** - Changed `Dict[str, Any]` → `dict`, `List[types.TextContent]` → `list[types.TextContent]`
+- **Tool Dispatch** - Replaced complex handler dispatch with simple if/elif pattern following SDK examples
+
+#### ✅ Verified
+- **Tool Accessibility** - All 8 tools now properly exposed and accessible: `claude mcp list` shows "✓ Connected"
+- **SDK Pattern Compliance** - Server implementation matches official Python SDK examples exactly
+- **Connectivity Testing** - Comprehensive test confirms "SUCCESS: MCP server is properly exposing 8 tools"
+
+#### 📊 Added
+- **Connectivity Test Suite** - Added `test_mcp_connectivity.py` for MCP integration verification
+- **Comprehensive Test Report** - Added detailed `MCP_TOOLS_TEST_REPORT.md` with technical specifications
+- **Production Verification** - Confirmed all 8 tools working correctly in production environment
+
+#### 🏗️ Technical Changes
+- Simplified `call_tool()` dispatch from dictionary pattern to direct if/elif structure
+- Updated all handler function signatures to use modern Python type hints
+- Maintained backward compatibility while fixing core functionality
+
+---
+
 ## [1.0.4] - 2025-07-25
 
 ### 🔧 Stability Release: MCP Server Integration Fixed

@@ -43,7 +43,7 @@ Model Context Protocol server providing comprehensive code analysis, navigation,
 
 1. **Install the package with multi-language support:**
 ```bash
-pip install code-graph-mcp ast-grep-py
+pip install code-graph-mcp ast-grep-py rustworkx
 ```
 
 2. **Add to Claude Code using CLI:**
@@ -132,13 +132,6 @@ Generate a dependency graph showing how the Python API connects to the React com
 Detect code smells and duplicate patterns across the entire multi-language codebase
 ```
 
-## Configuration Options
-
-The server accepts these command-line arguments:
-
-- `--project-root`: Project directory to analyze (defaults to current directory)
-- `--verbose`: Enable detailed logging for debugging
-
 ## Development
 
 ### Requirements
@@ -146,6 +139,7 @@ The server accepts these command-line arguments:
 - UV package manager
 - MCP SDK
 - ast-grep-py (for multi-language support)
+- rustworkx (for high-performance graph operations)
 
 ### Running locally
 ```bash

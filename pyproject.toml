@@ -1,6 +1,6 @@
 [project]
 name = "code-graph-mcp"
-version = "1.0.7"
+version = "1.0.8"
 description = "MCP server for multi-language code graph intelligence and analysis across 25+ programming languages"
 readme = "README.md"
 authors = [

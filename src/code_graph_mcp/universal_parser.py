@@ -6,6 +6,7 @@ Provides language-agnostic parsing with consistent node types and relationships.
 """
 
 import logging
+import fnmatch
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -858,8 +859,53 @@ class UniversalParser:
                 return node
         return None
 
+    def _should_ignore_path(self, file_path: Path, project_root: Path) -> bool:
+        """Check if a path should be ignored based on .gitignore patterns and common skip patterns."""
+        # Always skip common build/cache/dependency directories
+        common_skip_dirs = {
+            '__pycache__', '.git', 'node_modules', '.venv', 'venv', 'env',
+            'build', 'dist', '.next', '.nuxt', 'target', 'out', 'bin', 'obj',
+            '.pytest_cache', '.mypy_cache', '.tox', 'coverage', '.coverage',
+            '.sass-cache', '.cache', 'tmp', 'temp', '.tmp', '.temp',
+            'logs', '.logs', '.idea', '.vscode', '.vs', '.DS_Store'
+        }
+        
+        # Check if any part of the path contains common skip directories
+        if any(part in common_skip_dirs for part in file_path.parts):
+            return True
+        
+        # Check .gitignore patterns
+        gitignore_path = project_root / '.gitignore'
+        if not gitignore_path.exists():
+            return False
+            
+        try:
+            with open(gitignore_path, 'r', encoding='utf-8') as f:
+                patterns = [line.strip() for line in f if line.strip() and not line.startswith('#')]
+        except Exception:
+            return False
+            
+        # Convert file path to relative path from project root
+        try:
+            relative_path = file_path.relative_to(project_root)
+            path_str = str(relative_path)
+            
+            # Check against each gitignore pattern
+            for pattern in patterns:
+                if fnmatch.fnmatch(path_str, pattern) or fnmatch.fnmatch(path_str, pattern + '/*'):
+                    return True
+                # Handle directory patterns
+                if pattern.endswith('/') and path_str.startswith(pattern[:-1] + '/'):
+                    return True
+                    
+        except ValueError:
+            # Path is not relative to project root
+            pass
+            
+        return False
+
     def parse_directory(self, directory: Path, recursive: bool = True) -> int:
-        """Parse all supported files in a directory."""
+        """Parse all supported files in a directory, respecting .gitignore."""
         if not directory.is_dir():
             logger.error("Not a directory: %s", directory)
             return 0
@@ -873,6 +919,10 @@ class UniversalParser:
             files = directory.iterdir()
 
         for file_path in files:
+            # Skip files ignored by .gitignore
+            if self._should_ignore_path(file_path, directory):
+                continue
+                
             if file_path.is_file() and file_path.suffix.lower() in supported_extensions:
                 if self.parse_file(file_path):
                     parsed_count += 1

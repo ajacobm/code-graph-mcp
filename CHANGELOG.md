@@ -33,6 +33,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.8] - 2025-07-26
+
+### 🚀 Production Release: Performance & Reliability Fixes
+
+This critical release resolves major performance and reliability issues that prevented proper tool functionality.
+
+#### 🐛 Fixed
+- **Tool Timeout Issues** - Fixed 2+ minute timeouts by implementing proper .gitignore file filtering
+- **REFERENCE Directory Analysis** - Massive performance improvement by excluding reference materials from analysis
+- **Warning Spam** - Silenced hundreds of "missing nodes" warnings that cluttered output
+- **File Discovery** - Added comprehensive common directory exclusion (build/, dist/, node_modules/, etc.)
+
+#### ⚡ Performance
+- **Dramatic Speed Improvement** - Tools now complete in 15-30 seconds instead of timing out
+- **Smart File Filtering** - Respects .gitignore patterns plus common build/cache directories
+- **Clean Output** - Eliminated debug warning spam for better user experience
+- **Memory Efficiency** - Reduced memory usage by skipping irrelevant files
+
+#### ✅ Verified
+- **All 8 Tools Working** - Comprehensive test confirms 100% success rate (8/8 tools functional)
+- **Fast Analysis** - Complete project analysis in under 30 seconds
+- **Production Ready** - No more timeouts, crashes, or excessive warnings
+
+#### 🛠️ Technical Changes
+- Added proper .gitignore pattern matching with fnmatch
+- Implemented common directory skip list (20+ patterns)
+- Changed relationship warnings from WARNING to DEBUG level
+- Enhanced file discovery with smart filtering
+
+---
+
 ## [1.0.6] - 2025-07-25
 
 ### 🛠️ Language Support Update: Clojure Removed

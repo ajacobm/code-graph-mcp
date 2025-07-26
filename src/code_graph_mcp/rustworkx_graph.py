@@ -88,7 +88,7 @@ class RustworkxCodeGraph:
         target_index = self.node_id_to_index.get(relationship.target_id)
 
         if source_index is None or target_index is None:
-            logger.warning(f"Cannot add relationship {relationship.id}: missing nodes")
+            logger.debug(f"Cannot add relationship {relationship.id}: missing nodes")
             return
 
         # Add edge to rustworkx graph

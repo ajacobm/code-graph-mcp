@@ -87,3 +87,8 @@ ignore = ["E501"]  # Line too long (handled by formatter)
 [tool.black]
 target-version = ["py312"]
 line-length = 100
+
+[dependency-groups]
+dev = [
+    "twine>=6.1.0",
+]

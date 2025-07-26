@@ -7,6 +7,7 @@ Builds on the universal graph to provide code intelligence features.
 
 import logging
 from collections import defaultdict
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Set, Union
 
@@ -138,8 +139,9 @@ class UniversalASTAnalyzer:
 
         return smells
 
+    @lru_cache(maxsize=10000)
     def analyze_complexity(self, threshold: int = 10) -> Dict[str, Any]:
-        """Analyze code complexity across the project."""
+        """Analyze code complexity across the project with LRU caching."""
         functions = self.graph.get_nodes_by_type(NodeType.FUNCTION)
 
         if not functions:
@@ -291,14 +293,22 @@ class UniversalASTAnalyzer:
         ]
         test_coverage_estimate = min(100, (len(test_files) / len(modules)) * 200) if modules else 0
 
+        # Calculate duplication ratio based on duplicate patterns found
+        code_smells = self.detect_code_smells()
+        duplicate_patterns = code_smells.get("duplicate_logic", [])
+        total_functions = len(self.graph.get_nodes_by_type(NodeType.FUNCTION))
+
+        duplicate_function_count = sum(len(pattern["functions"]) for pattern in duplicate_patterns)
+        duplication_ratio = (duplicate_function_count / total_functions * 100) if total_functions > 0 else 0
+
         return {
             "maintainability_index": round(maintainability, 2),
             "technical_debt_ratio": round(debt_ratio, 2),
             "test_coverage_estimate": round(test_coverage_estimate, 2),
             "documentation_ratio": round(doc_ratio, 2),
-            "code_duplication_ratio": 0,  # Would require more sophisticated analysis
+            "code_duplication_ratio": round(duplication_ratio, 2),
             "total_code_smells": total_smells,
-            "quality_score": round((maintainability + doc_ratio + test_coverage_estimate - debt_ratio) / 4, 2)
+            "quality_score": round((maintainability + doc_ratio + test_coverage_estimate - debt_ratio - duplication_ratio) / 5, 2)
         }
 
     def get_language_distribution(self) -> Dict[str, Any]:

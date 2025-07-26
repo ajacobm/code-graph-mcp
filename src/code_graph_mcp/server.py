@@ -186,16 +186,131 @@ class UniversalAnalysisEngine:
         return results
 
     def get_dependency_graph(self) -> Dict[str, Any]:
-        """Get dependency analysis using UniversalASTAnalyzer."""
+        """Get dependency analysis using rustworkx advanced algorithms."""
         self._ensure_analyzed()
 
         deps = self.analyzer.analyze_dependencies()
+
+        # Enhanced analysis with rustworkx
+        is_dag = self.graph.is_directed_acyclic()
+        cycles = self.graph.detect_cycles() if not is_dag else []
+        components = self.graph.get_strongly_connected_components()
 
         return {
             "total_files": len(deps.get("files", [])),
             "total_dependencies": len(deps.get("imports", [])),
             "dependencies": deps.get("dependency_graph", {}),
-            "circular_dependencies": deps.get("circular_dependencies", []),
+            "circular_dependencies": cycles,
+            "is_directed_acyclic": is_dag,
+            "strongly_connected_components": len(components),
+            "graph_density": self.graph.get_statistics().get("density", 0),
+        }
+
+    def get_code_insights(self) -> Dict[str, Any]:
+        """Get comprehensive code insights using advanced rustworkx analytics."""
+        self._ensure_analyzed()
+
+        # Calculate multiple centrality measures for comprehensive analysis
+        betweenness_centrality = self.graph.calculate_centrality()
+        pagerank = self.graph.calculate_pagerank(alpha=0.85, max_iter=100, tol=1e-6)
+        closeness_centrality = self.graph.calculate_closeness_centrality()
+        eigenvector_centrality = self.graph.calculate_eigenvector_centrality()
+
+        # Find critical structural elements
+        articulation_points = self.graph.find_articulation_points()
+        bridges = self.graph.find_bridges()
+
+        # Sort and get top elements for each metric
+        sorted_betweenness = sorted(betweenness_centrality.items(), key=lambda x: x[1], reverse=True)[:10]
+        sorted_pagerank = sorted(pagerank.items(), key=lambda x: x[1], reverse=True)[:10]
+        sorted_closeness = sorted(closeness_centrality.items(), key=lambda x: x[1], reverse=True)[:10]
+        sorted_eigenvector = sorted(eigenvector_centrality.items(), key=lambda x: x[1], reverse=True)[:10]
+
+        # Get graph statistics
+        stats = self.graph.get_statistics()
+
+        return {
+            "centrality_analysis": {
+                "betweenness_centrality": [
+                    {
+                        "node_id": node_id,
+                        "score": score,
+                        "node_name": (node.name if (node := self.graph.get_node(node_id)) is not None else "Unknown"),
+                        "node_type": (node.node_type.value if (node := self.graph.get_node(node_id)) is not None else "unknown")
+                    }
+                    for node_id, score in sorted_betweenness
+                ],
+                "pagerank": [
+                    {
+                        "node_id": node_id,
+                        "score": score,
+                        "node_name": (node.name if (node := self.graph.get_node(node_id)) is not None else "Unknown"),
+                        "node_type": (node.node_type.value if (node := self.graph.get_node(node_id)) is not None else "unknown")
+                    }
+                    for node_id, score in sorted_pagerank
+                ],
+                "closeness_centrality": [
+                    {
+                        "node_id": node_id,
+                        "score": score,
+                        "node_name": (node.name if (node := self.graph.get_node(node_id)) is not None else "Unknown")
+                    }
+                    for node_id, score in sorted_closeness
+                ],
+                "eigenvector_centrality": [
+                    {
+                        "node_id": node_id,
+                        "score": score,
+                        "node_name": (node.name if (node := self.graph.get_node(node_id)) is not None else "Unknown")
+                    }
+                    for node_id, score in sorted_eigenvector
+                ]
+            },
+            "structural_analysis": {
+                "articulation_points": [
+                    {
+                        "node_id": node_id,
+                        "node_name": (node.name if (node := self.graph.get_node(node_id)) is not None else "Unknown"),
+                        "critical_impact": "Removal would disconnect the graph"
+                    }
+                    for node_id in articulation_points
+                ],
+                "bridges": [
+                    {
+                        "source": source_id,
+                        "target": target_id,
+                        "source_name": (source_node.name if (source_node := self.graph.get_node(source_id)) is not None else "Unknown"),
+                        "target_name": (target_node.name if (target_node := self.graph.get_node(target_id)) is not None else "Unknown"),
+                        "critical_impact": "Removal would disconnect components"
+                    }
+                    for source_id, target_id in bridges
+                ]
+            },
+            "graph_statistics": stats,
+            "topology_analysis": {
+                "is_directed_acyclic": self.graph.is_directed_acyclic(),
+                "num_cycles": len(self.graph.detect_cycles()),
+                "strongly_connected_components": len(self.graph.get_strongly_connected_components()),
+                "num_articulation_points": len(articulation_points),
+                "num_bridges": len(bridges)
+            },
+            # Legacy fields for backward compatibility
+            "most_central_nodes": [
+                {
+                    "node_id": node_id,
+                    "centrality_score": score,
+                    "node_name": (node.name if (node := self.graph.get_node(node_id)) is not None else "Unknown")
+                }
+                for node_id, score in sorted_betweenness
+            ],
+            "most_influential_nodes": [
+                {
+                    "node_id": node_id,
+                    "pagerank_score": score,
+                    "node_name": (node.name if (node := self.graph.get_node(node_id)) is not None else "Unknown")
+                }
+                for node_id, score in sorted_pagerank
+            ]
         }
 
 
@@ -342,15 +457,26 @@ async def handle_find_callees(engine: UniversalAnalysisEngine, arguments: dict) 
 
 
 async def handle_dependency_analysis(engine: UniversalAnalysisEngine, arguments: dict) -> list[types.TextContent]:
-    """Handle dependency_analysis tool."""
+    """Handle dependency_analysis tool with advanced rustworkx analytics."""
     deps = engine.get_dependency_graph()
 
-    result = "# Dependency Analysis\n\n"
+    result = "# Advanced Dependency Analysis (Powered by rustworkx)\n\n"
     result += f"- **Total Files**: {deps['total_files']}\n"
-    result += f"- **Total Dependencies**: {deps['total_dependencies']}\n\n"
+    result += f"- **Total Dependencies**: {deps['total_dependencies']}\n"
+    result += f"- **Graph Density**: {deps['graph_density']:.4f}\n"
+    result += f"- **Is Directed Acyclic**: {'✅ Yes' if deps['is_directed_acyclic'] else '❌ No'}\n"
+    result += f"- **Strongly Connected Components**: {deps['strongly_connected_components']}\n\n"
+
+    # Show circular dependencies if any
+    if deps['circular_dependencies']:
+        result += "## 🔴 Circular Dependencies Detected\n\n"
+        for i, cycle in enumerate(deps['circular_dependencies'][:5], 1):  # Show first 5 cycles
+            result += f"**Cycle {i}**: {' → '.join(cycle)} → {cycle[0]}\n"
+        if len(deps['circular_dependencies']) > 5:
+            result += f"\n*... and {len(deps['circular_dependencies']) - 5} more cycles*\n"
+        result += "\n"
 
     result += "## Import Relationships\n\n"
-
     for file_path, dependencies in deps["dependencies"].items():
         if dependencies:
             result += f"### {Path(file_path).name}\n"
@@ -362,10 +488,11 @@ async def handle_dependency_analysis(engine: UniversalAnalysisEngine, arguments:
 
 
 async def handle_project_statistics(engine: UniversalAnalysisEngine, arguments: dict) -> list[types.TextContent]:
-    """Handle project_statistics tool."""
+    """Handle project_statistics tool with advanced rustworkx insights."""
     stats = engine.get_project_stats()
+    insights = engine.get_code_insights()
 
-    result = "# Project Statistics\n\n"
+    result = "# Advanced Project Statistics (Powered by rustworkx)\n\n"
     result += "## Overview\n"
     result += f"- **Project Root**: `{stats['project_root']}`\n"
     result += f"- **Files Analyzed**: {stats['total_files']}\n"
@@ -377,10 +504,38 @@ async def handle_project_statistics(engine: UniversalAnalysisEngine, arguments: 
     for node_type, count in stats.get("node_types", {}).items():
         result += f"- **{node_type.title()}**: {count:,}\n"
 
-    result += "\n## Quality Metrics\n"
-    result += "- **Average Complexity**: 2.23\n"
-    result += "- **Maximum Complexity**: 28\n"
-    result += "- **Health Score**: 10.0/10\n"
+    result += "\n## Graph Analytics\n"
+    graph_stats = insights['graph_statistics']
+    result += f"- **Graph Density**: {graph_stats.get('density', 0):.4f}\n"
+    result += f"- **Average Degree**: {graph_stats.get('average_degree', 0):.2f}\n"
+    result += f"- **Is DAG**: {'✅ Yes' if insights['topology_analysis']['is_directed_acyclic'] else '❌ No'}\n"
+    result += f"- **Circular Dependencies**: {insights['topology_analysis']['num_cycles']}\n"
+
+    result += "\n## Critical Structural Elements\n"
+    articulation_points = insights['structural_analysis']['articulation_points']
+    bridges = insights['structural_analysis']['bridges']
+
+    if articulation_points:
+        result += "### 🔴 Articulation Points (Critical Nodes)\n"
+        for point in articulation_points[:3]:
+            result += f"- **{point['node_name']}**: {point['critical_impact']}\n"
+        if len(articulation_points) > 3:
+            result += f"*... and {len(articulation_points) - 3} more critical nodes*\n"
+
+    if bridges:
+        result += "\n### 🔗 Bridge Connections (Critical Links)\n"
+        for bridge in bridges[:3]:
+            result += f"- **{bridge['source_name']} → {bridge['target_name']}**: {bridge['critical_impact']}\n"
+        if len(bridges) > 3:
+            result += f"*... and {len(bridges) - 3} more critical connections*\n"
+
+    result += "\n## Most Central Code Elements (Betweenness)\n"
+    for i, node in enumerate(insights['centrality_analysis']['betweenness_centrality'][:5], 1):
+        result += f"{i}. **{node['node_name']}** ({node['node_type']}) - {node['score']:.4f}\n"
+
+    result += "\n## Most Influential Code Elements (PageRank)\n"
+    for i, node in enumerate(insights['centrality_analysis']['pagerank'][:5], 1):
+        result += f"{i}. **{node['node_name']}** ({node['node_type']}) - {node['score']:.4f}\n"
 
     return [types.TextContent(type="text", text=result)]
 
@@ -557,4 +712,4 @@ def cli(project_root: Optional[str], verbose: bool) -> int:
 
 
 if __name__ == "__main__":
-    cli()
+    cli(standalone_mode=False)

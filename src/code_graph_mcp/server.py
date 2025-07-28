@@ -1126,9 +1126,29 @@ def main(project_root: Optional[str], verbose: bool) -> int:
     default=None,
 )
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging")
-def cli(project_root: Optional[str], verbose: bool) -> int:
+@click.option(
+    "--mode",
+    type=click.Choice(["stdio", "sse"]),
+    default="stdio",
+    help="Server mode: stdio for MCP, sse for HTTP/SSE"
+)
+@click.option("--host", default="0.0.0.0", help="Host for SSE mode")
+@click.option("--port", default=8000, type=int, help="Port for SSE mode")
+def cli(project_root: Optional[str], verbose: bool, mode: str, host: str, port: int) -> int:
     """Code Graph Intelligence MCP Server."""
-    return main(project_root, verbose)
+    if mode == "sse":
+        # Run in SSE mode
+        from .sse_server import SSECodeGraphServer
+        if verbose:
+            logging.getLogger().setLevel(logging.DEBUG)
+        
+        root_path = Path(project_root) if project_root else Path.cwd()
+        server = SSECodeGraphServer(root_path)
+        server.run(host=host, port=port, debug=verbose)
+        return 0
+    else:
+        # Run in stdio MCP mode (default)
+        return main(project_root, verbose)
 
 
 if __name__ == "__main__":

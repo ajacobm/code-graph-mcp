@@ -15,6 +15,10 @@ dependencies = [
     "click>=8.0.0",
     "rustworkx>=0.15.0",
     "watchdog>=6.0.0",
+    # SSE dependencies
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "pydantic>=2.5.0",
 ]
 keywords = [
     "mcp", "code-analysis", "ast", "claude-code", "graph", "intelligence", 
@@ -54,6 +58,7 @@ Issues = "https://github.com/entrepeneur4lyf/code-graph-mcp/issues"
 
 [project.scripts]
 code-graph-mcp = "code_graph_mcp:main"
+code-graph-sse = "code_graph_mcp.sse_server:main"
 
 [build-system]
 requires = ["hatchling"]

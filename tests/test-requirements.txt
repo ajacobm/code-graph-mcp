@@ -1,0 +1,33 @@
+# Test requirements for Code Graph MCP
+# Install with: pip install -r tests/test-requirements.txt
+
+# Core testing framework
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-timeout>=2.1.0
+pytest-mock>=3.11.0
+
+# HTTP testing for SSE server
+httpx>=0.25.0
+pytest-httpx>=0.23.0
+
+# Redis testing (optional - tests will skip if not available)
+redis>=5.0.0
+fakeredis>=2.18.0  # For Redis mocking in tests
+
+# MCP framework for integration testing
+mcp>=1.0.0
+
+# FastAPI testing
+fastapi[all]>=0.104.0
+
+# Additional utilities
+aiofiles>=23.2.0
+uvicorn>=0.24.0
+
+# For mock and async testing
+unittest-xml-reporting>=3.2.0
+coverage>=7.3.0
+
+# Optional: Load testing
+locust>=2.17.0  # For performance testing

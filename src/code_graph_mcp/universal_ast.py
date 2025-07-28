@@ -9,7 +9,10 @@ import logging
 from collections import defaultdict
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, List, Set, Union
+from typing import Any, Dict, List, Set, Union, Optional
+
+from .redis_cache import RedisConfig
+from .cache_manager import HybridCacheManager, cached_method
 
 from .universal_graph import (
     NodeType,
@@ -24,18 +27,32 @@ logger = logging.getLogger(__name__)
 class UniversalASTAnalyzer:
     """High-level analyzer providing cross-language analysis capabilities."""
 
-    def __init__(self, project_root: Path):
+    def __init__(self, project_root: Path, redis_config: Optional[RedisConfig] = None, enable_redis_cache: bool = True):
         self.project_root = project_root
-        self.parser = UniversalParser()
+        self.parser = UniversalParser(redis_config=redis_config, enable_redis_cache=enable_redis_cache)
         self.graph = self.parser.graph
         self._analysis_cache: Dict[str, Any] = {}
+        
+        # Set up cache manager reference for decorator
+        self.cache_manager = self.parser.cache_manager
+    
+    async def initialize_cache(self) -> bool:
+        """Initialize cache backend."""
+        if self.parser:
+            return await self.parser.initialize_cache()
+        return True
+    
+    async def cleanup_cache(self):
+        """Cleanup cache resources."""
+        if self.parser:
+            await self.parser.cleanup_cache()
 
-    def analyze_project(self, recursive: bool = True) -> Dict[str, Any]:
+    async def analyze_project(self, recursive: bool = True) -> Dict[str, Any]:
         """Analyze entire project and return comprehensive statistics."""
         logger.info("Analyzing project: %s", self.project_root)
 
         # Parse all files
-        parsed_files = self.parser.parse_directory(self.project_root, recursive)
+        parsed_files = await self.parser.parse_directory(self.project_root, recursive)
 
         # Get basic statistics
         stats = self.graph.get_statistics()

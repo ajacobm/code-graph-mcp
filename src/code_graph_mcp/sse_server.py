@@ -160,6 +160,32 @@ class SSECodeGraphServer:
                     "Access-Control-Allow-Headers": "Cache-Control"
                 }
             )
+        
+        @self.app.get("/cache/stats")
+        async def cache_stats():
+            """Get cache statistics."""
+            if not self.analysis_engine or not self.analysis_engine.analyzer.cache_manager:
+                return {"status": "cache_disabled"}
+            
+            try:
+                stats = await self.analysis_engine.analyzer.cache_manager.get_cache_stats()
+                return stats
+            except Exception as e:
+                logger.error(f"Error getting cache stats: {e}")
+                raise HTTPException(status_code=500, detail=f"Failed to get cache stats: {str(e)}")
+        
+        @self.app.post("/cache/clear")
+        async def clear_cache():
+            """Clear all cache data."""
+            if not self.analysis_engine or not self.analysis_engine.analyzer.cache_manager:
+                raise HTTPException(status_code=400, detail="Cache not enabled")
+            
+            try:
+                await self.analysis_engine.analyzer.cache_manager.clear_all()
+                return {"status": "success", "message": "Cache cleared"}
+            except Exception as e:
+                logger.error(f"Error clearing cache: {e}")
+                raise HTTPException(status_code=500, detail=f"Failed to clear cache: {str(e)}")
     
     async def _stream_tool_response(self, tool_name: str, arguments: Dict[str, Any]) -> AsyncGenerator[str, None]:
         """Stream tool execution results as SSE events."""

@@ -32,9 +32,18 @@ logger = logging.getLogger(__name__)
 class UniversalAnalysisEngine:
     """Code analysis engine with comprehensive project analysis capabilities."""
 
-    def __init__(self, project_root: Path, enable_file_watcher: bool = True):
+    def __init__(self, project_root: Path, enable_file_watcher: bool = True, redis_config: Optional[any] = None, enable_redis_cache: bool = True):
         self.project_root = project_root
-        self.analyzer = UniversalASTAnalyzer(project_root)
+        
+        # Import here to avoid circular imports
+        from .redis_cache import RedisConfig
+        
+        # Set up Redis configuration
+        if enable_redis_cache and redis_config is None:
+            # Use default Redis config if enabled but no config provided
+            redis_config = RedisConfig()
+        
+        self.analyzer = UniversalASTAnalyzer(project_root, redis_config=redis_config, enable_redis_cache=enable_redis_cache)
         self.parser = self.analyzer.parser
         self.graph = self.parser.graph
         self._is_analyzed = False
@@ -84,12 +93,16 @@ class UniversalAnalysisEngine:
 
         logger.info(f"Cleared {cleared_count} caches")
 
-    def _thread_safe_analyze_project(self):
-        """Thread-safe wrapper for project analysis."""
+    async def _analyze_project(self):
+        """Async wrapper for project analysis."""
         try:
-            return self.analyzer.analyze_project()
+            # Initialize cache if needed
+            if self.analyzer.cache_manager:
+                await self.analyzer.initialize_cache()
+            
+            return await self.analyzer.analyze_project()
         except Exception as e:
-            logger.error(f"Analysis failed in thread: {e}")
+            logger.error(f"Analysis failed: {e}")
             raise
 
     async def _on_file_change(self, changed_files: Optional[List[str]] = None):
@@ -196,13 +209,11 @@ class UniversalAnalysisEngine:
                 # Clear all caches before re-analysis
                 self._clear_all_caches()
 
-                # Run the analysis in a thread pool to avoid blocking the event loop
-                # Note: This is safe because analyze_project is read-only after initialization
-                loop = asyncio.get_event_loop()
+                # Run the analysis directly (now it's async)
                 try:
                     # Add timeout to prevent hanging
                     await asyncio.wait_for(
-                        loop.run_in_executor(None, self._thread_safe_analyze_project),
+                        self._analyze_project(),
                         timeout=300.0  # 5 minute timeout
                     )
                     self._is_analyzed = True
@@ -273,6 +284,10 @@ class UniversalAnalysisEngine:
                 pass
 
         await self.stop_file_watcher()
+        
+        # Cleanup cache resources
+        if self.analyzer:
+            await self.analyzer.cleanup_cache()
 
     async def find_symbol_definition(self, symbol: str) -> List[Dict[str, Any]]:
         """Find definition of a symbol using UniversalGraph."""
@@ -553,11 +568,21 @@ class UniversalAnalysisEngine:
 analysis_engine: Optional[UniversalAnalysisEngine] = None
 
 
-async def ensure_analysis_engine_ready(project_root: Path) -> UniversalAnalysisEngine:
+async def ensure_analysis_engine_ready(project_root: Path, redis_url: Optional[str] = None, enable_redis_cache: bool = True) -> UniversalAnalysisEngine:
     """Ensure the analysis engine is initialized and ready."""
     global analysis_engine
     if analysis_engine is None:
-        analysis_engine = UniversalAnalysisEngine(project_root)
+        # Set up Redis config if provided
+        redis_config = None
+        if enable_redis_cache:
+            from .redis_cache import RedisConfig
+            redis_config = RedisConfig(url=redis_url) if redis_url else RedisConfig()
+        
+        analysis_engine = UniversalAnalysisEngine(
+            project_root, 
+            redis_config=redis_config, 
+            enable_redis_cache=enable_redis_cache
+        )
     return analysis_engine
 
 
@@ -1134,7 +1159,9 @@ def main(project_root: Optional[str], verbose: bool) -> int:
 )
 @click.option("--host", default="0.0.0.0", help="Host for SSE mode")
 @click.option("--port", default=8000, type=int, help="Port for SSE mode")
-def cli(project_root: Optional[str], verbose: bool, mode: str, host: str, port: int) -> int:
+@click.option("--redis-url", help="Redis URL for caching (e.g. redis://localhost:6379)")
+@click.option("--redis-cache/--no-redis-cache", default=True, help="Enable/disable Redis caching")
+def cli(project_root: Optional[str], verbose: bool, mode: str, host: str, port: int, redis_url: Optional[str], redis_cache: bool) -> int:
     """Code Graph Intelligence MCP Server."""
     if mode == "sse":
         # Run in SSE mode

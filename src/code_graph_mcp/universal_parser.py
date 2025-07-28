@@ -17,6 +17,9 @@ try:
 except ImportError:
     SgRoot = None
 
+from .cache_manager import HybridCacheManager
+from .redis_cache import RedisConfig
+
 from .universal_graph import (
     NodeType,
     RelationshipType,
@@ -357,9 +360,20 @@ class LanguageRegistry:
 class UniversalParser:
     """Universal parser supporting 25+ programming languages via ast-grep."""
 
-    def __init__(self):
+    def __init__(self, redis_config: Optional[RedisConfig] = None, enable_redis_cache: bool = True):
         self.registry = LanguageRegistry()
         self.graph = RustworkxCodeGraph()
+        
+        # Initialize cache manager
+        self.cache_manager: Optional[HybridCacheManager] = None
+        self._cache_enabled = enable_redis_cache and redis_config is not None
+        
+        if self._cache_enabled:
+            from .cache_manager import HybridCacheManager, CacheStrategy
+            self.cache_manager = HybridCacheManager(
+                redis_config=redis_config,
+                strategy=CacheStrategy.HYBRID
+            )
 
         # Check if ast-grep is available
         if SgRoot is None:
@@ -368,6 +382,22 @@ class UniversalParser:
         else:
             self._ast_grep_available = True
             logger.info("ast-grep available. Supporting %d languages.", len(self.registry.LANGUAGES))
+    
+    async def initialize_cache(self) -> bool:
+        """Initialize the cache backend."""
+        if self.cache_manager:
+            success = await self.cache_manager.initialize()
+            if success:
+                logger.info("Redis cache backend initialized successfully")
+            else:
+                logger.warning("Redis cache backend initialization failed")
+            return success
+        return True
+    
+    async def cleanup_cache(self):
+        """Cleanup cache resources."""
+        if self.cache_manager:
+            await self.cache_manager.close()
 
     @lru_cache(maxsize=50000)
     def is_supported_file(self, file_path: Path) -> bool:
@@ -379,8 +409,8 @@ class UniversalParser:
         """Detect the programming language of a file."""
         return self.registry.get_language_by_extension(file_path)
 
-    def parse_file(self, file_path: Path) -> bool:
-        """Parse a single file and add nodes to the graph."""
+    async def parse_file(self, file_path: Path) -> bool:
+        """Parse a single file and add nodes to the graph with caching support."""
         if not self._ast_grep_available:
             logger.warning("ast-grep not available, skipping %s", file_path)
             return False
@@ -394,6 +424,107 @@ class UniversalParser:
             logger.debug("Unsupported file type: %s", file_path)
             return False
 
+        # Check cache first if available
+        if self.cache_manager and await self.cache_manager.is_file_cached(file_path):
+            logger.debug(f"Loading cached data for {file_path}")
+            return await self._load_cached_file_data(file_path)
+
+        try:
+            # Parse the file
+            success = await self._parse_file_content(file_path, language_config)
+            
+            # Cache the results if successful
+            if success and self.cache_manager:
+                await self._cache_file_results(file_path)
+            
+            return success
+
+        except Exception as e:
+            logger.error("Error parsing %s: %s", file_path, e)
+            return False
+    
+    async def _load_cached_file_data(self, file_path: Path) -> bool:
+        """Load cached file data into the graph."""
+        try:
+            # Load cached nodes
+            cached_nodes = await self.cache_manager.get_file_nodes(str(file_path))
+            if cached_nodes:
+                for node_dict in cached_nodes:
+                    node = self._dict_to_node(node_dict)
+                    self.graph.add_node(node)
+            
+            # Load cached relationships
+            cached_rels = await self.cache_manager.get_file_relationships(str(file_path))
+            if cached_rels:
+                for rel_dict in cached_rels:
+                    rel = self._dict_to_relationship(rel_dict)
+                    self.graph.add_relationship(rel)
+            
+            # Track as processed
+            self.graph.add_processed_file(str(file_path))
+            
+            logger.debug(f"Successfully loaded cached data for {file_path}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error loading cached data for {file_path}: {e}")
+            return False
+    
+    async def _cache_file_results(self, file_path: Path) -> bool:
+        """Cache the parsing results for a file."""
+        try:
+            # Get nodes for this file
+            file_nodes = [node for node in self.graph.nodes.values() 
+                         if node.location.file_path == str(file_path)]
+            
+            # Get relationships for this file
+            file_relationships = [rel for rel in self.graph.relationships.values()
+                                if any(node.id in [rel.source_id, rel.target_id] for node in file_nodes)]
+            
+            # Cache nodes and relationships
+            await self.cache_manager.set_file_nodes(str(file_path), file_nodes)
+            await self.cache_manager.set_file_relationships(str(file_path), file_relationships)
+            
+            logger.debug(f"Successfully cached results for {file_path}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error caching results for {file_path}: {e}")
+            return False
+    
+    def _dict_to_node(self, node_dict: Dict) -> UniversalNode:
+        """Convert dictionary back to UniversalNode."""
+        location_dict = node_dict.get('location', {})
+        location = UniversalLocation(
+            file_path=location_dict.get('file_path', ''),
+            start_line=location_dict.get('start_line', 1),
+            end_line=location_dict.get('end_line'),
+            language=location_dict.get('language', '')
+        )
+        
+        return UniversalNode(
+            id=node_dict['id'],
+            name=node_dict['name'],
+            node_type=NodeType(node_dict['node_type']),
+            location=location,
+            content=node_dict.get('content'),
+            complexity=node_dict.get('complexity', 0),
+            language=node_dict.get('language'),
+            metadata=node_dict.get('metadata', {})
+        )
+    
+    def _dict_to_relationship(self, rel_dict: Dict) -> UniversalRelationship:
+        """Convert dictionary back to UniversalRelationship."""
+        return UniversalRelationship(
+            id=rel_dict['id'],
+            source_id=rel_dict['source_id'],
+            target_id=rel_dict['target_id'],
+            relationship_type=RelationshipType(rel_dict['relationship_type']),
+            metadata=rel_dict.get('metadata', {})
+        )
+    
+    async def _parse_file_content(self, file_path: Path, language_config: LanguageConfig) -> bool:
+        """Parse file content (extracted from original parse_file method)."""
         try:
             # Read file content with proper encoding detection
             content = self._read_file_with_encoding_detection(file_path)
@@ -425,7 +556,7 @@ class UniversalParser:
 
             logger.debug("Successfully parsed %s (%s)", file_path, language_config.name)
             return True
-
+            
         except Exception as e:
             logger.error("Error parsing %s: %s", file_path, e)
             return False
@@ -978,7 +1109,7 @@ class UniversalParser:
 
         return False
 
-    def parse_directory(self, directory: Path, recursive: bool = True) -> int:
+    async def parse_directory(self, directory: Path, recursive: bool = True) -> int:
         """Parse all supported files in a directory, respecting .gitignore."""
         if not directory.is_dir():
             logger.error("Not a directory: %s", directory)
@@ -1015,7 +1146,7 @@ class UniversalParser:
                     continue
 
                 logger.debug(f"Parsing file: {file_path}")
-                if self.parse_file(file_path):
+                if await self.parse_file(file_path):
                     parsed_count += 1
                 else:
                     logger.debug(f"Failed to parse: {file_path}")

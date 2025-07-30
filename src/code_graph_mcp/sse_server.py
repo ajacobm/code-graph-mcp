@@ -1,385 +1,212 @@
 #!/usr/bin/env python3
 """
-SSE (Server-Sent Events) Server for Code Graph MCP
+MCP Server for Code Graph Analysis
 
-Provides HTTP/SSE endpoints for code analysis tools, exposing only the
-call_tool and list_tools methods as requested.
+Proper MCP implementation using official Python SDK patterns.
+Provides code analysis tools through MCP protocol.
 """
 
-import asyncio
-import json
+import contextlib
 import logging
-import time
-import traceback
+from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
-from pydantic import BaseModel, Field
-import uvicorn
+import click
+import mcp.types as types
+from mcp.server.lowlevel import Server
+from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
+from starlette.applications import Starlette
+from starlette.routing import Mount
+from starlette.types import Receive, Scope, Send
 
-from .server import (
-    UniversalAnalysisEngine,
-    get_tool_definitions,
+# Import our existing MCP infrastructure
+from code_graph_mcp.server.mcp_server import (
+    get_tool_definitions, 
     get_tool_handlers,
     ensure_analysis_engine_ready,
     cleanup_analysis_engine
 )
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger(__name__)
 
 
-# Pydantic models for API
-class ToolCallRequest(BaseModel):
-    """Request model for tool calls."""
-    name: str = Field(..., description="Name of the tool to call")
-    arguments: Dict[str, Any] = Field(default_factory=dict, description="Arguments for the tool")
-
-
-class ToolResponse(BaseModel):
-    """Response model for tool definitions."""
-    name: str
-    description: str
-    inputSchema: Dict[str, Any]
-
-
-class SSECodeGraphServer:
-    """SSE server for code graph analysis tools."""
+class CodeGraphMCPServer:
+    """MCP Server for Code Graph Analysis using official Python SDK patterns."""
     
-    def __init__(self, project_root: Path, enable_file_watcher: bool = True):
+    def __init__(
+        self, 
+        project_root: Path, 
+        redis_url: Optional[str] = None,
+        json_response: bool = False
+    ):
         self.project_root = project_root
-        self.enable_file_watcher = enable_file_watcher
-        self.analysis_complete = False
-        self.app = FastAPI(
-            title="Code Graph MCP SSE Server",
-            description="Server-Sent Events API for code graph intelligence",
-            version="1.2.3"
-        )
+        self.redis_url = redis_url
+        self.json_response = json_response
+        self.app = Server("code-graph-mcp")
+        self.analysis_engine = None
+        self._setup_handlers()
         
-        # Add CORS middleware
-        self.app.add_middleware(
-            CORSMiddleware,
-            allow_origins=["*"],  # Configure appropriately for production
-            allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
-        )
+    def _setup_handlers(self):
+        """Set up MCP tool handlers using decorators."""
         
-        # Setup routes
-        self._setup_routes()
-        
-        # Initialize analysis engine
-        self.analysis_engine: Optional[UniversalAnalysisEngine] = None
-        
-        # Add startup and shutdown handlers
-        @self.app.on_event("startup")
-        async def startup_event():
-            """Initialize analysis engine on server startup."""
-            logger.info(f"Starting SSE server for project: {self.project_root}")
+        @self.app.call_tool()
+        async def call_tool(name: str, arguments: dict) -> list[types.ContentBlock]:
+            """Handle tool calls using our existing MCP infrastructure."""
             try:
-                self.analysis_engine = UniversalAnalysisEngine(
-                    self.project_root, 
-                    enable_file_watcher=self.enable_file_watcher
+                # Ensure analysis engine is ready
+                self.analysis_engine = await ensure_analysis_engine_ready(
+                    self.project_root, self.redis_url
                 )
-                # Start analysis in background, don't wait for completion
-                asyncio.create_task(self._ensure_analysis_complete())
-                logger.info("Analysis engine initialized, starting analysis in background")
-            except Exception as e:
-                logger.error(f"Failed to initialize analysis engine: {e}")
-                raise
-        
-        @self.app.on_event("shutdown")
-        async def shutdown_event():
-            """Cleanup on server shutdown."""
-            logger.info("Shutting down SSE server...")
-            if self.analysis_engine:
-                await self.analysis_engine.cleanup()
-            logger.info("Server shutdown complete")
-    
-    async def _ensure_analysis_complete(self):
-        """Run analysis in background and update status when complete."""
-        try:
-            logger.info("Starting background analysis...")
-            await self.analysis_engine._ensure_analyzed()
-            self.analysis_complete = True
-            logger.info("Background analysis completed successfully")
-        except Exception as e:
-            logger.error(f"Background analysis failed: {e}")
-            # Don't fail the server, just log the error
-    
-    def _setup_routes(self):
-        """Setup FastAPI routes."""
-        
-        @self.app.get("/")
-        async def root():
-            """Root endpoint with server information."""
-            return {
-                "name": "Code Graph MCP SSE Server",
-                "version": "1.2.3",
-                "description": "Server-Sent Events API for code graph intelligence",
-                "project_root": str(self.project_root),
-                "endpoints": {
-                    "list_tools": "/sse/list-tools",
-                    "call_tool": "/sse/call-tool",
-                    "sse_root": "/sse"
-                }
-            }
-        
-        @self.app.get("/health")
-        async def health_check():
-            """Health check endpoint."""
-            return {
-                "status": "healthy",
-                "timestamp": time.time(),
-                "analysis_engine_ready": self.analysis_engine is not None,
-                "analysis_complete": self.analysis_complete
-            }
-        
-        # SSE endpoints under /sse prefix
-        @self.app.get("/sse")
-        async def sse_root():
-            """SSE root endpoint with server information."""
-            return {
-                "name": "Code Graph MCP SSE Server",
-                "version": "1.2.3",
-                "description": "Server-Sent Events API for code graph intelligence",
-                "project_root": str(self.project_root),
-                "endpoints": {
-                    "list_tools": "/sse/list-tools",
-                    "call_tool": "/sse/call-tool"
-                }
-            }
-        
-        @self.app.get("/sse/list-tools")
-        async def sse_list_tools() -> List[ToolResponse]:
-            """List available analysis tools."""
-            try:
-                tools = get_tool_definitions()
-                return [
-                    ToolResponse(
-                        name=tool.name,
-                        description=tool.description,
-                        inputSchema=tool.inputSchema
-                    )
-                    for tool in tools
-                ]
-            except Exception as e:
-                logger.error(f"Error listing tools: {e}")
-                raise HTTPException(status_code=500, detail=f"Failed to list tools: {str(e)}")
-        
-        @self.app.post("/sse/call-tool")
-        async def sse_call_tool(request: ToolCallRequest):
-            """Call a tool with Server-Sent Events response."""
-            if not self.analysis_engine:
-                raise HTTPException(status_code=503, detail="Analysis engine not initialized")
-            
-            # If analysis is not complete, wait for it
-            if not self.analysis_complete:
-                logger.info("Analysis not complete, waiting...")
-                await self.analysis_engine._ensure_analyzed()
-                self.analysis_complete = True
-            
-            return StreamingResponse(
-                self._stream_tool_response(request.name, request.arguments),
-                media_type="text/event-stream",
-                headers={
-                    "Cache-Control": "no-cache",
-                    "Connection": "keep-alive",
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Headers": "Cache-Control"
-                }
-            )
-        
-        # Keep original endpoints for backward compatibility
-        @self.app.get("/list-tools")
-        async def list_tools() -> List[ToolResponse]:
-            """List available analysis tools."""
-            try:
-                tools = get_tool_definitions()
-                return [
-                    ToolResponse(
-                        name=tool.name,
-                        description=tool.description,
-                        inputSchema=tool.inputSchema
-                    )
-                    for tool in tools
-                ]
-            except Exception as e:
-                logger.error(f"Error listing tools: {e}")
-                raise HTTPException(status_code=500, detail=f"Failed to list tools: {str(e)}")
-        
-        @self.app.post("/call-tool")
-        async def call_tool(request: ToolCallRequest):
-            """Call a tool with Server-Sent Events response."""
-            if not self.analysis_engine:
-                raise HTTPException(status_code=503, detail="Analysis engine not initialized")
-            
-            # If analysis is not complete, wait for it
-            if not self.analysis_complete:
-                logger.info("Analysis not complete, waiting...")
-                await self.analysis_engine._ensure_analyzed()
-                self.analysis_complete = True
-            
-            return StreamingResponse(
-                self._stream_tool_response(request.name, request.arguments),
-                media_type="text/event-stream",
-                headers={
-                    "Cache-Control": "no-cache",
-                    "Connection": "keep-alive",
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Headers": "Cache-Control"
-                }
-            )
-        
-        @self.app.get("/cache/stats")
-        async def cache_stats():
-            """Get cache statistics."""
-            if not self.analysis_engine or not self.analysis_engine.analyzer.cache_manager:
-                return {"status": "cache_disabled"}
-            
-            try:
-                stats = await self.analysis_engine.analyzer.cache_manager.get_cache_stats()
-                return stats
-            except Exception as e:
-                logger.error(f"Error getting cache stats: {e}")
-                raise HTTPException(status_code=500, detail=f"Failed to get cache stats: {str(e)}")
-        
-        @self.app.post("/cache/clear")
-        async def clear_cache():
-            """Clear all cache data."""
-            if not self.analysis_engine or not self.analysis_engine.analyzer.cache_manager:
-                raise HTTPException(status_code=400, detail="Cache not enabled")
-            
-            try:
-                await self.analysis_engine.analyzer.cache_manager.clear_all()
-                return {"status": "success", "message": "Cache cleared"}
-            except Exception as e:
-                logger.error(f"Error clearing cache: {e}")
-                raise HTTPException(status_code=500, detail=f"Failed to clear cache: {str(e)}")
-    
-    async def _stream_tool_response(self, tool_name: str, arguments: Dict[str, Any]) -> AsyncGenerator[str, None]:
-        """Stream tool execution results as SSE events."""
-        try:
-            # Send start event
-            yield f"event: start\ndata: {json.dumps({'tool': tool_name, 'status': 'starting'})}\n\n"
-            
-            # Get tool handlers
-            handlers = get_tool_handlers()
-            handler = handlers.get(tool_name)
-            
-            if not handler:
-                error_msg = f"Unknown tool: {tool_name}"
-                yield f"event: error\ndata: {json.dumps({'error': error_msg})}\n\n"
-                return
-            
-            # Send progress event
-            yield f"event: progress\ndata: {json.dumps({'status': 'executing', 'tool': tool_name})}\n\n"
-            
-            start_time = time.time()
-            
-            # Execute the tool
-            logger.info(f"Executing tool: {tool_name} with arguments: {arguments}")
-            result = await handler(self.analysis_engine, arguments)
-            
-            execution_time = time.time() - start_time
-            
-            # Convert TextContent results to JSON serializable format
-            if isinstance(result, list):
-                # Assuming list of TextContent objects
-                text_results = []
-                for item in result:
-                    if hasattr(item, 'text'):
-                        text_results.append(item.text)
-                    else:
-                        text_results.append(str(item))
                 
-                # Send success event with results
-                yield f"event: result\ndata: {json.dumps({'results': text_results, 'execution_time': execution_time})}\n\n"
-            else:
-                # Single result
-                text_result = result.text if hasattr(result, 'text') else str(result)
-                yield f"event: result\ndata: {json.dumps({'result': text_result, 'execution_time': execution_time})}\n\n"
-            
-            # Send completion event
-            yield f"event: complete\ndata: {json.dumps({'tool': tool_name, 'status': 'completed', 'execution_time': execution_time})}\n\n"
-            
-            logger.info(f"Tool {tool_name} completed successfully in {execution_time:.2f}s")
-            
-        except Exception as e:
-            logger.exception(f"Error executing tool {tool_name}")
-            error_info = {
-                'error': str(e),
-                'tool': tool_name,
-                'traceback': traceback.format_exc()
-            }
-            yield f"event: error\ndata: {json.dumps(error_info)}\n\n"
+                # Get our existing tool handlers
+                handlers = get_tool_handlers()
+                
+                if name not in handlers:
+                    raise ValueError(f"Unknown tool: {name}")
+                
+                # Execute the tool using existing infrastructure
+                logger.info(f"Executing tool: {name}")
+                result = await handlers[name](self.analysis_engine, arguments)
+                
+                # Convert result to proper MCP ContentBlock format
+                if isinstance(result, list):
+                    content_blocks = []
+                    for item in result:
+                        if hasattr(item, 'text'):
+                            content_blocks.append(
+                                types.TextContent(type="text", text=item.text)
+                            )
+                        else:
+                            content_blocks.append(
+                                types.TextContent(type="text", text=str(item))
+                            )
+                    return content_blocks
+                else:
+                    text = result.text if hasattr(result, 'text') else str(result)
+                    return [types.TextContent(type="text", text=text)]
+                    
+            except Exception as e:
+                logger.error(f"Error executing tool {name}: {e}")
+                return [types.TextContent(
+                    type="text", 
+                    text=f"Error executing tool {name}: {str(e)}"
+                )]
+        
+        @self.app.list_tools()
+        async def list_tools() -> list[types.Tool]:
+            """List available tools using our existing infrastructure."""
+            try:
+                # Get tool definitions from existing infrastructure  
+                tool_definitions = get_tool_definitions()
+                
+                # Convert to MCP types.Tool format
+                mcp_tools = []
+                for tool_def in tool_definitions:
+                    mcp_tools.append(types.Tool(
+                        name=tool_def.name,
+                        description=tool_def.description,
+                        inputSchema=tool_def.inputSchema
+                    ))
+                
+                return mcp_tools
+                
+            except Exception as e:
+                logger.error(f"Error listing tools: {e}")
+                return []
     
-    def run(self, host: str = "0.0.0.0", port: int = 8000, debug: bool = False):
-        """Run the SSE server."""
-        logger.info(f"Starting SSE server on {host}:{port}")
-        config = uvicorn.Config(
-            self.app,
-            host=host,
-            port=port,
-            log_level="debug" if debug else "info",
-            access_log=debug,
+    def create_starlette_app(self) -> Starlette:
+        """Create Starlette ASGI application with proper MCP transport."""
+        
+        # Create session manager using official SDK pattern
+        session_manager = StreamableHTTPSessionManager(
+            app=self.app,
+            event_store=None,  # Stateless for now
+            json_response=self.json_response,
+            stateless=True
         )
-        server = uvicorn.Server(config)
-        asyncio.run(server.serve())
+
+        async def handle_mcp_request(scope: Scope, receive: Receive, send: Send) -> None:
+            """Handle MCP requests through StreamableHTTP transport."""
+            await session_manager.handle_request(scope, receive, send)
+
+        @contextlib.asynccontextmanager
+        async def lifespan(starlette_app: Starlette) -> AsyncIterator[None]:
+            """Manage application lifecycle."""
+            async with session_manager.run():
+                logger.info(f"Code Graph MCP Server started for: {self.project_root}")
+                try:
+                    yield
+                finally:
+                    logger.info("Shutting down Code Graph MCP Server...")
+                    if self.analysis_engine:
+                        await cleanup_analysis_engine()
+
+        # Create Starlette app following official pattern
+        starlette_app = Starlette(
+            debug=True,
+            routes=[
+                Mount("/mcp", app=handle_mcp_request),
+            ],
+            lifespan=lifespan,
+        )
+        
+        return starlette_app
+    
+    def run(self, host: str = "127.0.0.1", port: int = 8000):
+        """Run the MCP server."""
+        starlette_app = self.create_starlette_app()
+        
+        import uvicorn
+        uvicorn.run(starlette_app, host=host, port=port)
 
 
-def create_sse_app(project_root: Path, enable_file_watcher: bool = True) -> FastAPI:
-    """Create FastAPI application for SSE server."""
-    server = SSECodeGraphServer(project_root, enable_file_watcher)
-    return server.app
-
-
-async def run_sse_server(
-    project_root: Path,
-    host: str = "0.0.0.0",
-    port: int = 8000,
-    debug: bool = False,
-    enable_file_watcher: bool = True
-):
-    """Run the SSE server asynchronously."""
-    server = SSECodeGraphServer(project_root, enable_file_watcher)
+@click.command()
+@click.option("--project-root", default=".", help="Project root directory")
+@click.option("--host", default="127.0.0.1", help="Host to bind to")
+@click.option("--port", default=8000, type=int, help="Port to bind to")
+@click.option("--redis-url", help="Redis URL for caching")
+@click.option(
+    "--json-response",
+    is_flag=True,
+    default=False,
+    help="Enable JSON responses instead of SSE streams",
+)
+@click.option(
+    "--log-level",
+    default="INFO",
+    help="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
+)
+def main(
+    project_root: str,
+    host: str,
+    port: int,
+    redis_url: Optional[str],
+    json_response: bool,
+    log_level: str,
+) -> int:
+    """Run Code Graph MCP Server."""
+    
+    # Configure logging
+    logging.basicConfig(
+        level=getattr(logging, log_level.upper()),
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+    
+    root_path = Path(project_root).resolve()
+    server = CodeGraphMCPServer(
+        project_root=root_path,
+        redis_url=redis_url,
+        json_response=json_response
+    )
     
     try:
-        config = uvicorn.Config(
-            server.app,
-            host=host,
-            port=port,
-            log_level="debug" if debug else "info",
-            access_log=debug
-        )
-        server_instance = uvicorn.Server(config)
-        await server_instance.serve()
-    except KeyboardInterrupt:
-        logger.info("Server stopped by user")
+        server.run(host=host, port=port)
+        return 0
     except Exception as e:
-        logger.error(f"Server error: {e}")
-        raise
+        logger.error(f"Failed to start server: {e}")
+        return 1
 
 
 if __name__ == "__main__":
-    import click
-    
-    @click.command()
-    @click.option("--project-root", type=str, help="Root directory of the project to analyze", default=".")
-    @click.option("--host", default="0.0.0.0", help="Host to bind to")
-    @click.option("--port", default=8000, type=int, help="Port to bind to")
-    @click.option("--debug", is_flag=True, help="Enable debug mode")
-    @click.option("--disable-file-watcher", is_flag=True, help="Disable file watcher")
-    def main(project_root: str, host: str, port: int, debug: bool, disable_file_watcher: bool):
-        """Run the Code Graph SSE Server."""
-        root_path = Path(project_root).resolve()
-        server = SSECodeGraphServer(root_path, enable_file_watcher=not disable_file_watcher)
-        server.run(host=host, port=port, debug=debug)
-    
     main()

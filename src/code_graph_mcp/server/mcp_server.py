@@ -546,14 +546,30 @@ def main(project_root: Optional[str], verbose: bool) -> int:
 def cli(project_root: Optional[str], verbose: bool, mode: str, host: str, port: int, redis_url: Optional[str], redis_cache: bool) -> int:
     """Code Graph Intelligence MCP Server."""
     if mode == "sse":
-        # Run in SSE mode
-        from ..sse_server import SSECodeGraphServer
+        # Run in MCP over HTTP mode (using official SDK patterns)
+        try:
+            from code_graph_mcp.sse_server import CodeGraphMCPServer
+        except ImportError as e:
+            logger.error(f"Failed to import HTTP server dependencies: {e}")
+            logger.error("Please ensure FastAPI and Uvicorn are installed: pip install fastapi uvicorn")
+            return 1
+            
         if verbose:
             logging.getLogger().setLevel(logging.DEBUG)
         
         root_path = Path(project_root) if project_root else Path.cwd()
-        server = SSECodeGraphServer(root_path)
-        server.run(host=host, port=port, debug=verbose)
+        server = CodeGraphMCPServer(
+            project_root=root_path,
+            redis_url=redis_url if redis_cache else None,
+            json_response=False  # Use SSE streaming by default
+        )
+        
+        try:
+            server.run(host=host, port=port)
+        except Exception as e:
+            logger.error(f"Failed to start HTTP server: {e}")
+            return 1
+            
         return 0
     else:
         # Run in stdio MCP mode (default)

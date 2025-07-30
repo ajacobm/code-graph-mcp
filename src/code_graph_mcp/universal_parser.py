@@ -8,7 +8,6 @@ Provides language-agnostic parsing with consistent node types and relationships.
 import logging
 import fnmatch
 from dataclasses import dataclass
-from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
@@ -17,7 +16,7 @@ try:
 except ImportError:
     SgRoot = None
 
-from .cache_manager import HybridCacheManager
+from .cache_manager import HybridCacheManager, cached_method
 from .redis_cache import RedisConfig
 
 from .universal_graph import (
@@ -51,6 +50,9 @@ class LanguageConfig:
 
 class LanguageRegistry:
     """Registry of supported programming languages with their configurations."""
+
+    def __init__(self, cache_manager: Optional[HybridCacheManager] = None):
+        self.cache_manager = cache_manager
 
     LANGUAGES = {
         "javascript": LanguageConfig(
@@ -330,27 +332,27 @@ class LanguageRegistry:
         )
     }
 
-    @lru_cache(maxsize=50000)
-    def get_language_by_extension(self, file_path: Path) -> Optional[LanguageConfig]:
-        """Get language configuration by file extension with LRU caching."""
+    @cached_method(ttl=3600, key_generator=lambda self, fp: f"lang_by_ext:{fp.suffix}")
+    async def get_language_by_extension(self, file_path: Path) -> Optional[LanguageConfig]:
+        """Get language configuration by file extension with hybrid caching."""
         suffix = file_path.suffix.lower()
         for lang_config in self.LANGUAGES.values():
             if suffix in lang_config.extensions:
                 return lang_config
         return None
 
-    @lru_cache(maxsize=10000)
-    def get_language_by_name(self, name: str) -> Optional[LanguageConfig]:
-        """Get language configuration by name with LRU caching."""
+    @cached_method(ttl=3600, key_generator=lambda self, name: f"lang_by_name:{name}")
+    async def get_language_by_name(self, name: str) -> Optional[LanguageConfig]:
+        """Get language configuration by name with hybrid caching."""
         return self.LANGUAGES.get(name.lower())
 
     def get_all_languages(self) -> List[LanguageConfig]:
         """Get all supported language configurations."""
         return list(self.LANGUAGES.values())
 
-    @lru_cache(maxsize=1)
-    def get_supported_extensions(self) -> Set[str]:
-        """Get all supported file extensions."""
+    @cached_method(ttl=86400, key_generator=lambda self: "supported_extensions")
+    async def get_supported_extensions(self) -> Set[str]:
+        """Get all supported file extensions with hybrid caching."""
         extensions = set()
         for lang_config in self.LANGUAGES.values():
             extensions.update(lang_config.extensions)
@@ -361,10 +363,7 @@ class UniversalParser:
     """Universal parser supporting 25+ programming languages via ast-grep."""
 
     def __init__(self, redis_config: Optional[RedisConfig] = None, enable_redis_cache: bool = True):
-        self.registry = LanguageRegistry()
-        self.graph = RustworkxCodeGraph()
-        
-        # Initialize cache manager
+        # Initialize cache manager first
         self.cache_manager: Optional[HybridCacheManager] = None
         self._cache_enabled = enable_redis_cache and redis_config is not None
         
@@ -374,6 +373,15 @@ class UniversalParser:
                 redis_config=redis_config,
                 strategy=CacheStrategy.HYBRID
             )
+            
+        # Initialize registry with cache manager
+        self.registry = LanguageRegistry(self.cache_manager)
+        self.graph = RustworkxCodeGraph()
+            
+        # Gitignore pattern caching - NEW: optimize the performance bottleneck
+        self._gitignore_patterns: Optional[List[str]] = None
+        self._gitignore_compiled: Optional[Any] = None  # pathspec.PathSpec when available
+        self._project_root: Optional[Path] = None
 
         # Check if ast-grep is available
         if SgRoot is None:
@@ -399,15 +407,16 @@ class UniversalParser:
         if self.cache_manager:
             await self.cache_manager.close()
 
-    @lru_cache(maxsize=50000)
-    def is_supported_file(self, file_path: Path) -> bool:
-        """Check if a file is supported for parsing."""
-        return file_path.suffix.lower() in self.registry.get_supported_extensions()
+    @cached_method(ttl=1800, key_generator=lambda self, fp: f"supported:{fp.suffix}")
+    async def is_supported_file(self, file_path: Path) -> bool:
+        """Check if a file is supported for parsing with hybrid caching."""
+        supported_extensions = await self.registry.get_supported_extensions()
+        return file_path.suffix.lower() in supported_extensions
 
-    @lru_cache(maxsize=50000)
-    def detect_language(self, file_path: Path) -> Optional[LanguageConfig]:
-        """Detect the programming language of a file."""
-        return self.registry.get_language_by_extension(file_path)
+    @cached_method(ttl=1800, key_generator=lambda self, fp: f"detect_lang:{fp.suffix}")
+    async def detect_language(self, file_path: Path) -> Optional[LanguageConfig]:
+        """Detect the programming language of a file with hybrid caching."""
+        return await self.registry.get_language_by_extension(file_path)
 
     async def parse_file(self, file_path: Path) -> bool:
         """Parse a single file and add nodes to the graph with caching support."""
@@ -419,7 +428,7 @@ class UniversalParser:
             logger.warning("File not found: %s", file_path)
             return False
 
-        language_config = self.detect_language(file_path)
+        language_config = await self.detect_language(file_path)
         if not language_config:
             logger.debug("Unsupported file type: %s", file_path)
             return False
@@ -707,9 +716,8 @@ class UniversalParser:
         except Exception as e:
             logger.debug("Error parsing imports in %s: %s", file_path, e)
 
-    @lru_cache(maxsize=100000)
     def _extract_function_name(self, line: str, pattern: str, language_config: LanguageConfig) -> Optional[str]:
-        """Extract function name from a line with LRU caching."""
+        """Extract function name from a line (removed LRU cache - using file-level caching instead)."""
         # Simplified name extraction - real implementation would be more sophisticated
         parts = line.strip().split()
         try:
@@ -723,9 +731,8 @@ class UniversalParser:
             pass
         return None
 
-    @lru_cache(maxsize=50000)
     def _extract_class_name(self, line: str, pattern: str, language_config: LanguageConfig) -> Optional[str]:
-        """Extract class name from a line with LRU caching."""
+        """Extract class name from a line (removed LRU cache - using file-level caching instead)."""
         parts = line.strip().split()
         try:
             if pattern == "class" and len(parts) >= 2:
@@ -736,7 +743,7 @@ class UniversalParser:
             pass
         return None
 
-    @lru_cache(maxsize=100000)
+    
     def _extract_import_target(self, line: str, pattern: str, language_config: LanguageConfig) -> Optional[str]:
         """Extract import target from a line with LRU caching."""
         try:
@@ -979,7 +986,7 @@ class UniversalParser:
         except Exception as e:
             logger.debug("Error parsing method invocations in %s: %s", file_path, e)
 
-    @lru_cache(maxsize=200000)
+    
     def _extract_function_calls(self, line: str, language_config: LanguageConfig) -> List[str]:
         """Extract function call names from a line of code with LRU caching."""
         import re
@@ -1025,7 +1032,7 @@ class UniversalParser:
             logger.error(f"Failed to read file {file_path}: {e}")
             raise
 
-    @lru_cache(maxsize=300000)
+    
     def _extract_variable_references(self, line: str, language_config: LanguageConfig, known_variables: frozenset) -> List[str]:
         """Extract variable references from a line of code with LRU caching."""
         import re
@@ -1042,7 +1049,7 @@ class UniversalParser:
 
         return refs
 
-    @lru_cache(maxsize=150000)
+    
     def _extract_method_invocations(self, line: str, language_config: LanguageConfig) -> List[tuple]:
         """Extract method invocations (object.method calls) from a line with LRU caching."""
         import re
@@ -1066,100 +1073,215 @@ class UniversalParser:
                 return node
         return None
 
+    def _load_gitignore_patterns(self, project_root: Path) -> None:
+        """Load and compile gitignore patterns once per project - PERFORMANCE OPTIMIZATION."""
+        if self._project_root == project_root and self._gitignore_patterns is not None:
+            return  # Already loaded for this project
+        
+        self._project_root = project_root
+        gitignore_path = project_root / '.gitignore'
+        
+        if not gitignore_path.exists():
+            self._gitignore_patterns = []
+            self._gitignore_compiled = None
+            logger.debug(f"No .gitignore found at {gitignore_path}")
+            return
+        
+        try:
+            # Try to use pathspec for proper gitignore handling
+            try:
+                import pathspec
+                with open(gitignore_path, 'r', encoding='utf-8') as f:
+                    patterns = [line.strip() for line in f 
+                               if line.strip() and not line.startswith('#')]
+                
+                self._gitignore_patterns = patterns
+                self._gitignore_compiled = pathspec.PathSpec.from_lines('gitwildmatch', patterns)
+                logger.debug(f"Loaded {len(patterns)} gitignore patterns using pathspec from {gitignore_path}")
+                
+            except ImportError:
+                # Fallback to simple pattern matching if pathspec not available
+                with open(gitignore_path, 'r', encoding='utf-8') as f:
+                    patterns = [line.strip() for line in f 
+                               if line.strip() and not line.startswith('#')]
+                
+                self._gitignore_patterns = patterns
+                self._gitignore_compiled = None
+                logger.debug(f"Loaded {len(patterns)} gitignore patterns using fallback from {gitignore_path}")
+                
+        except Exception as e:
+            logger.warning(f"Error loading .gitignore from {gitignore_path}: {e}")
+            self._gitignore_patterns = []
+            self._gitignore_compiled = None
+
     def _should_ignore_path(self, file_path: Path, project_root: Path) -> bool:
-        """Check if a path should be ignored based on .gitignore patterns and common skip patterns."""
-        # Always skip system/cache directories that should never be analyzed
+        """Check if path should be ignored (OPTIMIZED: cached patterns, proper gitignore support)."""
+        # Load gitignore patterns if needed (only happens once per project)
+        self._load_gitignore_patterns(project_root)
+        
+        # Always skip system/cache directories
         common_skip_dirs = {
             '__pycache__', '.git', '.svn', '.hg', '.bzr',
             '.pytest_cache', '.mypy_cache', '.tox', '.coverage',
             '.sass-cache', '.cache', '.DS_Store', '.idea', '.vscode', '.vs'
         }
-
-        # Check if any part of the path contains common skip directories
+        
         if any(part in common_skip_dirs for part in file_path.parts):
             return True
+        
+        # Check gitignore patterns using compiled pathspec if available
+        if self._gitignore_compiled:
+            try:
+                relative_path = file_path.relative_to(project_root)
+                return self._gitignore_compiled.match_file(str(relative_path))
+            except ValueError:
+                # Path is not relative to project root
+                return False
+        elif self._gitignore_patterns:
+            # Fallback to simple pattern matching
+            try:
+                relative_path = file_path.relative_to(project_root)
+                path_str = str(relative_path)
 
-        # Check .gitignore patterns
-        gitignore_path = project_root / '.gitignore'
-        if not gitignore_path.exists():
-            return False
-
-        try:
-            with open(gitignore_path, 'r', encoding='utf-8') as f:
-                patterns = [line.strip() for line in f if line.strip() and not line.startswith('#')]
-        except Exception:
-            return False
-
-        # Convert file path to relative path from project root
-        try:
-            relative_path = file_path.relative_to(project_root)
-            path_str = str(relative_path)
-
-            # Check against each gitignore pattern
-            for pattern in patterns:
-                if fnmatch.fnmatch(path_str, pattern) or fnmatch.fnmatch(path_str, pattern + '/*'):
-                    return True
-                # Handle directory patterns
-                if pattern.endswith('/') and path_str.startswith(pattern[:-1] + '/'):
-                    return True
-
-        except ValueError:
-            # Path is not relative to project root
-            pass
-
+                # Check against each gitignore pattern
+                for pattern in self._gitignore_patterns:
+                    if fnmatch.fnmatch(path_str, pattern) or fnmatch.fnmatch(path_str, pattern + '/*'):
+                        return True
+                    # Handle directory patterns
+                    if pattern.endswith('/') and path_str.startswith(pattern[:-1] + '/'):
+                        return True
+                        
+            except ValueError:
+                # Path is not relative to project root
+                pass
+        
         return False
 
     async def parse_directory(self, directory: Path, recursive: bool = True) -> int:
-        """Parse all supported files in a directory, respecting .gitignore."""
+        """Parse all supported files in a directory with OPTIMIZED gitignore-aware traversal."""
         if not directory.is_dir():
             logger.error("Not a directory: %s", directory)
             return 0
 
-        logger.info(f"Starting parse_directory for: {directory}")
-        parsed_count = 0
-        supported_extensions = self.registry.get_supported_extensions()
+        logger.info(f"Starting optimized parse_directory for: {directory}")
+        
+        # Get supported extensions
+        supported_extensions = await self.registry.get_supported_extensions()
         logger.info(f"Supported extensions: {list(supported_extensions)[:10]}...")
-
+        
+        # Use optimized traversal with directory pruning instead of rglob()
         if recursive:
-            files = directory.rglob("*")
+            files_to_process = self._get_files_with_directory_pruning(directory, supported_extensions)
         else:
-            files = directory.iterdir()
-
-        total_files = 0
-        for file_path in files:
-            total_files += 1
-            if total_files % 100 == 0:
-                logger.info(f"Processed {total_files} files, parsed {parsed_count} successfully")
-
-            # Skip files ignored by .gitignore
-            if self._should_ignore_path(file_path, directory):
-                logger.debug(f"Skipping ignored path: {file_path}")
-                continue
-
-            if file_path.is_file() and file_path.suffix.lower() in supported_extensions:
-                # Skip files that are too large (> 1MB)
-                try:
-                    if file_path.stat().st_size > 1024 * 1024:  # 1MB limit
-                        logger.debug(f"Skipping large file: {file_path} ({file_path.stat().st_size} bytes)")
+            # Non-recursive: check immediate directory only
+            files_to_process = []
+            for item in directory.iterdir():
+                if (item.is_file() and 
+                    not self._should_ignore_path(item, directory) and
+                    item.suffix.lower() in supported_extensions):
+                    
+                    # Check file size
+                    try:
+                        if item.stat().st_size > 1024 * 1024:  # 1MB limit
+                            logger.debug(f"Skipping large file: {item}")
+                            continue
+                    except OSError:
                         continue
-                except OSError:
-                    continue
+                    
+                    files_to_process.append(item)
+        
+        logger.info(f"Optimized traversal found {len(files_to_process)} files to process")
+        
+        # Parse the pre-filtered files
+        parsed_count = 0
+        for file_path in files_to_process:
+            logger.debug(f"Parsing file: {file_path}")
+            if await self.parse_file(file_path):
+                parsed_count += 1
+            else:
+                logger.debug(f"Failed to parse: {file_path}")
+            
+            # Progress logging
+            if parsed_count % 100 == 0 and parsed_count > 0:
+                logger.info(f"Parsed {parsed_count} files successfully")
 
-                logger.debug(f"Parsing file: {file_path}")
-                if await self.parse_file(file_path):
-                    parsed_count += 1
-                else:
-                    logger.debug(f"Failed to parse: {file_path}")
-
-        logger.info("Parsed %d files in %s", parsed_count, directory)
+        logger.info(f"Optimized parsing complete: {parsed_count}/{len(files_to_process)} files parsed")
         return parsed_count
+    
+    def _get_files_with_directory_pruning(self, directory: Path, supported_extensions: Set[str]) -> List[Path]:
+        """Get files using intelligent directory traversal that prunes ignored trees."""
+        
+        files = []
+        skipped_dirs = set()
+        
+        def _walk_directory(current_dir: Path) -> None:
+            """Recursively walk directory with intelligent pruning."""
+            
+            try:
+                entries = list(current_dir.iterdir())
+            except (PermissionError, OSError) as e:
+                logger.debug(f"Cannot access directory {current_dir}: {e}")
+                return
+            
+            # Separate files and directories for processing
+            dir_files = []
+            subdirs = []
+            
+            for entry in entries:
+                if entry.is_file():
+                    dir_files.append(entry)
+                elif entry.is_dir():
+                    subdirs.append(entry)
+            
+            # Process files in current directory
+            for file_path in dir_files:
+                # Skip if ignored
+                if self._should_ignore_path(file_path, directory):
+                    logger.debug(f"Skipping ignored file: {file_path}")
+                    continue
+                
+                # Check if supported extension
+                if file_path.suffix.lower() in supported_extensions:
+                    # Check file size limit
+                    try:
+                        if file_path.stat().st_size > 1024 * 1024:  # 1MB
+                            logger.debug(f"Skipping large file: {file_path}")
+                            continue
+                    except OSError:
+                        continue
+                    
+                    files.append(file_path)
+            
+            # Process subdirectories with pruning
+            for dir_path in subdirs:
+                # OPTIMIZATION: Check if entire directory should be ignored
+                if self._should_ignore_path(dir_path, directory):
+                    # Log directory tree pruning (only once per tree)
+                    if dir_path not in skipped_dirs:
+                        logger.info(f"Pruning ignored directory tree: {dir_path}")
+                        skipped_dirs.add(dir_path)
+                    continue  # PRUNE: Skip entire subtree
+                
+                # Recursively process subdirectory
+                _walk_directory(dir_path)
+        
+        # Start the optimized traversal
+        logger.debug(f"Starting directory tree traversal from: {directory}")
+        _walk_directory(directory)
+        
+        logger.info(f"Directory pruning results: {len(files)} files found, {len(skipped_dirs)} directories pruned")
+        if skipped_dirs:
+            logger.debug(f"Pruned directories: {sorted([str(d.relative_to(directory)) for d in skipped_dirs])}")
+        
+        return files
 
-    def get_parsing_statistics(self) -> Dict[str, Any]:
+    async def get_parsing_statistics(self) -> Dict[str, Any]:
         """Get statistics about the parsed code."""
         stats = self.graph.get_statistics()
+        supported_extensions = await self.registry.get_supported_extensions()
         stats.update({
             "supported_languages": len(self.registry.LANGUAGES),
-            "supported_extensions": list(self.registry.get_supported_extensions()),
+            "supported_extensions": list(supported_extensions),
             "ast_grep_available": self._ast_grep_available
         })
         return stats

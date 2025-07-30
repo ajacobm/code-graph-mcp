@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple, Union
 import redis.asyncio as redis
 from redis.asyncio import Redis
 
-from .universal_graph import CodeNode, CodeRelationship
+from .universal_graph import UniversalNode, UniversalRelationship
 
 logger = logging.getLogger(__name__)
 
@@ -96,11 +96,11 @@ class RedisSerializer:
         """Serialize data for Redis storage."""
         try:
             if self.format_type == "msgpack":
-                if isinstance(data, (CodeNode, CodeRelationship)):
+                if isinstance(data, (UniversalNode, UniversalRelationship)):
                     data = asdict(data)
                 serialized = self.msgpack.packb(data, use_bin_type=True)
             elif self.format_type == "json":
-                if isinstance(data, (CodeNode, CodeRelationship)):
+                if isinstance(data, (UniversalNode, UniversalRelationship)):
                     data = asdict(data)
                 serialized = json.dumps(data, default=str).encode('utf-8')
             else:  # pickle
@@ -334,7 +334,7 @@ class RedisCacheBackend:
             logger.error(f"Error getting cached nodes for {file_path}: {e}")
             return None
     
-    async def set_file_nodes(self, file_path: str, nodes: List[CodeNode], ttl: Optional[int] = None) -> bool:
+    async def set_file_nodes(self, file_path: str, nodes: List[UniversalNode], ttl: Optional[int] = None) -> bool:
         """Cache nodes for a file."""
         if not self._connected:
             return False
@@ -373,7 +373,7 @@ class RedisCacheBackend:
             logger.error(f"Error getting cached relationships for {file_path}: {e}")
             return None
     
-    async def set_file_relationships(self, file_path: str, relationships: List[CodeRelationship], ttl: Optional[int] = None) -> bool:
+    async def set_file_relationships(self, file_path: str, relationships: List[UniversalRelationship], ttl: Optional[int] = None) -> bool:
         """Cache relationships for a file."""
         if not self._connected:
             return False

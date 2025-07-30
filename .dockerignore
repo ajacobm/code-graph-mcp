@@ -49,22 +49,27 @@ venv.bak/
 ehthumbs.db
 Thumbs.db
 
-# Testing
+# Testing and development
 .coverage
 .pytest_cache
 .tox
 htmlcov
-
-# Documentation
-docs/_build
-
-# Logs
+tests/
 *.log
+
+# Documentation build artifacts
+docs/_build
 
 # Workspace (will be mounted as volume)
 workspace/
 
-# Development files
-README.md
+# Development and CI files
+.github/
+.claude/
+*.md
 CHANGELOG.md
-LICENSE
+docker-compose-sample.yml
+
+# Keep essential files for container
+!README.md
+!LICENSE

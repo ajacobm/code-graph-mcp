@@ -55,6 +55,7 @@ class SSECodeGraphServer:
     def __init__(self, project_root: Path, enable_file_watcher: bool = True):
         self.project_root = project_root
         self.enable_file_watcher = enable_file_watcher
+        self.analysis_complete = False
         self.app = FastAPI(
             title="Code Graph MCP SSE Server",
             description="Server-Sent Events API for code graph intelligence",
@@ -86,9 +87,9 @@ class SSECodeGraphServer:
                     self.project_root, 
                     enable_file_watcher=self.enable_file_watcher
                 )
-                # Ensure initial analysis is complete
-                await self.analysis_engine._ensure_analyzed()
-                logger.info("Analysis engine initialized successfully")
+                # Start analysis in background, don't wait for completion
+                asyncio.create_task(self._ensure_analysis_complete())
+                logger.info("Analysis engine initialized, starting analysis in background")
             except Exception as e:
                 logger.error(f"Failed to initialize analysis engine: {e}")
                 raise
@@ -100,6 +101,17 @@ class SSECodeGraphServer:
             if self.analysis_engine:
                 await self.analysis_engine.cleanup()
             logger.info("Server shutdown complete")
+    
+    async def _ensure_analysis_complete(self):
+        """Run analysis in background and update status when complete."""
+        try:
+            logger.info("Starting background analysis...")
+            await self.analysis_engine._ensure_analyzed()
+            self.analysis_complete = True
+            logger.info("Background analysis completed successfully")
+        except Exception as e:
+            logger.error(f"Background analysis failed: {e}")
+            # Don't fail the server, just log the error
     
     def _setup_routes(self):
         """Setup FastAPI routes."""
@@ -113,8 +125,9 @@ class SSECodeGraphServer:
                 "description": "Server-Sent Events API for code graph intelligence",
                 "project_root": str(self.project_root),
                 "endpoints": {
-                    "list_tools": "/list-tools",
-                    "call_tool": "/call-tool"
+                    "list_tools": "/sse/list-tools",
+                    "call_tool": "/sse/call-tool",
+                    "sse_root": "/sse"
                 }
             }
         
@@ -124,9 +137,66 @@ class SSECodeGraphServer:
             return {
                 "status": "healthy",
                 "timestamp": time.time(),
-                "analysis_engine_ready": self.analysis_engine is not None
+                "analysis_engine_ready": self.analysis_engine is not None,
+                "analysis_complete": self.analysis_complete
             }
         
+        # SSE endpoints under /sse prefix
+        @self.app.get("/sse")
+        async def sse_root():
+            """SSE root endpoint with server information."""
+            return {
+                "name": "Code Graph MCP SSE Server",
+                "version": "1.2.3",
+                "description": "Server-Sent Events API for code graph intelligence",
+                "project_root": str(self.project_root),
+                "endpoints": {
+                    "list_tools": "/sse/list-tools",
+                    "call_tool": "/sse/call-tool"
+                }
+            }
+        
+        @self.app.get("/sse/list-tools")
+        async def sse_list_tools() -> List[ToolResponse]:
+            """List available analysis tools."""
+            try:
+                tools = get_tool_definitions()
+                return [
+                    ToolResponse(
+                        name=tool.name,
+                        description=tool.description,
+                        inputSchema=tool.inputSchema
+                    )
+                    for tool in tools
+                ]
+            except Exception as e:
+                logger.error(f"Error listing tools: {e}")
+                raise HTTPException(status_code=500, detail=f"Failed to list tools: {str(e)}")
+        
+        @self.app.post("/sse/call-tool")
+        async def sse_call_tool(request: ToolCallRequest):
+            """Call a tool with Server-Sent Events response."""
+            if not self.analysis_engine:
+                raise HTTPException(status_code=503, detail="Analysis engine not initialized")
+            
+            # If analysis is not complete, wait for it
+            if not self.analysis_complete:
+                logger.info("Analysis not complete, waiting...")
+                await self.analysis_engine._ensure_analyzed()
+                self.analysis_complete = True
+            
+            return StreamingResponse(
+                self._stream_tool_response(request.name, request.arguments),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Headers": "Cache-Control"
+                }
+            )
+        
+        # Keep original endpoints for backward compatibility
         @self.app.get("/list-tools")
         async def list_tools() -> List[ToolResponse]:
             """List available analysis tools."""
@@ -149,6 +219,12 @@ class SSECodeGraphServer:
             """Call a tool with Server-Sent Events response."""
             if not self.analysis_engine:
                 raise HTTPException(status_code=503, detail="Analysis engine not initialized")
+            
+            # If analysis is not complete, wait for it
+            if not self.analysis_complete:
+                logger.info("Analysis not complete, waiting...")
+                await self.analysis_engine._ensure_analyzed()
+                self.analysis_complete = True
             
             return StreamingResponse(
                 self._stream_tool_response(request.name, request.arguments),
@@ -247,14 +323,15 @@ class SSECodeGraphServer:
     def run(self, host: str = "0.0.0.0", port: int = 8000, debug: bool = False):
         """Run the SSE server."""
         logger.info(f"Starting SSE server on {host}:{port}")
-        uvicorn.run(
+        config = uvicorn.Config(
             self.app,
             host=host,
             port=port,
             log_level="debug" if debug else "info",
             access_log=debug,
-            reload=debug
         )
+        server = uvicorn.Server(config)
+        asyncio.run(server.serve())
 
 
 def create_sse_app(project_root: Path, enable_file_watcher: bool = True) -> FastAPI:

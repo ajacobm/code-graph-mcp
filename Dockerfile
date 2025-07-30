@@ -1,7 +1,7 @@
-# Multi-stage Dockerfile for Code Graph MCP Server
-# Supports both stdio (MCP) and SSE (HTTP) modes
+# Multi-stage Dockerfile for Code Graph MCP Server with Redis Cache Support
+# Supports both stdio (MCP) and SSE (HTTP) modes with optional Redis caching
 
-FROM python:3.12-slim as base
+FROM python:3.12-slim AS base
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
@@ -9,11 +9,12 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Install system dependencies required for ast-grep and rustworkx
+# Install system dependencies required for ast-grep, rustworkx, and Redis
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
     git \
+    pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
@@ -29,7 +30,7 @@ COPY pyproject.toml uv.lock* ./
 RUN pip install uv
 
 # Development stage
-FROM base as development
+FROM base AS development
 
 # Install dependencies with dev extras
 RUN uv sync --all-extras
@@ -46,13 +47,15 @@ USER codeuser
 CMD ["uv", "run", "code-graph-mcp", "--verbose"]
 
 # Production stage
-FROM base as production
+FROM base AS production
 
-# Install only production dependencies
+# Copy source code and dependencies first
+COPY src/ ./src/
+COPY pyproject.toml ./
+COPY README.md LICENSE ./
+
+# Install only production dependencies and build
 RUN uv sync --frozen --no-dev
-
-# Copy source code
-COPY . .
 
 # Install the package
 RUN uv pip install -e .
@@ -63,22 +66,38 @@ RUN chown -R codeuser:codeuser /app
 USER codeuser
 
 # Create directories that might be needed
-RUN mkdir -p /app/workspace
+RUN mkdir -p /app/workspace /app/.cache
 
 # Expose port for SSE mode
 EXPOSE 8000
 
+# Health check for the container
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+
 # Default command (can be overridden)
-CMD ["code-graph-mcp"]
+CMD ["code-graph-mcp", "--help"]
 
 # SSE-specific stage
-FROM production as sse
+FROM production AS sse
 
-# Default to SSE mode with HTTP server
-CMD ["code-graph-mcp", "--mode", "sse", "--host", "0.0.0.0", "--port", "8000"]
+# Default to SSE mode with HTTP server and Redis support
+CMD ["code-graph-mcp", "--mode", "sse", "--host", "0.0.0.0", "--port", "8000", "--enable-cache"]
 
 # Stdio-specific stage (for MCP clients)
-FROM production as stdio
+FROM production AS stdio
 
-# Default to stdio mode for MCP
-CMD ["code-graph-mcp", "--mode", "stdio"]
+# Default to stdio mode for MCP with cache support
+CMD ["code-graph-mcp", "--mode", "stdio", "--enable-cache"]
+
+# Redis-enabled stage
+FROM production AS redis
+
+# Install Redis dependencies if not already included
+RUN uv pip install redis>=5.0.0 msgpack>=1.0.0
+
+# Default with Redis cache enabled
+ENV CODE_GRAPH_REDIS_URL=redis://redis:6379/0
+ENV CODE_GRAPH_REDIS_PREFIX=cgmcp_prod
+
+CMD ["code-graph-mcp", "--redis-url", "${CODE_GRAPH_REDIS_URL}", "--redis-prefix", "${CODE_GRAPH_REDIS_PREFIX}"]

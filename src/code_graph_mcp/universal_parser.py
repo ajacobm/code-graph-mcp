@@ -148,8 +148,8 @@ class LanguageRegistry:
             comment_patterns=("//", "/*", "*/"),
             string_patterns=('"', "'"),
             function_patterns=("public", "private", "protected", "static"),
-            class_patterns=("class", "interface", "struct", "enum"),
-            variable_patterns=("int", "string", "bool", "double", "var"),
+            class_patterns=("class", "interface", "struct", "enum", "record"),
+            variable_patterns=("int", "string", "bool", "double", "var", "datetime"),
             import_patterns=("using", "namespace")
         ),
         "php": LanguageConfig(

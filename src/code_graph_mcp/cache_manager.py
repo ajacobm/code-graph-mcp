@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
 
 from .redis_cache import RedisCacheBackend, RedisConfig, FileMetadata
-from .universal_graph import CodeNode, CodeRelationship
+from .universal_graph import UniversalNode, UniversalRelationship
 
 logger = logging.getLogger(__name__)
 
@@ -230,7 +230,7 @@ class HybridCacheManager:
         
         return await self.redis_backend.get_file_nodes(file_path)
     
-    async def set_file_nodes(self, file_path: str, nodes: List[CodeNode]) -> bool:
+    async def set_file_nodes(self, file_path: str, nodes: List[UniversalNode]) -> bool:
         """Cache nodes for a file."""
         if not self._should_use_redis():
             return False
@@ -250,7 +250,7 @@ class HybridCacheManager:
         
         return await self.redis_backend.get_file_relationships(file_path)
     
-    async def set_file_relationships(self, file_path: str, relationships: List[CodeRelationship]) -> bool:
+    async def set_file_relationships(self, file_path: str, relationships: List[UniversalRelationship]) -> bool:
         """Cache relationships for a file."""
         if not self._should_use_redis():
             return False

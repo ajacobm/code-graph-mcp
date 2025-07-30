@@ -27,7 +27,7 @@ from .universal_graph import (
     UniversalNode,
     UniversalRelationship,
 )
-from .rustworkx_graph import RustworkxCodeGraph
+from .graph import RustworkxCodeGraph
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +149,7 @@ class LanguageRegistry:
             string_patterns=('"', "'"),
             function_patterns=("public", "private", "protected", "static"),
             class_patterns=("class", "interface", "struct", "enum", "record"),
-            variable_patterns=("int", "string", "bool", "double", "var", "datetime"),
+            variable_patterns=("int", "string", "bool", "double", "var", "datetime", "float"),
             import_patterns=("using", "namespace")
         ),
         "php": LanguageConfig(

@@ -8,6 +8,7 @@ Provides code analysis tools through MCP protocol.
 
 import contextlib
 import logging
+import time
 from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Optional
@@ -17,7 +18,8 @@ import mcp.types as types
 from mcp.server.lowlevel import Server
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 from starlette.applications import Starlette
-from starlette.routing import Mount
+from starlette.routing import Mount, Route
+from starlette.responses import JSONResponse
 from starlette.types import Receive, Scope, Send
 
 # Import our existing MCP infrastructure
@@ -115,6 +117,43 @@ class CodeGraphMCPServer:
                 logger.error(f"Error listing tools: {e}")
                 return []
     
+    async def _health_check(self, request) -> JSONResponse:
+        """Health check endpoint for container orchestration."""
+        try:
+            # Basic health check
+            health_status = {
+                "status": "healthy",
+                "timestamp": str(time.time()),
+                "project_root": str(self.project_root),
+                "mcp_server": "running",
+            }
+            
+            # Check analysis engine if available
+            if self.analysis_engine:
+                try:
+                    health_status["analysis_engine"] = "ready"
+                    health_status["redis_connected"] = await self.analysis_engine.cache_manager.redis_backend.is_healthy()
+                except Exception as e:
+                    logger.warning(f"Analysis engine health check failed: {e}")
+                    health_status["analysis_engine"] = "warning"
+                    health_status["redis_connected"] = False
+            else:
+                health_status["analysis_engine"] = "not_initialized"
+                health_status["redis_connected"] = None
+            
+            return JSONResponse(health_status, status_code=200)
+            
+        except Exception as e:
+            logger.error(f"Health check failed: {e}")
+            return JSONResponse(
+                {
+                    "status": "unhealthy",
+                    "error": str(e),
+                    "timestamp": str(time.time())
+                },
+                status_code=503
+            )
+    
     def create_starlette_app(self) -> Starlette:
         """Create Starlette ASGI application with proper MCP transport."""
         
@@ -147,6 +186,7 @@ class CodeGraphMCPServer:
             debug=True,
             routes=[
                 Mount("/mcp", app=handle_mcp_request),
+                Route("/health", self._health_check, methods=["GET"]),
             ],
             lifespan=lifespan,
         )

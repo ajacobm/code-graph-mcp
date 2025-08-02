@@ -95,6 +95,9 @@ class RedisSerializer:
     def serialize(self, data: Any) -> bytes:
         """Serialize data for Redis storage."""
         try:
+            # Convert problematic types to serializable formats
+            data = self._make_serializable(data)
+            
             if self.format_type == "msgpack":
                 if isinstance(data, (UniversalNode, UniversalRelationship)):
                     data = asdict(data)
@@ -115,6 +118,46 @@ class RedisSerializer:
         except Exception as e:
             logger.error(f"Serialization error: {e}")
             raise
+    
+    def _make_serializable(self, obj: Any, _seen: Optional[set] = None) -> Any:
+        """Convert non-serializable objects to serializable format."""
+        if _seen is None:
+            _seen = set()
+        
+        # Check for circular references
+        obj_id = id(obj)
+        if obj_id in _seen:
+            # Return a placeholder for circular references
+            return f"<circular_ref:{type(obj).__name__}>"
+        
+        if isinstance(obj, set):
+            return list(obj)
+        elif isinstance(obj, dict):
+            _seen.add(obj_id)
+            try:
+                result = {k: self._make_serializable(v, _seen) for k, v in obj.items()}
+            finally:
+                _seen.discard(obj_id)
+            return result
+        elif isinstance(obj, (list, tuple)):
+            _seen.add(obj_id)
+            try:
+                result = [self._make_serializable(item, _seen) for item in obj]
+            finally:
+                _seen.discard(obj_id)
+            return result
+        elif hasattr(obj, '__dict__'):
+            _seen.add(obj_id)
+            try:
+                # Convert custom objects to dict representation
+                if hasattr(obj, '_asdict'):  # namedtuple
+                    return obj._asdict()
+                else:
+                    return {k: self._make_serializable(v, _seen) for k, v in obj.__dict__.items()}
+            finally:
+                _seen.discard(obj_id)
+        else:
+            return obj
     
     def deserialize(self, data: bytes) -> Any:
         """Deserialize data from Redis storage."""

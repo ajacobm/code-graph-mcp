@@ -28,9 +28,14 @@ class UniversalAnalysisEngine:
         from ..redis_cache import RedisConfig
         
         # Set up Redis configuration
-        if enable_redis_cache and redis_config is None:
-            # Use default Redis config if enabled but no config provided
-            redis_config = RedisConfig()
+        if enable_redis_cache:
+            if redis_config is None:
+                # Use default Redis config if enabled but no config provided
+                redis_config = RedisConfig()
+            elif isinstance(redis_config, str):
+                # If redis_config is a URL string, create RedisConfig with that URL
+                redis_config = RedisConfig(url=redis_config)
+            # If redis_config is already a RedisConfig object, use it as-is
         
         self.analyzer = UniversalASTAnalyzer(project_root, redis_config=redis_config, enable_redis_cache=enable_redis_cache)
         self.parser = self.analyzer.parser

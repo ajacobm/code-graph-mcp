@@ -1,0 +1,47 @@
+services:
+  # Redis cache service
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  code-graph-codegraph:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: sse
+    ports:
+      - "10101:8000"
+    volumes:
+      - ".:/app/workspace"  # Mount current directory as workspace
+    environment:
+      - CODE_GRAPH_MCP_LOG_LEVEL=DEBUG
+      - CODE_GRAPH_MCP_FILE_WATCHER=true
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    command: >
+      /app/.venv/bin/python -m src.code_graph_mcp.sse_server
+      --redis-url redis://redis:6379
+      --project-root /app/workspace
+      --host 0.0.0.0
+      --port 8000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  redis-data:

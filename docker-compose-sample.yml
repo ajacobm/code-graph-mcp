@@ -16,7 +16,7 @@ services:
       timeout: 10s
       retries: 3
 
-  # SSE HTTP Server mode with Redis
+  # SSE HTTP Server mode (Redis auto-detected when available)
   code-graph-sse:
     build:
       context: .
@@ -28,26 +28,20 @@ services:
     environment:
       - CODE_GRAPH_MCP_LOG_LEVEL=INFO
       - CODE_GRAPH_MCP_FILE_WATCHER=true
-      - REDIS_URL=redis://redis:6379
+      - REDIS_URL=redis://redis:6379/0  # Optional: Redis will be used if available
       - CODE_GRAPH_CACHE_TTL=604800
     depends_on:
-      - redis
-    command: >
-      code-graph-mcp
-      --mode sse
-      --redis-url redis://redis:6379
-      --project-root /app/workspace
-      --host 0.0.0.0
-      --port 8000
+      redis:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
-  # Stdio mode (for local MCP client connections)
+  # Stdio mode (Redis auto-detected when available)
   code-graph-stdio:
     build:
       context: .
@@ -57,14 +51,10 @@ services:
     environment:
       - CODE_GRAPH_MCP_LOG_LEVEL=INFO
       - CODE_GRAPH_MCP_FILE_WATCHER=true
-      - REDIS_URL=redis://redis:6379
+      - REDIS_URL=redis://redis:6379/0  # Optional: Redis will be used if available
     depends_on:
-      - redis
-    command: >
-      code-graph-mcp
-      --mode stdio
-      --redis-url redis://redis:6379
-      --project-root /app/workspace
+      redis:
+        condition: service_healthy
     restart: unless-stopped
     profiles:
       - stdio  # Only start when explicitly requested
@@ -82,13 +72,14 @@ services:
     environment:
       - CODE_GRAPH_MCP_LOG_LEVEL=DEBUG
       - CODE_GRAPH_MCP_FILE_WATCHER=true
-      - REDIS_URL=redis://redis:6379
+      - REDIS_URL=redis://redis:6379/0  # Optional: Redis will be used if available
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     command: >
       uv run code-graph-mcp
       --mode sse
-      --redis-url redis://redis:6379
+      --enable-cache
       --project-root /app/workspace
       --host 0.0.0.0
       --port 8000

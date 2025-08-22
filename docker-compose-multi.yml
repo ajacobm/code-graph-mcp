@@ -14,13 +14,13 @@ services:
       timeout: 10s
       retries: 3
 
-  code-graph-codegraph:
+  code-graph-csharp-mcp-sdk:
     image: ajacobm/code-graph-mcp:sse
     ports:
       - "10101:8000"
     volumes:
       - ".:/app"  # Mount entire project for development
-      - "/home/adam/GitHub/code-graph-mcp:/app/workspace"  # Mount workspace
+      - "/home/adam/GitHub/mcp-csharp-sdk:/app/workspace"  # Mount workspace
     environment:
       - CODE_GRAPH_MCP_LOG_LEVEL=DEBUG
       - CODE_GRAPH_MCP_FILE_WATCHER=true

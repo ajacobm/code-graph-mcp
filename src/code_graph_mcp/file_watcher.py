@@ -200,17 +200,26 @@ class DebouncedFileWatcher:
             self._observer = Observer()
             event_handler = self._EventHandler(self)
 
-            # Watch the project root recursively
+            # Compile ignore patterns for watchdog
+            ignore_patterns = [
+                '__pycache__', '.git', '.svn', '.hg', '.bzr',
+                '.pytest_cache', '.mypy_cache', '.tox', '.coverage',
+                '.sass-cache', '.cache', '.DS_Store', '.idea', '.vscode', '.vs',
+                '.venv',                        
+            ]
+            
+            # Watch the project root recursively with ignore patterns
             self._observer.schedule(
                 event_handler,
                 str(self.project_root),
-                recursive=True
+                recursive=True,
+                ignore_patterns=["**/{}".format(p) for p in ignore_patterns] + ["**/.*"]  # Also ignore dot files
             )
 
             self._observer.start()
             self._is_running = True
 
-            logger.info(f"Started file watcher for: {self.project_root}")
+            logger.info(f"Started file watcher for: {self.project_root} with ignore filter")
 
         except Exception as e:
             logger.error(f"Failed to start file watcher: {e}")

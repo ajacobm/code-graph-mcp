@@ -50,6 +50,11 @@ class UniversalAnalysisEngine:
         # Prevent concurrent re-analyses
         self._analysis_lock = asyncio.Lock()
         self._analysis_task: Optional[asyncio.Task] = None
+    
+    @property
+    def cache_manager(self):
+        """Get cache manager from analyzer."""
+        return self.analyzer.cache_manager
 
     def _clear_all_caches(self):
         """Clear all LRU caches to ensure fresh data."""
@@ -154,12 +159,13 @@ class UniversalAnalysisEngine:
             return
 
         try:
+            supported_exts = await self.parser.registry.get_supported_extensions()
             self._file_watcher = DebouncedFileWatcher(
                 project_root=self.project_root,
                 callback=self._on_file_change,
                 debounce_delay=2.0,  # 2 second debounce
                 should_ignore_path=self.parser._should_ignore_path,
-                supported_extensions=set(self.parser.registry.get_supported_extensions())
+                supported_extensions=set(supported_exts)
             )
             await self._file_watcher.start()
             logger.info("File watcher started successfully")
@@ -182,9 +188,10 @@ class UniversalAnalysisEngine:
         # Check if any source files have been modified since last analysis
         try:
             latest_mtime = 0
+            supported_exts = self.parser.registry.supported_extensions
             for file_path in self.project_root.rglob("*"):
                 if file_path.is_file() and not self.parser._should_ignore_path(file_path, self.project_root):
-                    if file_path.suffix.lower() in self.parser.registry.get_supported_extensions():
+                    if file_path.suffix.lower() in supported_exts:
                         mtime = file_path.stat().st_mtime
                         latest_mtime = max(latest_mtime, mtime)
 

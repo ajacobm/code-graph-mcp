@@ -4,6 +4,9 @@ Debounced File Watcher for Code Graph MCP
 
 Provides intelligent file system monitoring with debouncing to automatically
 trigger graph updates when source files change.
+
+FIX (Jan 7, 2025): Removed `ignore_patterns` parameter which is not supported 
+in watchdog 6.0.0+. Now filtering is done in the event handler instead.
 """
 
 import asyncio
@@ -68,22 +71,50 @@ class DebouncedFileWatcher:
 
         def on_modified(self, event: FileSystemEvent) -> None:
             if not event.is_directory:
-                self.watcher._handle_file_change(Path(event.src_path))
+                path = Path(event.src_path)
+                if not self._should_skip_path(path):
+                    self.watcher._handle_file_change(path)
 
         def on_created(self, event: FileSystemEvent) -> None:
             if not event.is_directory:
-                self.watcher._handle_file_change(Path(event.src_path))
+                path = Path(event.src_path)
+                if not self._should_skip_path(path):
+                    self.watcher._handle_file_change(path)
 
         def on_deleted(self, event: FileSystemEvent) -> None:
             if not event.is_directory:
-                self.watcher._handle_file_change(Path(event.src_path))
+                path = Path(event.src_path)
+                if not self._should_skip_path(path):
+                    self.watcher._handle_file_change(path)
 
         def on_moved(self, event: FileSystemEvent) -> None:
             if not event.is_directory:
                 # Handle both source and destination for moves
-                self.watcher._handle_file_change(Path(event.src_path))
+                src_path = Path(event.src_path)
+                if not self._should_skip_path(src_path):
+                    self.watcher._handle_file_change(src_path)
+                    
                 if hasattr(event, 'dest_path'):
-                    self.watcher._handle_file_change(Path(event.dest_path))
+                    dest_path = Path(event.dest_path)
+                    if not self._should_skip_path(dest_path):
+                        self.watcher._handle_file_change(dest_path)
+
+        def _should_skip_path(self, path: Path) -> bool:
+            """Check if path should be skipped (ignored directories/files)."""
+            # Common directories to ignore
+            ignore_dirs = {
+                '__pycache__', '.git', '.svn', '.hg', '.bzr',
+                '.pytest_cache', '.mypy_cache', '.tox', '.coverage',
+                '.sass-cache', '.cache', '.DS_Store', '.idea', '.vscode', '.vs',
+                '.venv', 'node_modules', 'dist', 'build'
+            }
+            
+            # Skip if any part of path matches ignore list
+            for part in path.parts:
+                if part in ignore_dirs or part.startswith('.'):
+                    return True
+            
+            return False
 
     def _should_watch_file(self, file_path: Path) -> bool:
         """Check if a file should be watched based on extension and ignore rules."""
@@ -200,26 +231,19 @@ class DebouncedFileWatcher:
             self._observer = Observer()
             event_handler = self._EventHandler(self)
 
-            # Compile ignore patterns for watchdog
-            ignore_patterns = [
-                '__pycache__', '.git', '.svn', '.hg', '.bzr',
-                '.pytest_cache', '.mypy_cache', '.tox', '.coverage',
-                '.sass-cache', '.cache', '.DS_Store', '.idea', '.vscode', '.vs',
-                '.venv',                        
-            ]
-            
-            # Watch the project root recursively with ignore patterns
+            # Watch the project root recursively
+            # Note: watchdog 6.0.0+ removed ignore_patterns parameter
+            # Filtering is done in the event handler instead (see _should_skip_path method)
             self._observer.schedule(
                 event_handler,
                 str(self.project_root),
-                recursive=True,
-                ignore_patterns=["**/{}".format(p) for p in ignore_patterns] + ["**/.*"]  # Also ignore dot files
+                recursive=True
             )
 
             self._observer.start()
             self._is_running = True
 
-            logger.info(f"Started file watcher for: {self.project_root} with ignore filter")
+            logger.info(f"Started file watcher for: {self.project_root}")
 
         except Exception as e:
             logger.error(f"Failed to start file watcher: {e}")

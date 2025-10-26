@@ -1,0 +1,547 @@
+<USER_SHELL>
+(adam) adam@ORION:/mnt/c/Users/ADAM/GitHub/code-graph-mcp$ docker build -t ajacobm/code-graph-mcp:sse --target sse .
+[+] Building 14.2s (18/18) FINISHED                                                                                                                                          docker:default
+ => [internal] load build definition from Dockerfile                                                                                                                                   0.1s
+ => => transferring dockerfile: 2.40kB                                                                                                                                                 0.1s
+ => [internal] load metadata for docker.io/library/python:3.12-slim                                                                                                                    0.1s
+ => [internal] load .dockerignore                                                                                                                                                      0.1s
+ => => transferring context: 727B                                                                                                                                                      0.1s
+ => [base 1/6] FROM docker.io/library/python:3.12-slim@sha256:fd95fa221297a88e1cf49c55ec1828edd7c5a428187e67b5d1805692d11588db                                                         0.0s
+ => => resolve docker.io/library/python:3.12-slim@sha256:fd95fa221297a88e1cf49c55ec1828edd7c5a428187e67b5d1805692d11588db                                                              0.0s
+ => [internal] load build context                                                                                                                                                      0.3s
+ => => transferring context: 299.97kB                                                                                                                                                  0.3s
+ => CACHED [base 2/6] RUN apt-get update && apt-get install -y     build-essential     curl     git     pkg-config     && rm -rf /var/lib/apt/lists/*                                  0.0s
+ => CACHED [base 3/6] RUN useradd --create-home --shell /bin/bash --uid 1000 codeuser                                                                                                  0.0s
+ => CACHED [base 4/6] WORKDIR /app                                                                                                                                                     0.0s
+ => CACHED [base 5/6] COPY pyproject.toml uv.lock* ./                                                                                                                                  0.0s
+ => CACHED [base 6/6] RUN pip install uv                                                                                                                                               0.0s
+ => [production 1/7] COPY src/ ./src/                                                                                                                                                  0.0s
+ => [production 2/7] COPY pyproject.toml ./                                                                                                                                            0.0s
+ => [production 3/7] COPY README.md LICENSE ./                                                                                                                                         0.0s
+ => [production 4/7] RUN uv sync --frozen --no-dev                                                                                                                                     3.0s
+ => [production 5/7] RUN uv pip install -e .                                                                                                                                           1.7s
+ => [production 6/7] RUN chown -R codeuser:codeuser /app                                                                                                                               2.9s
+ => [production 7/7] RUN mkdir -p /app/workspace /app/.cache                                                                                                                           0.4s
+ => exporting to image                                                                                                                                                                 5.1s
+ => => exporting layers                                                                                                                                                                3.5s
+ => => exporting manifest sha256:1b728eccf07c5df9895afd5b2637eae947dafa577e2d9580c309f2fdb0003f10                                                                                      0.0s
+ => => exporting config sha256:333cb5ea4cbb5b6e2cade7dcd3907090c81d02a1587ee0f41d68f1d59d2e6be3                                                                                        0.0s
+ => => exporting attestation manifest sha256:ef948e13c261668cf189b68276c3d7aaa36e6ff1eb4d8115b68573fc11b8a3f9                                                                          0.0s
+ => => exporting manifest list sha256:8b6ea8bfcfca2574f9fd9a7cd770db59ed9e3368c581ff733fc66e8065a9bb5d                                                                                 0.0s
+ => => naming to docker.io/ajacobm/code-graph-mcp:sse                                                                                                                                  0.0s
+ => => unpacking to docker.io/ajacobm/code-graph-mcp:sse                                                                                                                               1.6s
+(adam) adam@ORION:/mnt/c/Users/ADAM/GitHub/code-graph-mcp$ docker build -t ajacobm/code-graph-mcp:stdio --target stdio .
+[+] Building 0.9s (18/18) FINISHED                                                                                                                                           docker:default
+ => [internal] load build definition from Dockerfile                                                                                                                                   0.1s
+ => => transferring dockerfile: 2.40kB                                                                                                                                                 0.1s
+ => [internal] load metadata for docker.io/library/python:3.12-slim                                                                                                                    0.0s
+ => [internal] load .dockerignore                                                                                                                                                      0.1s
+ => => transferring context: 727B                                                                                                                                                      0.1s
+ => [base 1/6] FROM docker.io/library/python:3.12-slim@sha256:fd95fa221297a88e1cf49c55ec1828edd7c5a428187e67b5d1805692d11588db                                                         0.0s
+ => => resolve docker.io/library/python:3.12-slim@sha256:fd95fa221297a88e1cf49c55ec1828edd7c5a428187e67b5d1805692d11588db                                                              0.0s
+ => [internal] load build context                                                                                                                                                      0.3s
+ => => transferring context: 3.26kB                                                                                                                                                    0.3s
+ => CACHED [base 2/6] RUN apt-get update && apt-get install -y     build-essential     curl     git     pkg-config     && rm -rf /var/lib/apt/lists/*                                  0.0s
+ => CACHED [base 3/6] RUN useradd --create-home --shell /bin/bash --uid 1000 codeuser                                                                                                  0.0s
+ => CACHED [base 4/6] WORKDIR /app                                                                                                                                                     0.0s
+ => CACHED [base 5/6] COPY pyproject.toml uv.lock* ./                                                                                                                                  0.0s
+ => CACHED [base 6/6] RUN pip install uv                                                                                                                                               0.0s
+ => CACHED [production 1/7] COPY src/ ./src/                                                                                                                                           0.0s
+ => CACHED [production 2/7] COPY pyproject.toml ./                                                                                                                                     0.0s
+ => CACHED [production 3/7] COPY README.md LICENSE ./                                                                                                                                  0.0s
+ => CACHED [production 4/7] RUN uv sync --frozen --no-dev                                                                                                                              0.0s
+ => CACHED [production 5/7] RUN uv pip install -e .                                                                                                                                    0.0s
+ => CACHED [production 6/7] RUN chown -R codeuser:codeuser /app                                                                                                                        0.0s
+ => CACHED [production 7/7] RUN mkdir -p /app/workspace /app/.cache                                                                                                                    0.0s
+ => exporting to image                                                                                                                                                                 0.1s
+ => => exporting layers                                                                                                                                                                0.0s
+ => => exporting manifest sha256:8b4dce79b2c4204c7b9c359ecf8d64e4c09030fa8f77d38352ac35a2d89fc7dc                                                                                      0.0s
+ => => exporting config sha256:6433a311bc7eab2df60ee9fa4616b4dbc260c81f50cd1a37b1bc7106bb08773b                                                                                        0.0s
+ => => exporting attestation manifest sha256:8ae1c1f924dcb80c6632c5b82df2676cb12adbfff528aa17bed4be851af1f1a3                                                                          0.0s
+ => => exporting manifest list sha256:d1ea1b32605d7867982a3c50f620ab0fdb1fe697916df1371960de90adb970d3                                                                                 0.0s
+ => => naming to docker.io/ajacobm/code-graph-mcp:stdio                                                                                                                                0.0s
+ => => unpacking to docker.io/ajacobm/code-graph-mcp:stdio                                                                                                                             0.0s
+(adam) adam@ORION:/mnt/c/Users/ADAM/GitHub/code-graph-mcp$ source ~/.bashrc
+(adam) adam@ORION:/mnt/c/Users/ADAM/GitHub/code-graph-mcp$ compose down
+[+] Running 3/3
+ ✔ Container code-graph-mcp-code-graph-sse-1  Removed                                                                                                                                  1.1s
+ ✔ Container code-graph-mcp-redis-1           Removed                                                                                                                                  0.6s
+ ✔ Network code-graph-mcp_default             Removed                                                                                                                                  0.9s
+(adam) adam@ORION:/mnt/c/Users/ADAM/GitHub/code-graph-mcp$ compose up
+[+] Running 3/3
+ ✔ Network code-graph-mcp_default             Created                                                                                                                                  0.0s
+ ✔ Container code-graph-mcp-redis-1           Started                                                                                                                                  0.4s
+ ✔ Container code-graph-mcp-code-graph-sse-1  Started                   
+<END_SHELL>
+<USER_NOTE>there's a funny mis-match in the timestamps between the container and docker desktops ui, I think.. not sure but don't get confused.<END_USER_NOTE>
+Logs...
+2025-10-25 19:55:16
+
+
+warning: Ignoring existing virtual environment linked to non-existent Python interpreter: .venv/bin/python3 -> python
+2025-10-25 19:55:17
+
+
+Using CPython 3.12.10 interpreter at: /usr/local/bin/python3.12
+2025-10-25 19:55:20
+
+
+Removed virtual environment at: .venv
+2025-10-25 19:55:20
+
+
+Creating virtual environment at: .venv
+2025-10-25 19:55:20
+
+
+   Building code-graph-mcp @ file:///app
+2025-10-25 19:55:20
+
+
+Downloading numpy (15.9MiB)
+2025-10-25 19:55:20
+
+
+Downloading pydantic-core (1.9MiB)
+2025-10-25 19:55:20
+
+
+Downloading pygments (1.2MiB)
+2025-10-25 19:55:20
+
+
+Downloading rustworkx (2.0MiB)
+2025-10-25 19:55:20
+
+
+Downloading ast-grep-py (4.7MiB)
+2025-10-25 19:55:20
+
+
+Downloading cryptography (4.2MiB)
+2025-10-25 19:55:22
+
+
+ Downloading pygments
+2025-10-25 19:55:22
+
+
+ Downloading pydantic-core
+2025-10-25 19:55:22
+
+
+ Downloading rustworkx
+2025-10-25 19:55:22
+
+
+      Built code-graph-mcp @ file:///app
+2025-10-25 19:55:22
+
+
+ Downloading cryptography
+2025-10-25 19:55:23
+
+
+ Downloading ast-grep-py
+2025-10-25 19:55:23
+
+
+ Downloading numpy
+2025-10-25 19:55:23
+
+
+warning: Failed to hardlink files; falling back to full copy. This may lead to degraded performance.
+2025-10-25 19:55:23
+
+
+         If the cache and target directories are on different filesystems, hardlinking may not be supported.
+2025-10-25 19:55:23
+
+
+         If this is intentional, set `export UV_LINK_MODE=copy` or use `--link-mode=copy` to suppress this warning.
+2025-10-25 19:55:26
+
+
+Installed 63 packages in 5.13s
+2025-10-25 19:55:32
+
+
+2025-10-25 23:55:32,105 - mcp.server.lowlevel.server - DEBUG - Initializing server 'code-graph-mcp'
+2025-10-25 19:55:32
+
+
+2025-10-25 23:55:32,105 - mcp.server.lowlevel.server - DEBUG - Registering handler for CallToolRequest
+2025-10-25 19:55:32
+
+
+2025-10-25 23:55:32,105 - mcp.server.lowlevel.server - DEBUG - Registering handler for ListToolsRequest
+2025-10-25 19:55:32
+
+
+2025-10-25 23:55:32,106 - mcp.server.lowlevel.server - DEBUG - Registering handler for PromptListRequest
+2025-10-25 19:55:32
+
+
+2025-10-25 23:55:32,106 - mcp.server.lowlevel.server - DEBUG - Registering handler for ListResourcesRequest
+2025-10-25 19:55:32
+
+
+2025-10-25 23:55:32,130 - asyncio - DEBUG - Using selector: EpollSelector
+2025-10-25 19:55:32
+
+
+INFO:     Started server process [63]
+2025-10-25 19:55:32
+
+
+INFO:     Waiting for application startup.
+2025-10-25 19:55:32
+
+
+2025-10-25 23:55:32,393 - mcp.server.streamable_http_manager - INFO - StreamableHTTP session manager started
+2025-10-25 19:55:32
+
+
+2025-10-25 23:55:32,393 - code_graph_mcp.sse_server - INFO - Code Graph MCP Server started for: /app/workspace
+2025-10-25 19:55:32
+
+
+INFO:     Application startup complete.
+2025-10-25 19:55:32
+
+
+INFO:     Uvicorn running on http://0.0.0.0:8000⁠ (Press CTRL+C to quit)
+2025-10-25 19:55:35
+
+
+INFO:     127.0.0.1:42002 - "GET /health HTTP/1.1" 200 OK
+2025-10-25 19:56:02
+
+
+INFO:     127.0.0.1:55062 - "GET /health HTTP/1.1" 200 OK
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,510 - mcp.server.streamable_http_manager - DEBUG - Stateless mode: Creating new transport for this request
+2025-10-25 19:56:16
+
+
+INFO:     172.24.0.1:55144 - "POST /mcp/ HTTP/1.1" 200 OK
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,520 - mcp.server.lowlevel.server - DEBUG - Received message: <mcp.shared.session.RequestResponder object at 0x7f6f2ecc0a70>
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,520 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,520 - mcp.server.lowlevel.server - DEBUG - Dispatching request of type CallToolRequest
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,520 - mcp.server.lowlevel.server - DEBUG - Tool cache miss for analyze_codebase, refreshing cache
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,526 - code_graph_mcp.universal_parser - INFO - ast-grep available. Supporting 25 languages.
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,527 - code_graph_mcp.sse_server - INFO - Executing tool: analyze_codebase
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,527 - code_graph_mcp.server.analysis_engine - INFO - BEFORE _ensure_analyzed: graph has 0 nodes
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,527 - code_graph_mcp.server.analysis_engine - INFO - Re-analyzing project due to file changes or first run...
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,527 - code_graph_mcp.server.analysis_engine - INFO - Clearing all LRU caches...
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,527 - code_graph_mcp.server.analysis_engine - DEBUG - Cleared cache for analyze_complexity
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,527 - code_graph_mcp.server.analysis_engine - DEBUG - Cleared cache for find_nodes_by_name
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,527 - code_graph_mcp.server.analysis_engine - DEBUG - Cleared cache for get_nodes_by_type
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,527 - code_graph_mcp.server.analysis_engine - DEBUG - Cleared cache for calculate_centrality
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,527 - code_graph_mcp.server.analysis_engine - DEBUG - Cleared cache for calculate_pagerank
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,527 - code_graph_mcp.server.analysis_engine - DEBUG - Cleared cache for calculate_closeness_centrality
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,527 - code_graph_mcp.server.analysis_engine - DEBUG - Cleared cache for calculate_eigenvector_centrality
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,527 - code_graph_mcp.server.analysis_engine - INFO - Cleared 8 caches
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,578 - code_graph_mcp.redis_cache - INFO - Redis cache configuration applied
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,578 - code_graph_mcp.redis_cache - INFO - Redis cache backend connected successfully
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,578 - code_graph_mcp.cache_manager - INFO - Hybrid cache manager initialized with Redis backend
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,578 - code_graph_mcp.universal_parser - INFO - Redis cache backend initialized successfully
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,578 - code_graph_mcp.universal_ast - INFO - Analyzing project: /app/workspace
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,579 - code_graph_mcp.universal_parser - INFO - Starting optimized parse_directory for: /app/workspace
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,584 - code_graph_mcp.universal_parser - INFO - Supported extensions: ['.cxx', '.cs', '.hs', '.erl', '.h', '.c', '.hpp', '.php', '.rb', '.jsx']...
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,584 - code_graph_mcp.universal_parser - DEBUG - Starting directory tree traversal from: /app/workspace
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,618 - code_graph_mcp.universal_parser - DEBUG - Loaded 25 gitignore patterns using fallback from /app/workspace/.gitignore
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,621 - code_graph_mcp.universal_parser - DEBUG - Skipping ignored file: /app/workspace/.env
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,654 - code_graph_mcp.universal_parser - DEBUG - Skipping ignored file: /app/workspace/.crush/logs/crush.log
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,655 - code_graph_mcp.universal_parser - INFO - Pruning ignored directory tree: /app/workspace/.git
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,666 - code_graph_mcp.universal_parser - INFO - Pruning ignored directory tree: /app/workspace/.venv
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,666 - code_graph_mcp.universal_parser - INFO - Pruning ignored directory tree: /app/workspace/.vscode
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,670 - code_graph_mcp.universal_parser - DEBUG - Skipping ignored file: /app/workspace/dist/.gitignore
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,670 - code_graph_mcp.universal_parser - DEBUG - Skipping ignored file: /app/workspace/dist/code_graph_mcp-1.2.3-py3-none-any.whl
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,670 - code_graph_mcp.universal_parser - DEBUG - Skipping ignored file: /app/workspace/dist/code_graph_mcp-1.2.3.tar.gz
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,739 - code_graph_mcp.universal_parser - INFO - Pruning ignored directory tree: /app/workspace/src/code_graph_mcp/graph/__pycache__
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,753 - code_graph_mcp.universal_parser - INFO - Pruning ignored directory tree: /app/workspace/src/code_graph_mcp/server/__pycache__
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,754 - code_graph_mcp.universal_parser - INFO - Pruning ignored directory tree: /app/workspace/src/code_graph_mcp/__pycache__
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,793 - code_graph_mcp.universal_parser - INFO - Directory pruning results: 44 files found, 6 directories pruned
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,793 - code_graph_mcp.universal_parser - DEBUG - Pruned directories: ['.git', '.venv', '.vscode', 'src/code_graph_mcp/__pycache__', 'src/code_graph_mcp/graph/__pycache__', 'src/code_graph_mcp/server/__pycache__']
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,793 - code_graph_mcp.universal_parser - INFO - Optimized traversal found 44 files to process
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,793 - code_graph_mcp.universal_parser - DEBUG - Parsing file: /app/workspace/optimized_directory_traversal.py
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,798 - code_graph_mcp.universal_parser - DEBUG - Loading cached data for /app/workspace/optimized_directory_traversal.py
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,798 - code_graph_mcp.universal_parser - DEBUG - Successfully loaded cached data for /app/workspace/optimized_directory_traversal.py
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,799 - code_graph_mcp.universal_parser - DEBUG - Parsing file: /app/workspace/test_analysis.py
+2025-10-25 19:56:16
+
+
+2025-10-25 23:56:16,803 - code_graph_mcp.universal_parser - DEBUG - Loading cached data for /app/workspace/test_analysis.py
+.......
+
+2025-10-25 19:56:17
+
+
+2025-10-25 23:56:17,189 - code_graph_mcp.universal_parser - DEBUG - Parsing file: /app/workspace/tests/__init__.py
+2025-10-25 19:56:17
+
+
+2025-10-25 23:56:17,194 - code_graph_mcp.universal_parser - DEBUG - Loading cached data for /app/workspace/tests/__init__.py
+2025-10-25 19:56:17
+
+
+2025-10-25 23:56:17,195 - code_graph_mcp.universal_parser - DEBUG - Successfully loaded cached data for /app/workspace/tests/__init__.py
+2025-10-25 19:56:17
+
+
+2025-10-25 23:56:17,195 - code_graph_mcp.universal_parser - INFO - Optimized parsing complete: 44/44 files parsed
+2025-10-25 19:56:17
+
+
+2025-10-25 23:56:17,197 - code_graph_mcp.graph.rustworkx_unified - DEBUG - get_statistics: 2 nodes, 0 relationships, 44 files
+2025-10-25 19:56:17
+
+
+2025-10-25 23:56:17,197 - code_graph_mcp.universal_ast - INFO - Analysis complete: 2 nodes, 0 relationships
+2025-10-25 19:56:17
+
+
+2025-10-25 23:56:17,197 - code_graph_mcp.server.analysis_engine - INFO - Analysis completed successfully
+2025-10-25 19:56:19
+
+
+2025-10-25 23:56:19,350 - watchdog.observers.inotify_buffer - DEBUG - in-event <InotifyEvent: src_path=b'/app/workspace', wd=1, mask=IN_ISDIR|IN_OPEN, cookie=0, name=''>
+2025-10-25 19:56:19
+
+
+2025-10-25 23:56:19,351 - watchdog.observers.inotify_buffer - DEBUG - in-event <InotifyEvent: src_path=b'/app/workspace', wd=1, mask=IN_CLOSE_NOWRITE|IN_ISDIR, cookie=0, name=''>
+2025-10-25 19:56:19
+
+
+2025-10-25 23:56:19,351 - watchdog.observers.inotify_buffer - DEBUG - in-event <InotifyEvent: src_path=b'/app/workspace/.claude', wd=1, mask=IN_ISDIR|IN_OPEN, cookie=0, name='.claude'>
+2025-10-25 19:56:19
+
+
+2025-10-25 23:56:19,351 - watchdog.observers.inotify_buffer - DEBUG - in-event <InotifyEvent: src_path=b'/app/workspace/.claude', wd=1, mask=IN_CLOSE_NOWRITE|IN_ISDIR, cookie=0, name='.claude'>
+2025-10-25 19:56:19
+
+
+2025-10-25 23:56:19,351 - watchdog.observers.inotify_buffer - DEBUG - in-event <InotifyEvent: src_path=b'/app/workspace/.crush', wd=1, mask=IN_ISDIR|IN_OPEN, cookie=0, name='.crush'>
+2025-10-25 19:56:19
+
+
+2025-10-25 23:56:19,351 - watchdog.observers.inotify_buffer - DEBUG - in-event <InotifyEvent: src_path=b'/app/workspace/.crush', wd=1, mask=IN_CLOSE_NOWRITE|IN_ISDIR, cookie=0, name='.crush'>
+2025-10-25 19:56:19
+
+
+2025-10-25 23:56:19,351 - watchdog.observers.inotify_buffer - DEBUG - in-event <InotifyEvent: src_path=b'/app/workspace/.git', wd=1, mask=IN_ISDIR|IN_OPEN, cookie=0, name='.git'>
+2025-10-25 19:56:19
+
+
+2025-10-25 23:56:19,352 - code_graph_mcp.file_watcher - INFO - Started file watcher for: /app/workspace
+2025-10-25 19:56:19
+
+
+2025-10-25 23:56:19,352 - watchdog.observers.inotify_buffer - DEBUG - in-event <InotifyEvent: src_path=b'/app/workspace/.git', wd=1, mask=IN_CLOSE_NOWRITE|IN_ISDIR, cookie=0, name='.git'>
+2025-10-25 19:56:19
+
+
+2025-10-25 23:56:19,352 - code_graph_mcp.server.analysis_engine - INFO - File watcher started successfully
+2025-10-25 19:56:19
+
+
+2025-10-25 23:56:19,352 - watchdog.observers.inotify_buffer - DEBUG - in-event <InotifyEvent: src_path=b'/app/workspace/.goose', wd=1, mask=IN_ISDIR|IN_OPEN, cookie=0, name='.goose'>
+2025-10-25 19:56:19
+
+
+2025-10-25 23:56:19,352 - code_graph_mcp.server.analysis_engine - INFO - AFTER _ensure_analyzed: graph has 2 nodes
+2025-10-25 19:56:19
+
+
+2025-10-25 23:56:19,352 - watchdog.observers.inotify_buffer - DEBUG - in-event <InotifyEvent: src_path=b'/app/workspace/.goose', wd=1, mask=IN_CLOSE_NOWRITE|IN_ISDIR, cookie=0, name='.goose'>
+2025-10-25 19:56:19
+
+
+2025-10-25 23:56:19,352 - code_graph_mcp.server.analysis_engine - INFO - get_statistics returned: 2 nodes
+2025-10-25 19:56:19
+
+
+2025-10-25 23:56:19,353 - watchdog.observers.inotify_buffer - DEBUG - in-event <InotifyEvent: src_path=b'/app/workspace/.venv', wd=1, mask=IN_ISDIR|IN_OPEN, cookie=0, name='.venv'>
+2025-10-25 19:56:19
+
+
+2025-10-25 23:56:19,353 - mcp.server.lowlevel.server - DEBUG - Response sent
+2025-10-25 19:56:19
+
+
+2025-10-25 23:56:19,354 - watchdog.observers.inotify_buffer - DEBUG - in-event <InotifyEvent: src_path=b'/app/workspace/.venv', wd=6, mask=IN_ISDIR|IN_OPEN, cookie=0, name=''>
+2025-10-25 19:56:19
+
+
+2025-10-25 23:56:19,354 - mcp.server.streamable_http - DEBUG - Closing SSE writer
+2025-10-25 19:56:19
+
+
+2025-10-25 23:56:19,354 - watchdog.observers.inotify_buffer - DEBUG - in-event <InotifyEvent: src_path=b'/app/workspace/.venv', wd=1, mask=IN_CLOSE_NOWRITE|IN_ISDIR, cookie=0, name='.venv'>
+2025-10-25 19:56:19
+
+
+2025-10-25 23:56:19,354 - sse_starlette.sse - DEBUG - chunk: b'event: message\r\ndata: {"jsonrpc":"2.0","id":13,"result":{"content":[{"type":"text","text":"# Comprehensive Codebase Analysis\\n\\n## Project Overview\\n- **Root Directory**: `/app/workspace`\\n- **Last Analysis**: 2025-10-25 23:56:19\\n\\n## Structure Metrics\\n- **Total Files**: 44\\n- **Classes**: 0\\n- **Functions**: 0\\n- **Methods**: 0\\n- **Total Nodes**: 2\\n- **Total Relationships**: 0\\n\\n## Code Quality Metrics\\n- **Average Complexity**: 2.23\\n- **Maximum Complexity**: 28\\n\\n\xe2\x9c\x85 **Analysis Complete** - 2 nodes analyzed across 44 files"}],"isError":false}}\r\n\r\n'
+2025-10-25 19:56:19
+
+
+2025-10-25 23:56:19,355 - watchdog.observers.inotify_buffer - DEBUG - in-event <InotifyEvent: src_path=b'/app/workspace/.venv', wd=6, mask=IN_CLOSE_NOWRITE|IN_ISDIR, cookie=0, name=''>
+2025-10-25 19:56:19
+
+
+2025-10-25 23:56:19,355 - watchdog.observers.inotify_buffer - DEBUG - in-event <InotifyEvent: src_path=b'/app/workspace/.venv/bin', wd=6, mask=IN_ISDIR|IN_OPEN, cookie=0, name='bin'>
+2025-10-25 19:56:19
+
+
+2025-10-25 23:56:19,355 - sse_starlette.sse - DEBUG - Got event: http.disconnect. Stop streaming.
+2025-10-25 19:56:19
+
+
+2025-10-25 23:56:19,355 - watchdog.observers.inotify_buffer - DEBUG - in-event <InotifyEvent: src_path=b'/app/workspace/.venv/bin', wd=6, mask=IN_CLOSE_NOWRITE|IN_ISDIR, cookie=0, name='bin'>
+2025-10-25 19:56:19
+
+
+2025-10-25 23:56:19,356 - mcp.server.streamable_http - INFO - Terminating session: None
+2025-10-25 19:56:19
+
+
+2025-10-25 23:56:19,356 - watchdog.observers.inotify_buffer - DEBUG - in-event <InotifyEvent: src_path=b'/app/workspace/.venv/lib', wd=6, mask=IN_ISDIR|IN_OPEN, cookie=0, name='lib'>
+2025-10-25 19:56:19
+
+
+2025-10-25 23:56:19,357 - watchdog.observers.inotify_buffer - DEBUG - in-event <InotifyEvent: src_path=b'/app/workspace/.venv/lib', wd=84, mask=IN_ISDIR|IN_OPEN, cookie=0, name=''>

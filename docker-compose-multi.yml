@@ -1,3 +1,17 @@
+volumes:
+  repo-mount:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /mnt/c/Users/ADAM/GitHub/code-graph-mcp
+  redis-data:
+      driver: local
+      driver_opts:
+        type: none
+        o: bind
+        device: /mnt/c/Users/ADAM/.redis-docker/codegraphmcp
+
 services:
   # Redis cache service
   redis:
@@ -14,13 +28,16 @@ services:
       timeout: 10s
       retries: 3
 
-  code-graph-csharp-mcp-sdk:
+  code-graph-sse:
     image: ajacobm/code-graph-mcp:sse
+    build:
+      context: .
+      target: sse
     ports:
       - "10101:8000"
     volumes:
       - ".:/app"  # Mount entire project for development
-      - "/home/adam/GitHub/mcp-csharp-sdk:/app/workspace"  # Mount workspace
+      - repo-mount:/app/workspace  # Mount workspace
     environment:
       - CODE_GRAPH_MCP_LOG_LEVEL=DEBUG
       - CODE_GRAPH_MCP_FILE_WATCHER=true
@@ -52,6 +69,3 @@ services:
       - redis
     profiles:
       - monitoring
-
-volumes:
-  redis-data:

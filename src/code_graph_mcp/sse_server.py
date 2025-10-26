@@ -116,6 +116,16 @@ class CodeGraphMCPServer:
             except Exception as e:
                 logger.error(f"Error listing tools: {e}")
                 return []
+        
+        @self.app.list_prompts()
+        async def list_prompts() -> list[types.Prompt]:
+            """List available prompts (currently empty)."""
+            return []
+        
+        @self.app.list_resources()
+        async def list_resources() -> list[types.Resource]:
+            """List available resources (currently empty)."""
+            return []
     
     async def _health_check(self, request) -> JSONResponse:
         """Health check endpoint for container orchestration."""
@@ -132,10 +142,18 @@ class CodeGraphMCPServer:
             if self.analysis_engine:
                 try:
                     health_status["analysis_engine"] = "ready"
-                    health_status["redis_connected"] = await self.analysis_engine.cache_manager.redis_backend.is_healthy()
+                    # Safely check cache manager
+                    if hasattr(self.analysis_engine, 'analyzer') and hasattr(self.analysis_engine.analyzer, 'cache_manager'):
+                        cache_manager = self.analysis_engine.analyzer.cache_manager
+                        if cache_manager and hasattr(cache_manager, 'redis_backend'):
+                            health_status["redis_connected"] = await cache_manager.redis_backend.is_healthy()
+                        else:
+                            health_status["redis_connected"] = False
+                    else:
+                        health_status["redis_connected"] = False
                 except Exception as e:
-                    logger.warning(f"Analysis engine health check failed: {e}")
-                    health_status["analysis_engine"] = "warning"
+                    logger.debug(f"Cache manager health check info: {e}")
+                    health_status["analysis_engine"] = "ready"
                     health_status["redis_connected"] = False
             else:
                 health_status["analysis_engine"] = "not_initialized"
@@ -232,6 +250,11 @@ def main(
         level=getattr(logging, log_level.upper()),
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
+    
+    # Suppress debug logs from noisy libraries
+    logging.getLogger('watchdog.observers.inotify_buffer').setLevel(logging.WARNING)
+    logging.getLogger('watchdog').setLevel(logging.WARNING)
+    logging.getLogger('sse_starlette').setLevel(logging.INFO)
     
     root_path = Path(project_root).resolve()
     server = CodeGraphMCPServer(

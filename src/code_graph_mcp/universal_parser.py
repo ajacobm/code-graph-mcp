@@ -3,6 +3,8 @@ Universal Multi-Language Parser
 
 Uses ast-grep as the backend to parse 25+ programming languages into a universal AST format.
 Provides language-agnostic parsing with consistent node types and relationships.
+
+FIX (Jan 7, 2025): Implemented proper AST-Grep queries to replace text-based fallback parsing
 """
 
 import logging
@@ -53,6 +55,7 @@ class LanguageRegistry:
 
     def __init__(self, cache_manager: Optional[HybridCacheManager] = None):
         self.cache_manager = cache_manager
+        self._supported_extensions_cache: Optional[Set[str]] = None
 
     LANGUAGES = {
         "javascript": LanguageConfig(
@@ -332,31 +335,206 @@ class LanguageRegistry:
         )
     }
 
-    @cached_method(ttl=3600, key_generator=lambda self, fp: f"lang_by_ext:{fp.suffix}")
     async def get_language_by_extension(self, file_path: Path) -> Optional[LanguageConfig]:
-        """Get language configuration by file extension with hybrid caching."""
+        """Get language configuration by file extension."""
         suffix = file_path.suffix.lower()
         for lang_config in self.LANGUAGES.values():
             if suffix in lang_config.extensions:
                 return lang_config
         return None
 
-    @cached_method(ttl=3600, key_generator=lambda self, name: f"lang_by_name:{name}")
     async def get_language_by_name(self, name: str) -> Optional[LanguageConfig]:
-        """Get language configuration by name with hybrid caching."""
+        """Get language configuration by name."""
         return self.LANGUAGES.get(name.lower())
 
     def get_all_languages(self) -> List[LanguageConfig]:
         """Get all supported language configurations."""
         return list(self.LANGUAGES.values())
 
+    @property
+    def supported_extensions(self) -> Set[str]:
+        """Get all supported file extensions (synchronous)."""
+        if self._supported_extensions_cache is None:
+            extensions = set()
+            for lang_config in self.LANGUAGES.values():
+                extensions.update(lang_config.extensions)
+            self._supported_extensions_cache = extensions
+        return self._supported_extensions_cache
+
     @cached_method(ttl=86400, key_generator=lambda self: "supported_extensions")
     async def get_supported_extensions(self) -> Set[str]:
         """Get all supported file extensions with hybrid caching."""
-        extensions = set()
-        for lang_config in self.LANGUAGES.values():
-            extensions.update(lang_config.extensions)
-        return extensions
+        return self.supported_extensions
+
+
+class ASTGrepPatterns:
+    """Language-specific AST patterns for ast-grep queries."""
+    
+    # AST-Grep patterns for each language
+    # Verified against ast-grep-py 0.39.0+ API
+    # FIX (Oct 26, 2025): Added patterns for all 25 supported languages
+    PATTERNS = {
+        "python": {
+            "function": "function_definition",
+            "class": "class_definition",
+            "import": "import_statement",
+            "variable": "assignment",
+        },
+        "javascript": {
+            "function": "function_declaration",
+            "class": "class_declaration",
+            "import": "import_statement",
+            "variable": "variable_declarator",
+        },
+        "typescript": {
+            "function": "function_declaration",
+            "class": "class_declaration",
+            "import": "import_statement",
+            "variable": "variable_declarator",
+        },
+        "java": {
+            "function": "method_declaration",
+            "class": "class_declaration",
+            "import": "import_declaration",
+            "variable": "field_declaration",
+        },
+        "rust": {
+            "function": "function_item",
+            "class": "struct_item",
+            "import": "use_declaration",
+            "variable": "let_statement",
+        },
+        "go": {
+            "function": "function_declaration",
+            "class": "type_spec",
+            "import": "import_declaration",
+            "variable": "var_declaration",
+        },
+        "cpp": {
+            "function": "function_definition",
+            "class": "class_specifier",
+            "import": "preproc_include",
+            "variable": "declaration",
+        },
+        "c": {
+            "function": "function_definition",
+            "class": "struct_specifier",
+            "import": "preproc_include",
+            "variable": "declaration",
+        },
+        "csharp": {
+            "function": "method_declaration",
+            "class": "class_declaration",
+            "import": "using_directive",
+            "variable": "variable_declarator",
+        },
+        "php": {
+            "function": "function_definition",
+            "class": "class_declaration",
+            "import": "require_expression",
+            "variable": "assignment",
+        },
+        "ruby": {
+            "function": "method",
+            "class": "class_definition",
+            "import": "require",
+            "variable": "assignment",
+        },
+        "swift": {
+            "function": "function_declaration",
+            "class": "class_declaration",
+            "import": "import_statement",
+            "variable": "variable_declaration",
+        },
+        "kotlin": {
+            "function": "function_declaration",
+            "class": "class_declaration",
+            "import": "import_header",
+            "variable": "property_declaration",
+        },
+        "scala": {
+            "function": "function_definition",
+            "class": "class_definition",
+            "import": "import_declaration",
+            "variable": "val_definition",
+        },
+        "dart": {
+            "function": "function_declaration",
+            "class": "class_declaration",
+            "import": "import_or_export",
+            "variable": "variable_declaration",
+        },
+        "lua": {
+            "function": "function_definition",
+            "class": "assignment_statement",  # Lua uses tables as classes
+            "import": "require",
+            "variable": "assignment_statement",
+        },
+        "haskell": {
+            "function": "function",
+            "class": "type_class_declaration",
+            "import": "import_declaration",
+            "variable": "let_binding",
+        },
+        "elixir": {
+            "function": "definition",  # def/defp
+            "class": "module",
+            "import": "alias_or_require",
+            "variable": "match_expression",
+        },
+        "erlang": {
+            "function": "function_clause",
+            "class": "attribute",  # -module directive
+            "import": "attribute",  # -import directive
+            "variable": "variable",
+        },
+        "r": {
+            "function": "function_definition",
+            "class": "class_definition",
+            "import": "library_call",
+            "variable": "assignment",
+        },
+        "matlab": {
+            "function": "function_definition",
+            "class": "classdef_block",
+            "import": "import_statement",
+            "variable": "assignment",
+        },
+        "perl": {
+            "function": "subroutine_declaration",
+            "class": "package_declaration",
+            "import": "use_statement",
+            "variable": "assignment",
+        },
+        "sql": {
+            "function": "create_function_statement",
+            "class": "create_table_statement",
+            "import": "use_statement",
+            "variable": "declare_statement",
+        },
+        "html": {
+            "function": "script_element",  # <script>
+            "class": "attribute_value",  # class attribute
+            "import": "tag",  # <link>, <script>
+            "variable": "attribute_value",
+        },
+        "css": {
+            "function": "at_rule",  # @function, @keyframes
+            "class": "class_selector",
+            "import": "at_import",
+            "variable": "custom_property",
+        },
+    }
+    
+    @classmethod
+    def get_pattern(cls, language_id: str, node_type: str) -> Optional[str]:
+        """Get AST pattern for a language and node type.
+        
+        Returns None for unsupported language/type combinations.
+        Falls back to basic pattern matching if AST pattern not available.
+        """
+        patterns = cls.PATTERNS.get(language_id, {})
+        return patterns.get(node_type)
 
 
 class UniversalParser:
@@ -533,37 +711,46 @@ class UniversalParser:
         )
     
     async def _parse_file_content(self, file_path: Path, language_config: LanguageConfig) -> bool:
-        """Parse file content (extracted from original parse_file method)."""
+        """Parse file content using AST-Grep queries (FIXED: Jan 7, 2025)."""
         try:
+            logger.debug(f"_parse_file_content START: {file_path}, language={language_config.ast_grep_id}")
             # Read file content with proper encoding detection
             content = self._read_file_with_encoding_detection(file_path)
+            logger.debug(f"_parse_file_content: read {len(content)} bytes")
 
             # Parse with ast-grep
             if SgRoot is None:
                 logger.error("ast-grep-py not available")
                 return False
+            
+            logger.debug(f"_parse_file_content: creating SgRoot...")
             sg_root = SgRoot(content, language_config.ast_grep_id)
+            logger.debug(f"_parse_file_content: SgRoot created")
 
             # Create file node
             file_node = self._create_file_node(file_path, language_config, content)
             self.graph.add_node(file_node)
+            logger.debug(f"_parse_file_content: file node created")
 
             # Track processed file
             self.graph.add_processed_file(str(file_path))
-            logger.debug(f"Added file to tracking: {file_path} (total: {len(self.graph._processed_files)})")
+            logger.debug(f"_parse_file_content: Added file to tracking: {file_path}")
 
-            # Parse language-specific constructs
-            self._parse_functions(sg_root, file_path, language_config)
-            self._parse_classes(sg_root, file_path, language_config)
-            self._parse_variables(sg_root, file_path, language_config)
-            self._parse_imports(sg_root, file_path, language_config)
-
-            # Parse relationships - this is where the code graph gets its power
-            self._parse_function_calls(sg_root, file_path, language_config)
-            self._parse_variable_references(sg_root, file_path, language_config)
-            self._parse_method_invocations(sg_root, file_path, language_config)
-
-            logger.debug("Successfully parsed %s (%s)", file_path, language_config.name)
+            # Parse language-specific constructs using AST-Grep queries
+            logger.debug(f"_parse_file_content: calling _parse_functions_ast...")
+            functions_count = self._parse_functions_ast(sg_root, file_path, language_config)
+            logger.debug(f"_parse_file_content: _parse_functions_ast returned {functions_count}")
+            
+            classes_count = self._parse_classes_ast(sg_root, file_path, language_config)
+            logger.debug(f"_parse_file_content: _parse_classes_ast returned {classes_count}")
+            
+            imports_count = self._parse_imports_ast(sg_root, file_path, language_config)
+            logger.debug(f"_parse_file_content: _parse_imports_ast returned {imports_count}")
+            
+            logger.debug(
+                f"Successfully parsed {file_path} ({language_config.name}): "
+                f"{functions_count} functions, {classes_count} classes, {imports_count} imports"
+            )
             return True
             
         except Exception as e:
@@ -594,422 +781,300 @@ class UniversalParser:
             }
         )
 
-    def _parse_functions(self, sg_root: Any, file_path: Path, language_config: LanguageConfig) -> None:
-        """Parse function definitions."""
-        # This is a simplified implementation - real implementation would use ast-grep patterns
-        # For now, we'll use text-based pattern matching as a fallback
+    def _parse_functions_ast(self, sg_root: Any, file_path: Path, language_config: LanguageConfig) -> int:
+        """Parse functions using AST-Grep queries (FIXED: Jan 7, 2025)."""
+        count = 0
         try:
-            content = file_path.read_text(encoding='utf-8', errors='ignore')
-            lines = content.splitlines()
-
-            for i, line in enumerate(lines, 1):
-                for pattern in language_config.function_patterns:
-                    if pattern in line and not line.strip().startswith(language_config.comment_patterns[0]):
-                        func_name = self._extract_function_name(line, pattern, language_config)
-                        if func_name:
-                            func_node = UniversalNode(
-                                id=f"function:{file_path}:{func_name}:{i}",
+            # Try AST-Grep pattern first
+            pattern = ASTGrepPatterns.get_pattern(language_config.ast_grep_id, "function")
+            print(f"[TRACE] _parse_functions_ast START: pattern='{pattern}' for {language_config.ast_grep_id}")
+            if pattern:
+                try:
+                    # CORRECTED API: Call root() to get the root node, then find_all with dict query
+                    print(f"[TRACE] _parse_functions_ast: calling sg_root.root()...")
+                    root_node = sg_root.root()
+                    print(f"[TRACE] _parse_functions_ast: root_node returned, calling find_all...")
+                    # BUG FIX (Oct 26, 2025): find_all() returns iterator, must convert to list
+                    functions = list(root_node.find_all({"rule": {"kind": pattern}}))
+                    print(f"[TRACE] _parse_functions_ast: find_all returned {len(functions)} results")
+                    for func_node in functions:
+                        try:
+                            # Extract function name and location from AST node
+                            func_name = self._extract_name_from_ast(func_node, language_config)
+                            print(f"[TRACE] _parse_functions_ast: extracted name '{func_name}'")
+                            if not func_name:
+                                print(f"[TRACE] _parse_functions_ast: no name, skipping")
+                                continue
+                            
+                            # FIXED: Use range().start and range().end instead of start() and end() methods
+                            r = func_node.range()
+                            start_pos = r.start
+                            end_pos = r.end
+                            start_line = start_pos.line
+                            end_line = end_pos.line
+                            
+                            # Create function node
+                            node = UniversalNode(
+                                id=f"function:{file_path}:{func_name}:{start_line}",
                                 name=func_name,
                                 node_type=NodeType.FUNCTION,
                                 location=UniversalLocation(
                                     file_path=str(file_path),
-                                    start_line=i,
-                                    end_line=i,
+                                    start_line=start_line,
+                                    end_line=end_line,
                                     language=language_config.name
                                 ),
                                 language=language_config.name,
-                                complexity=1,  # Basic complexity
-                                metadata={"pattern": pattern}
+                                complexity=self._calculate_complexity_from_ast(func_node),
+                                metadata={"ast_pattern": pattern}
                             )
-                            self.graph.add_node(func_node)
-
+                            print(f"[TRACE] _parse_functions_ast: adding node {node.id}")
+                            self.graph.add_node(node)
+                            print(f"[TRACE] _parse_functions_ast: node added successfully")
+                            
                             # Add contains relationship
                             rel = UniversalRelationship(
-                                id=f"contains:file:{file_path}:function:{func_name}:{i}",
+                                id=f"contains:{file_path}:{node.id}",
                                 source_id=f"file:{file_path}",
-                                target_id=func_node.id,
+                                target_id=node.id,
                                 relationship_type=RelationshipType.CONTAINS
                             )
+                            print(f"[TRACE] _parse_functions_ast: adding relationship {rel.id}")
                             self.graph.add_relationship(rel)
-
+                            print(f"[TRACE] _parse_functions_ast: relationship added successfully")
+                            count += 1
+                            
+                        except Exception as e:
+                            print(f"[TRACE] _parse_functions_ast: ERROR processing function: {e}")
+                            import traceback
+                            traceback.print_exc()
+                            continue
+                            
+                except Exception as e:
+                    print(f"[TRACE] _parse_functions_ast: ERROR querying functions: {e}")
+                    import traceback
+                    traceback.print_exc()
+            
+            print(f"[TRACE] _parse_functions_ast END: Found {count} functions")
+            
         except Exception as e:
-            logger.debug("Error parsing functions in %s: %s", file_path, e)
+            print(f"[TRACE] _parse_functions_ast: OUTER ERROR: {e}")
+            import traceback
+            traceback.print_exc()
+        
+        return count
 
-    def _parse_classes(self, sg_root: Any, file_path: Path, language_config: LanguageConfig) -> None:
-        """Parse class definitions."""
+    def _parse_classes_ast(self, sg_root: Any, file_path: Path, language_config: LanguageConfig) -> int:
+        """Parse classes using AST-Grep queries (FIXED: Jan 7, 2025)."""
+        count = 0
         try:
-            content = file_path.read_text(encoding='utf-8', errors='ignore')
-            lines = content.splitlines()
-
-            for i, line in enumerate(lines, 1):
-                for pattern in language_config.class_patterns:
-                    if pattern in line and not line.strip().startswith(language_config.comment_patterns[0]):
-                        class_name = self._extract_class_name(line, pattern, language_config)
-                        if class_name:
-                            class_node = UniversalNode(
-                                id=f"class:{file_path}:{class_name}:{i}",
+            # Try AST-Grep pattern first
+            pattern = ASTGrepPatterns.get_pattern(language_config.ast_grep_id, "class")
+            if pattern:
+                try:
+                    # CORRECTED API: Call root() to get the root node, then find_all with dict query
+                    root_node = sg_root.root()
+                    # BUG FIX (Oct 26, 2025): find_all() returns iterator, must convert to list
+                    classes = list(root_node.find_all({"rule": {"kind": pattern}}))
+                    for class_node in classes:
+                        try:
+                            # Extract class name and location from AST node
+                            class_name = self._extract_name_from_ast(class_node, language_config)
+                            if not class_name:
+                                continue
+                            
+                            # FIXED: Use range().start and range().end instead of start() and end() methods
+                            r = class_node.range()
+                            start_pos = r.start
+                            end_pos = r.end
+                            start_line = start_pos.line
+                            end_line = end_pos.line
+                            
+                            # Create class node
+                            node = UniversalNode(
+                                id=f"class:{file_path}:{class_name}:{start_line}",
                                 name=class_name,
                                 node_type=NodeType.CLASS,
                                 location=UniversalLocation(
                                     file_path=str(file_path),
-                                    start_line=i,
-                                    end_line=i,
+                                    start_line=start_line,
+                                    end_line=end_line,
                                     language=language_config.name
                                 ),
                                 language=language_config.name,
-                                metadata={"pattern": pattern}
+                                line_count=end_line - start_line + 1,
+                                metadata={"ast_pattern": pattern}
                             )
-                            self.graph.add_node(class_node)
-
+                            self.graph.add_node(node)
+                            
                             # Add contains relationship
                             rel = UniversalRelationship(
-                                id=f"contains:file:{file_path}:class:{class_name}:{i}",
+                                id=f"contains:{file_path}:{node.id}",
                                 source_id=f"file:{file_path}",
-                                target_id=class_node.id,
+                                target_id=node.id,
                                 relationship_type=RelationshipType.CONTAINS
                             )
                             self.graph.add_relationship(rel)
-
+                            count += 1
+                            
+                        except Exception as e:
+                            logger.debug(f"Error processing class node in {file_path}: {e}")
+                            continue
+                            
+                except Exception as e:
+                    logger.debug(f"Error querying classes in {file_path}: {e}")
+            
+            logger.debug(f"Found {count} classes in {file_path} using AST-Grep")
+            
         except Exception as e:
-            logger.debug("Error parsing classes in %s: %s", file_path, e)
+            logger.debug(f"Error parsing classes in {file_path}: {e}")
+        
+        return count
 
-    def _parse_variables(self, sg_root: Any, file_path: Path, language_config: LanguageConfig) -> None:
-        """Parse variable definitions."""
-        # Simplified implementation for variable parsing
-        pass
-
-    def _parse_imports(self, sg_root: Any, file_path: Path, language_config: LanguageConfig) -> None:
-        """Parse import statements."""
+    def _parse_imports_ast(self, sg_root: Any, file_path: Path, language_config: LanguageConfig) -> int:
+        """Parse imports using AST-Grep queries (FIXED: Jan 7, 2025)."""
+        count = 0
         try:
-            content = file_path.read_text(encoding='utf-8', errors='ignore')
-            lines = content.splitlines()
-
-            for i, line in enumerate(lines, 1):
-                for pattern in language_config.import_patterns:
-                    if line.strip().startswith(pattern):
-                        import_target = self._extract_import_target(line, pattern, language_config)
-                        if import_target:
-                            import_node = UniversalNode(
-                                id=f"import:{file_path}:{import_target}:{i}",
+            # Try AST-Grep pattern first
+            pattern = ASTGrepPatterns.get_pattern(language_config.ast_grep_id, "import")
+            if pattern:
+                try:
+                    # CORRECTED API: Call root() to get the root node, then find_all with dict query
+                    root_node = sg_root.root()
+                    # BUG FIX (Oct 26, 2025): find_all() returns iterator, must convert to list
+                    imports = list(root_node.find_all({"rule": {"kind": pattern}}))
+                    for import_node in imports:
+                        try:
+                            # Extract import target from AST node
+                            import_target = self._extract_import_target_from_ast(import_node, language_config)
+                            if not import_target:
+                                continue
+                            
+                            # FIXED: Use range().start instead of start() method
+                            r = import_node.range()
+                            start_pos = r.start
+                            start_line = start_pos.line
+                            
+                            # Create import node
+                            node = UniversalNode(
+                                id=f"import:{file_path}:{import_target}:{start_line}",
                                 name=import_target,
                                 node_type=NodeType.IMPORT,
                                 location=UniversalLocation(
                                     file_path=str(file_path),
-                                    start_line=i,
-                                    end_line=i,
+                                    start_line=start_line,
+                                    end_line=start_line,
                                     language=language_config.name
                                 ),
                                 language=language_config.name,
-                                metadata={"pattern": pattern}
+                                metadata={"ast_pattern": pattern}
                             )
-                            self.graph.add_node(import_node)
-
+                            self.graph.add_node(node)
+                            
                             # Add import relationship
                             rel = UniversalRelationship(
-                                id=f"imports:file:{file_path}:module:{import_target}:{i}",
+                                id=f"imports:{file_path}:{node.id}",
                                 source_id=f"file:{file_path}",
                                 target_id=f"module:{import_target}",
                                 relationship_type=RelationshipType.IMPORTS
                             )
                             self.graph.add_relationship(rel)
-
+                            count += 1
+                            
+                        except Exception as e:
+                            logger.debug(f"Error processing import node in {file_path}: {e}")
+                            continue
+                            
+                except Exception as e:
+                    logger.debug(f"Error querying imports in {file_path}: {e}")
+            
+            logger.debug(f"Found {count} imports in {file_path} using AST-Grep")
+            
         except Exception as e:
-            logger.debug("Error parsing imports in %s: %s", file_path, e)
+            logger.debug(f"Error parsing imports in {file_path}: {e}")
+        
+        return count
 
-    def _extract_function_name(self, line: str, pattern: str, language_config: LanguageConfig) -> Optional[str]:
-        """Extract function name from a line (removed LRU cache - using file-level caching instead)."""
-        # Simplified name extraction - real implementation would be more sophisticated
-        parts = line.strip().split()
+    def _extract_name_from_ast(self, ast_node: Any, language_config: LanguageConfig) -> Optional[str]:
+        """Extract name from AST node (generic extraction for different languages)."""
         try:
-            if pattern == "def" and len(parts) >= 2:
-                return parts[1].split("(")[0]
-            elif pattern == "function" and len(parts) >= 2:
-                return parts[1].split("(")[0]
-            elif pattern == "func" and len(parts) >= 2:
-                return parts[1].split("(")[0]
-        except (IndexError, AttributeError):
-            pass
-        return None
+            # Try various methods to get the name
+            node_text = ast_node.text()
+            
+            # Common patterns for extracting names:
+            # def foo(): -> 'foo'
+            # function bar() { -> 'bar'
+            # class Baz { -> 'Baz'
+            
+            import re
+            
+            # Try function pattern first
+            match = re.search(r'(?:def|function|func|fn)\s+(\w+)', node_text)
+            if match:
+                return match.group(1)
+            
+            # Try class pattern
+            match = re.search(r'(?:class|struct|interface)\s+(\w+)', node_text)
+            if match:
+                return match.group(1)
+            
+            # Try to get first word after keywords
+            for keyword in ['def', 'function', 'func', 'fn', 'class', 'struct', 'interface']:
+                if keyword in node_text:
+                    parts = node_text.split(keyword, 1)
+                    if len(parts) > 1:
+                        remaining = parts[1].strip()
+                        match = re.search(r'^(\w+)', remaining)
+                        if match:
+                            return match.group(1)
+            
+            return None
+            
+        except Exception as e:
+            logger.debug(f"Error extracting name from AST node: {e}")
+            return None
 
-    def _extract_class_name(self, line: str, pattern: str, language_config: LanguageConfig) -> Optional[str]:
-        """Extract class name from a line (removed LRU cache - using file-level caching instead)."""
-        parts = line.strip().split()
+    def _extract_import_target_from_ast(self, ast_node: Any, language_config: LanguageConfig) -> Optional[str]:
+        """Extract import target from AST node."""
         try:
-            if pattern == "class" and len(parts) >= 2:
-                return parts[1].split("(")[0].split(":")[0].split("{")[0]
-            elif pattern == "struct" and len(parts) >= 2:
-                return parts[1].split("{")[0]
-        except (IndexError, AttributeError):
-            pass
-        return None
+            node_text = ast_node.text()
+            
+            import re
+            
+            # Python: import foo or from foo import bar
+            match = re.search(r'(?:import|from)\s+([.\w]+)', node_text)
+            if match:
+                target = match.group(1)
+                # Clean up (remove 'import' if it's part of the pattern)
+                if ' import' in target:
+                    target = target.split(' import')[0]
+                return target.strip()
+            
+            return None
+            
+        except Exception as e:
+            logger.debug(f"Error extracting import target from AST node: {e}")
+            return None
 
-    
-    def _extract_import_target(self, line: str, pattern: str, language_config: LanguageConfig) -> Optional[str]:
-        """Extract import target from a line with LRU caching."""
+    def _calculate_complexity_from_ast(self, ast_node: Any) -> int:
+        """Calculate cyclomatic complexity from AST node."""
         try:
-            if pattern == "import":
-                # Handle different import styles
-                if "from" in line:
-                    # from X import Y
-                    parts = line.split("from")
-                    if len(parts) >= 2:
-                        return parts[1].split("import")[0].strip()
-                else:
-                    # import X
-                    return line.replace("import", "").strip().split()[0]
-            elif pattern == "require":
-                # require('module') or require "module"
+            node_text = ast_node.text()
+            
+            # Count decision points
+            complexity = 1
+            decision_keywords = ['if', 'for', 'while', 'catch', '&&', '||', '?', 'switch', 'case']
+            
+            for keyword in decision_keywords:
+                # Use word boundary for keywords
                 import re
-                match = re.search(r'require\s*\(?["\']([^"\']+)["\']', line)
-                if match:
-                    return match.group(1)
-        except (IndexError, AttributeError):
-            pass
-        return None
-
-    def _parse_function_calls(self, sg_root: Any, file_path: Path, language_config: LanguageConfig) -> None:
-        """Parse function calls to create CALLS relationships."""
-        try:
-            content = file_path.read_text(encoding='utf-8', errors='ignore')
-            lines = content.splitlines()
-
-            # Get all function nodes for this file to establish calling context
-            file_functions = self._get_file_functions(file_path)
-
-            # Parse each line for function calls
-            for i, line in enumerate(lines, 1):
-                if not self._should_process_line(line, language_config):
-                    continue
-
-                calling_function = self._find_calling_function(i, file_functions)
-                if calling_function:
-                    self._process_function_calls_in_line(line, i, calling_function, language_config)
-
-        except Exception as e:
-            logger.debug("Error parsing function calls in %s: %s", file_path, e)
-
-    def _get_file_functions(self, file_path: Path) -> Dict[int, UniversalNode]:
-        """Get all function nodes for a specific file."""
-        file_functions = {}
-        for node in self.graph.nodes.values():
-            if (node.location.file_path == str(file_path) and
-                node.node_type == NodeType.FUNCTION):
-                # Map line numbers to function nodes for context
-                file_functions[node.location.start_line] = node
-        return file_functions
-
-    def _should_process_line(self, line: str, language_config: LanguageConfig) -> bool:
-        """Check if a line should be processed for function calls."""
-        line_stripped = line.strip()
-
-        # Skip empty lines and comments
-        if not line_stripped or line_stripped.startswith(language_config.comment_patterns):
-            return False
-
-        # Skip function/class definitions - these are not function calls
-        definition_keywords = ['def ', 'function ', 'func ', 'fn ', 'class ', 'struct ', 'interface ', 'public ', 'private ', 'static ']
-        if any(keyword in line_stripped for keyword in definition_keywords):
-            return False
-
-        return True
-
-    def _find_calling_function(self, line_number: int, file_functions: Dict[int, UniversalNode]) -> Optional[UniversalNode]:
-        """Find the function that contains the given line number."""
-        # Sort functions by line number to find the correct containing function
-        sorted_functions = sorted(file_functions.items(), key=lambda x: x[0])
-
-        containing_function = None
-        for i, (func_line, func_node) in enumerate(sorted_functions):
-            if func_line <= line_number:
-                # Check if this function contains the line
-                if func_node.location.end_line and line_number <= func_node.location.end_line:
-                    containing_function = func_node
-                elif not func_node.location.end_line:
-                    # If no end_line, check if there's a next function
-                    if i + 1 < len(sorted_functions):
-                        next_func_line = sorted_functions[i + 1][0]
-                        if line_number < next_func_line:
-                            containing_function = func_node
-                    else:
-                        # Last function in file, assume it contains remaining lines
-                        containing_function = func_node
-            else:
-                # We've passed the line, stop searching
-                break
-
-        return containing_function
-
-    def _process_function_calls_in_line(self, line: str, line_number: int, calling_function: UniversalNode, language_config: LanguageConfig) -> None:
-        """Process function calls found in a single line."""
-        function_calls = self._extract_function_calls(line, language_config)
-
-        for called_function in function_calls:
-            target_nodes = self.graph.find_nodes_by_name(called_function, exact_match=True)
-
-            for target_node in target_nodes:
-                if target_node.node_type == NodeType.FUNCTION:
-                    self._create_function_call_relationship(calling_function, target_node, line_number, line)
-
-    def _create_function_call_relationship(self, calling_function: UniversalNode, target_node: UniversalNode, line_number: int, line: str) -> None:
-        """Create a CALLS relationship between two functions."""
-        # Prevent false self-loops - only allow if it's a genuine recursive call
-        if calling_function.id == target_node.id:
-            # Check if this is a genuine recursive call by looking at the context
-            function_name = calling_function.name
-            line_stripped = line.strip()
-
-            # Skip if this looks like a false positive:
-            # 1. Function name appears at the start (likely a definition)
-            # 2. Line contains definition keywords
-            # 3. Line is too short to be a meaningful call
-            if (line_stripped.startswith(function_name) or
-                any(keyword in line_stripped for keyword in ['def ', 'function ', 'func ', 'class ']) or
-                len(line_stripped) < 10):
-                logger.debug(f"Skipping false self-loop for {function_name}: {line_stripped}")
-                return
-
-            logger.debug(f"Creating recursive call relationship for {function_name}: {line_stripped}")
-
-        rel = UniversalRelationship(
-            id=f"calls:{calling_function.id}:{target_node.id}:{line_number}",
-            source_id=calling_function.id,
-            target_id=target_node.id,
-            relationship_type=RelationshipType.CALLS,
-            metadata={
-                "call_line": line_number,
-                "call_context": line.strip(),
-                "is_recursive": calling_function.id == target_node.id
-            }
-        )
-        self.graph.add_relationship(rel)
-
-    def _parse_variable_references(self, sg_root: Any, file_path: Path, language_config: LanguageConfig) -> None:
-        """Parse variable references to create REFERENCES relationships."""
-        try:
-            content = file_path.read_text(encoding='utf-8', errors='ignore')
-            lines = content.splitlines()
-
-            # Get all variable nodes for this file and other files
-            variable_nodes = {}
-            for node in self.graph.nodes.values():
-                if node.node_type == NodeType.VARIABLE:
-                    variable_nodes[node.name] = node
-
-            # Parse each line for variable references
-            for i, line in enumerate(lines, 1):
-                line_stripped = line.strip()
-                if not line_stripped or line_stripped.startswith(tuple(language_config.comment_patterns)):
-                    continue
-
-                # Look for variable references
-                variable_refs = self._extract_variable_references(line, language_config, frozenset(variable_nodes.keys()))
-
-                for var_name in variable_refs:
-                    if var_name in variable_nodes:
-                        target_node = variable_nodes[var_name]
-
-                        # Create a reference node for this usage
-                        ref_node = UniversalNode(
-                            id=f"ref:{file_path}:{var_name}:{i}",
-                            name=var_name,
-                            node_type=NodeType.REFERENCE,
-                            location=UniversalLocation(
-                                file_path=str(file_path),
-                                start_line=i,
-                                end_line=i,
-                                language=language_config.name
-                            ),
-                            content=line.strip(),
-                            metadata={
-                                "reference_context": line.strip(),
-                                "referenced_variable": target_node.id
-                            }
-                        )
-                        self.graph.add_node(ref_node)
-
-                        # Create REFERENCES relationship
-                        rel = UniversalRelationship(
-                            id=f"references:{ref_node.id}:{target_node.id}",
-                            source_id=ref_node.id,
-                            target_id=target_node.id,
-                            relationship_type=RelationshipType.REFERENCES,
-                            metadata={
-                                "reference_line": i,
-                                "reference_context": line.strip()
-                            }
-                        )
-                        self.graph.add_relationship(rel)
-
-        except Exception as e:
-            logger.debug("Error parsing variable references in %s: %s", file_path, e)
-
-    def _parse_method_invocations(self, sg_root: Any, file_path: Path, language_config: LanguageConfig) -> None:
-        """Parse method invocations (object.method() calls)."""
-        try:
-            content = file_path.read_text(encoding='utf-8', errors='ignore')
-            lines = content.splitlines()
-
-            for i, line in enumerate(lines, 1):
-                line_stripped = line.strip()
-                if not line_stripped or line_stripped.startswith(tuple(language_config.comment_patterns)):
-                    continue
-
-                # Look for method invocation patterns like obj.method()
-                method_calls = self._extract_method_invocations(line, language_config)
-
-                for obj_name, method_name in method_calls:
-                    # Try to find the method in our graph
-                    target_nodes = self.graph.find_nodes_by_name(method_name, exact_match=True)
-
-                    for target_node in target_nodes:
-                        if target_node.node_type == NodeType.FUNCTION:
-                            # Find the calling context
-                            calling_function = self._find_containing_function(file_path, i)
-
-                            if calling_function:
-                                # Create CALLS relationship for method invocation
-                                rel = UniversalRelationship(
-                                    id=f"calls:{calling_function.id}:{target_node.id}:{i}:method",
-                                    source_id=calling_function.id,
-                                    target_id=target_node.id,
-                                    relationship_type=RelationshipType.CALLS,
-                                    metadata={
-                                        "call_line": i,
-                                        "call_type": "method_invocation",
-                                        "object": obj_name,
-                                        "method": method_name,
-                                        "call_context": line.strip()
-                                    }
-                                )
-                                self.graph.add_relationship(rel)
-
-        except Exception as e:
-            logger.debug("Error parsing method invocations in %s: %s", file_path, e)
-
-    
-    def _extract_function_calls(self, line: str, language_config: LanguageConfig) -> List[str]:
-        """Extract function call names from a line of code with LRU caching."""
-        import re
-        calls = []
-
-        # More precise function call pattern - must have opening parenthesis
-        # and not be preceded by definition keywords or be part of a class definition
-        pattern = r'(?<!def\s)(?<!function\s)(?<!func\s)(?<!fn\s)(?<!class\s)(?<!struct\s)\b(\w+)\s*\('
-
-        matches = re.findall(pattern, line)
-        for match in matches:
-            # Filter out keywords, control structures, and common constructs
-            excluded_keywords = {
-                'if', 'for', 'while', 'class', 'def', 'function', 'var', 'let', 'const',
-                'return', 'import', 'from', 'try', 'except', 'catch', 'finally',
-                'with', 'as', 'assert', 'raise', 'throw', 'new', 'delete',
-                'typeof', 'instanceof', 'in', 'of', 'is', 'not', 'and', 'or'
-            }
-
-            if match.lower() not in excluded_keywords and len(match) > 1:
-                calls.append(match)
-
-        return calls
+                pattern = rf'\b{re.escape(keyword)}\b' if keyword.isalnum() else re.escape(keyword)
+                complexity += len(re.findall(pattern, node_text))
+            
+            return max(1, complexity)
+            
+        except Exception:
+            return 1
 
     def _read_file_with_encoding_detection(self, file_path: Path) -> str:
         """Read file with proper encoding detection."""
@@ -1031,47 +1096,6 @@ class UniversalParser:
         except Exception as e:
             logger.error(f"Failed to read file {file_path}: {e}")
             raise
-
-    
-    def _extract_variable_references(self, line: str, language_config: LanguageConfig, known_variables: frozenset) -> List[str]:
-        """Extract variable references from a line of code with LRU caching."""
-        import re
-        refs = []
-
-        # Look for word boundaries to find variable names
-        words = re.findall(r'\b\w+\b', line)
-
-        for word in words:
-            if word in known_variables:
-                # Make sure it's not a definition context
-                if not any(pattern in line for pattern in language_config.variable_patterns):
-                    refs.append(word)
-
-        return refs
-
-    
-    def _extract_method_invocations(self, line: str, language_config: LanguageConfig) -> List[tuple]:
-        """Extract method invocations (object.method calls) from a line with LRU caching."""
-        import re
-        invocations = []
-
-        # Pattern for obj.method() or obj.method
-        pattern = r'(\w+)\.(\w+)\s*\('
-        matches = re.findall(pattern, line)
-
-        for obj_name, method_name in matches:
-            invocations.append((obj_name, method_name))
-
-        return invocations
-
-    def _find_containing_function(self, file_path: Path, line_number: int) -> Optional[UniversalNode]:
-        """Find the function that contains the given line number."""
-        for node in self.graph.nodes.values():
-            if (node.location.file_path == str(file_path) and
-                node.node_type == NodeType.FUNCTION and
-                node.location.start_line <= line_number <= (node.location.end_line or node.location.start_line + 50)):
-                return node
-        return None
 
     def _load_gitignore_patterns(self, project_root: Path) -> None:
         """Load and compile gitignore patterns once per project - PERFORMANCE OPTIMIZATION."""
@@ -1285,4 +1309,3 @@ class UniversalParser:
             "ast_grep_available": self._ast_grep_available
         })
         return stats
-

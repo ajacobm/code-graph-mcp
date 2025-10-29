@@ -210,6 +210,12 @@ class LanguageDetector:
                 (r'go\s+\w+\(', 0.7),
                 (r'defer\s+', 0.7),
             ],
+            'csharp': [
+                (r'using\s+[\w.]+;', 0.7),
+                (r'namespace\s+\w+', 0.8),
+                (r'class\s+\w+', 0.7),
+                (r'static\s+void\s+Main', 0.9),
+            ],
         }
 
     def detect_file_language(self, file_path: Path) -> Optional[LanguageConfig]:
@@ -361,6 +367,15 @@ class ProjectAnalyzer:
                 'beego': ['go.mod:beego'],
                 'revel': ['go.mod:revel'],
             },
+            'csharp': {
+                'aspnet': ['*.csproj:Microsoft.AspNetCore', 'Program.cs:WebHost'],
+                'unity': ['*.csproj:UnityEngine', 'Assets/'],
+                'xamarin': ['*.csproj:Xamarin'],
+                'blazor': ['*.csproj:Microsoft.AspNetCore.Components'],
+                'wpf': ['*.csproj:PresentationFramework'],
+                'winforms': ['*.csproj:System.Windows.Forms'],
+                'azure_functions': ['*.csproj:Microsoft.Azure.Functions'],
+            },
         }
 
     def _build_build_system_detectors(self) -> Dict[str, List[str]]:
@@ -383,6 +398,8 @@ class ProjectAnalyzer:
             'make': ['Makefile', 'makefile'],
             'cmake': ['CMakeLists.txt'],
             'bazel': ['WORKSPACE', 'BUILD'],
+            'docker': ['Dockerfile', 'docker-compose.yml'],
+            'dotnet': ['*.csproj', '*.sln'],
         }
 
     def analyze_project(self, project_root: Path) -> ProjectStructure:
@@ -627,7 +644,8 @@ class ProjectAnalyzer:
             # Priority order for primary system
             priority_order = [
                 'cargo', 'go_modules', 'maven', 'gradle', 'npm', 'yarn', 'pnpm',
-                'poetry', 'pipenv', 'pip', 'composer', 'bundler', 'make', 'cmake'
+                'poetry', 'pipenv', 'pip', 'composer', 'bundler', 'make', 'cmake',
+                'bazel', 'docker', 'dotnet'
             ]
 
             for system in priority_order:
@@ -641,7 +659,7 @@ class ProjectAnalyzer:
         """Classify the type of project based on analysis."""
 
         # Web application indicators
-        web_frameworks = ['react', 'vue', 'angular', 'django', 'flask', 'express', 'next', 'gatsby']
+        web_frameworks = ['react', 'vue', 'angular', 'django', 'flask', 'express', 'next', 'gatsby', 'blazor']
         if any(fw in structure.frameworks for fw in web_frameworks):
             return 'web_application'
 
@@ -651,12 +669,12 @@ class ProjectAnalyzer:
             return 'mobile_application'
 
         # Desktop application indicators
-        desktop_indicators = ['electron', 'qt', 'gtk', 'tkinter']
+        desktop_indicators = ['electron', 'qt', 'gtk', 'tkinter', 'wpf', 'winforms']
         if any(ind in structure.frameworks for ind in desktop_indicators):
             return 'desktop_application'
 
         # API/Service indicators
-        api_frameworks = ['fastapi', 'express', 'actix', 'gin', 'spring']
+        api_frameworks = ['fastapi', 'express', 'actix', 'gin', 'spring', 'aspnet', 'aspnetcore']
         if any(fw in structure.frameworks for fw in api_frameworks):
             return 'api_service'
 
@@ -761,7 +779,9 @@ class ProjectAnalyzer:
         # Ignore patterns based on project type
         common_ignores = [
             'node_modules/*', '__pycache__/*', '.git/*',
-            'build/*', 'dist/*', 'target/*', 'out/*'
+            'build/*', 'dist/*', 'target/*', 'out/*',
+            '*.log', '*.tmp', '*.bak', '*.swp',
+            'bin/*', 'obj/*', '.DS_Store', 'Thumbs.db',
         ]
         strategy['ignore_patterns'].extend(common_ignores)
 

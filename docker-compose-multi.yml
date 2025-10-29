@@ -36,11 +36,10 @@ services:
     ports:
       - "10101:8000"
     volumes:
-      - ".:/app"  # Mount entire project for development
       - repo-mount:/app/workspace  # Mount workspace
     environment:
       - CODE_GRAPH_MCP_LOG_LEVEL=DEBUG
-      - CODE_GRAPH_MCP_FILE_WATCHER=true
+      - CODE_GRAPH_MCP_FILE_WATCHER=false
       - REDIS_URL=redis://redis:6379
     depends_on:
       - redis
@@ -64,8 +63,6 @@ services:
   redis-insight:
     image: redislabs/redisinsight:latest
     ports:
-      - "8001:8001"
+      - "5540:5540"
     depends_on:
       - redis
-    profiles:
-      - monitoring

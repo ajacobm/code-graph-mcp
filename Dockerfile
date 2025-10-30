@@ -85,6 +85,12 @@ FROM production AS sse
 # Default to SSE mode with HTTP server and Redis support (when available)
 CMD ["code-graph-mcp", "--mode", "sse", "--host", "0.0.0.0", "--port", "8000", "--enable-cache"]
 
+# HTTP-specific stage (for REST API / frontend)
+FROM production AS http
+
+# Default to HTTP mode with FastAPI and Redis support
+CMD ["python", "-m", "code_graph_mcp.http_server", "--host", "0.0.0.0", "--port", "8000"]
+
 # Stdio-specific stage (for MCP clients)
 FROM production AS stdio
 

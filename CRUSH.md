@@ -52,3 +52,35 @@ docker run --rm -v /path/to/code-graph-mcp:/app code-graph-mcp:test uv run pytho
 docker run --rm -v /path/to/code-graph-mcp:/app code-graph-mcp:test uv run python /app/tests/test_query_tools_live.py
 docker run --rm -v /path/to/code-graph-mcp:/app code-graph-mcp:test uv run python /app/tests/test_mcp_live_session.py
 ```
+
+## Multi-Language Seams & Ignore Patterns (2025-10-29)
+**Feature**: Cross-language seam detection and ignore pattern management
+**Files Added**:
+- `src/code_graph_mcp/ignore_patterns.py` - IgnorePatternsManager (reads .graphignore)
+- `src/code_graph_mcp/seam_detector.py` - SeamDetector (detects C#->Node, Python->SQL, etc)
+- `tests/test_ignore_patterns.py` - 11 tests for pattern matching
+- `tests/test_seam_detector.py` - 11 tests for cross-language detection
+- `.graphignore.example` - template for ignore patterns
+
+**Key Classes**:
+- `IgnorePatternsManager`: Load from .graphignore, filter paths/languages
+- `SeamDetector`: Identify cross-language calls with regex patterns
+- `RelationshipType.SEAM`: New graph relationship type
+
+**Registered Seams** (auto-detected):
+- C# → Node.js (HttpClient, PostAsync)
+- C# → SQL (SqlConnection, SqlCommand)
+- TypeScript → Python (fetch, axios, api)
+- TypeScript → Node (import, require, @nestjs, express)
+- Python → Java (subprocess, socket, grpc)
+- Python → SQL (sqlite3, psycopg2, execute)
+
+**Test coverage**: 22/22 tests passing
+- Pattern matching with wildcards, includes, language filters
+- Seam detection in multi-language code
+- Runtime pattern/language addition
+
+**Next Steps** (See SESSION_PLAN_MULTI_LANGUAGE.md):
+1. Session 1: REST API + graph traversal queries (DFS, BFS, call chains)
+2. Session 2: Vue3 UI with Cytoscape.js visualization
+3. Session 3: DuckDB integration, tagging, graph comparison

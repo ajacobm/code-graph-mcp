@@ -1,0 +1,89 @@
+# GraphIgnore Configuration
+# Used to filter files and languages during code graph analysis
+
+# ============================================================================
+# IGNORE PATTERNS (standard glob syntax)
+# ============================================================================
+
+# Node.js / JavaScript
+node_modules/
+*.min.js
+*.min.css
+dist/
+build/
+.next/
+.nuxt/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.egg-info/
+
+# C# / .NET
+bin/
+obj/
+.vs/
+.vscode/
+*.dll
+*.exe
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Build outputs
+out/
+release/
+
+# VCS
+.git/
+.svn/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+
+# ============================================================================
+# LANGUAGE FILTERS (analyze ONLY these languages)
+# Uncomment to enable language filtering
+# ============================================================================
+
+# Analyze only C# and TypeScript (ignore Python, JavaScript, etc)
+# language: csharp
+# language: typescript
+
+# ============================================================================
+# WHITELIST PATTERNS (override ignores - prefixed with !)
+# ============================================================================
+
+# Keep @types even though node_modules/ is ignored
+!node_modules/@types/*
+
+# Keep critical config in dist/
+!dist/config.json
+
+# ============================================================================
+# EXAMPLES FOR MULTI-LANGUAGE ARCHITECTURES
+# ============================================================================
+
+# Multi-tier .NET + Node + SQL Server
+# Uncomment for this architecture:
+# language: csharp
+# language: typescript
+# language: sql
+
+# Remove frontend node_modules but keep shared types
+# node_modules/
+# !node_modules/@shared/*
+
+# Keep API routes but ignore client UI
+# client/node_modules/
+# client/dist/

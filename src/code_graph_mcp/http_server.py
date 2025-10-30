@@ -70,9 +70,12 @@ class GraphAPIServer:
                 self.engine = UniversalAnalysisEngine(
                     self.project_root,
                     redis_config=redis_config,
-                    enable_redis_cache=self.enable_redis_cache
+                    enable_redis_cache=self.enable_redis_cache,
+                    enable_file_watcher=False
                 )
                 
+                self.app.include_router(create_graph_api_router(self.engine))
+                await self.engine.force_reanalysis()
                 logger.info("Analysis engine initialized successfully")
             except Exception as e:
                 logger.error(f"Failed to initialize analysis engine: {e}")
@@ -138,9 +141,6 @@ class GraphAPIServer:
                     "call_chain": "/api/graph/call-chain/{start_node}"
                 }
             })
-        
-        if self.engine:
-            self.app.include_router(create_graph_api_router(self.engine))
     
     async def initialize(self):
         """Initialize the server."""

@@ -4,9 +4,14 @@
 Always initialize sessions with: `source ~/.bashrc`
 
 ## Docker Commands
-- View logs: `docker logs code-graph-mcp-code-graph-codegraphmcp-sse-1`
-- List running containers: `docker ps -a | grep code-graph`
-- Restart stack: `docker-compose -f docker-compose-multi.yml down && docker-compose -f docker-compose-multi.yml up -d`
+- **Use compose.sh utility** (in ~/.local/bin): Wrapper for docker-compose with stateful operations
+  - `compose.sh up` - Start stack (uses docker-compose-multi.yml by default)
+  - `compose.sh down` - Stop and remove
+  - `compose.sh restart` - Restart all services
+  - `compose.sh logs [service]` - View logs
+  - `compose.sh config [name] [value]` - Store config variables
+- View logs: `docker logs code-graph-mcp-code-graph-http-1` or `docker logs code-graph-mcp-frontend-1`
+- List running: `docker ps -a | grep code-graph`
 
 ## Development Commands
 - Run tests: `pytest tests/`
@@ -107,7 +112,29 @@ docker run --rm -v /path/to/code-graph-mcp:/app code-graph-mcp:test uv run pytho
 **Branch**: `feature/graph-ui-vue`
 **Commits**: 6 (scaffolding, enhancements, final, Docker)
 
+## Docker + Frontend Fixes (2025-10-30)
+**Problem**: HTTP API + Frontend integration issues
+**Fixes Applied**:
+1. Updated Dockerfile HTTP target to use `/app/.venv/bin/python` (not system python)
+2. Updated docker-compose-multi.yml healthcheck to use venv python path
+3. Fixed Vite proxy config to use `VITE_API_URL` env var (points to `code-graph-http:8000`)
+4. Added Node types to frontend tsconfig.app.json ("node" in types array)
+5. Fixed UniversalParser.graphignore matching - now correctly skips `node_modules/` at any path level
+6. Disabled broken @cached_method decorators on detect_language/is_supported_file (was returning dicts)
+7. Added force_reanalysis() call in HTTP server startup to populate graph on init
+
+**Current Status**: ✅ Frontend loads with CSS, API returns 89 nodes from code-graph-mcp repo (node_modules filtered)
+
+## compose.sh Utility
+**Location**: `~/.local/bin/compose.sh`
+**Usage**: Stateful Docker Compose wrapper with internal state management per directory
+- `compose.sh up` - Start stack
+- `compose.sh down` - Stop and remove
+- `compose.sh restart` - Restart all services
+- `compose.sh logs [service]` - View logs
+- State stored in `~/.composesh/.state_*` files
+
 ## Next Steps (Session 3)
 1. ✅ Session 1: REST API + graph traversal (DONE)
-2. ✅ Session 2: Vue3 UI with Cytoscape visualization (DONE)
+2. ✅ Session 2: Vue3 UI with Cytoscape visualization (DONE + Docker fixes)
 3. 📋 Session 3: DuckDB integration, tagging, graph comparison

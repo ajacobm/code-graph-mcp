@@ -13,6 +13,7 @@ from fastapi import APIRouter, Query, HTTPException
 from pydantic import BaseModel, Field
 
 from ..server.analysis_engine import UniversalAnalysisEngine
+from ..universal_graph import NodeType
 from ..graph.query_response import (
     NodeResponse,
     RelationshipResponse,
@@ -78,6 +79,18 @@ def create_graph_api_router(engine: UniversalAnalysisEngine) -> APIRouter:
             
             seam_count = rel_types.get('seam', 0)
             
+            # Get top functions by complexity
+            top_functions = []
+            function_nodes = [node for node in graph.nodes.values() 
+                            if getattr(node, 'node_type', None) == NodeType.FUNCTION]
+            for node in sorted(function_nodes, key=lambda n: getattr(n, 'complexity', 0), reverse=True)[:10]:
+                top_functions.append({
+                    'id': node.id,
+                    'name': getattr(node, 'name', ''),
+                    'complexity': getattr(node, 'complexity', 0),
+                    'language': getattr(node, 'language', '')
+                })
+            
             response = GraphStatsResponse(
                 total_nodes=len(graph.nodes),
                 total_relationships=len(graph.relationships),
@@ -88,7 +101,9 @@ def create_graph_api_router(engine: UniversalAnalysisEngine) -> APIRouter:
                 complexity_distribution={},
                 execution_time_ms=(time.time() - start_time) * 1000
             )
-            return response.to_dict()
+            result = response.to_dict()
+            result['top_functions'] = top_functions
+            return result
         
         except Exception as e:
             logger.error(f"Stats query failed: {e}")

@@ -65,7 +65,7 @@ services:
       context: .
       target: http
     ports:
-      - "18000:8000"
+      - "8000"
     volumes:
       - repo-mount:/app/workspace
     environment:
@@ -73,14 +73,14 @@ services:
     depends_on:
       - redis
     command: >
-      python -m code_graph_mcp.http_server
+      /app/.venv/bin/python -m code_graph_mcp.http_server
       --project-root /app/workspace
       --host 0.0.0.0
       --port 8000
       --redis-url redis://redis:6379
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      test: ["CMD", "/app/.venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3

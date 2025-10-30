@@ -1208,38 +1208,43 @@ class UniversalParser:
             return  # Already loaded for this project
         
         self._project_root = project_root
+        
+        # Prefer .graphignore if it exists, fallback to .gitignore
+        graphignore_path = project_root / '.graphignore'
         gitignore_path = project_root / '.gitignore'
         
-        if not gitignore_path.exists():
+        ignore_path = graphignore_path if graphignore_path.exists() else gitignore_path
+        
+        if not ignore_path.exists():
             self._gitignore_patterns = []
             self._gitignore_compiled = None
-            logger.debug(f"No .gitignore found at {gitignore_path}")
+            logger.debug(f"No .gitignore or .graphignore found at {project_root}")
             return
         
         try:
             # Try to use pathspec for proper gitignore handling
             try:
                 import pathspec
-                with open(gitignore_path, 'r', encoding='utf-8') as f:
+                with open(ignore_path, 'r', encoding='utf-8') as f:
                     patterns = [line.strip() for line in f 
                                if line.strip() and not line.startswith('#')]
                 
                 self._gitignore_patterns = patterns
                 self._gitignore_compiled = pathspec.PathSpec.from_lines('gitwildmatch', patterns)
-                logger.debug(f"Loaded {len(patterns)} gitignore patterns using pathspec from {gitignore_path}")
+                logger.debug(f"Loaded {len(patterns)} ignore patterns using pathspec from {ignore_path}")
                 
             except ImportError:
                 # Fallback to simple pattern matching if pathspec not available
-                with open(gitignore_path, 'r', encoding='utf-8') as f:
+                with open(ignore_path, 'r', encoding='utf-8') as f:
                     patterns = [line.strip() for line in f 
                                if line.strip() and not line.startswith('#')]
                 
                 self._gitignore_patterns = patterns
                 self._gitignore_compiled = None
-                logger.debug(f"Loaded {len(patterns)} gitignore patterns using fallback from {gitignore_path}")
+                logger.debug(f"Loaded {len(patterns)} ignore patterns using fallback from {ignore_path}")
                 
         except Exception as e:
-            logger.warning(f"Error loading .gitignore from {gitignore_path}: {e}")
+            logger.warning(f"Error loading ignore file from {ignore_path}: {e}")
             self._gitignore_patterns = []
             self._gitignore_compiled = None
 

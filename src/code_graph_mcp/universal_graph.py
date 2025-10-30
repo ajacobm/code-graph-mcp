@@ -51,6 +51,7 @@ class RelationshipType(Enum):
     OVERRIDES = "overrides"
     EXTENDS = "extends"
     USES = "uses"
+    SEAM = "seam"
 
 
 @dataclass

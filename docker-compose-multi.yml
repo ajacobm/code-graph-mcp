@@ -38,7 +38,7 @@ services:
     volumes:
       - repo-mount:/app/workspace  # Mount workspace
     environment:
-      - CODE_GRAPH_MCP_LOG_LEVEL=DEBUG
+      - CODE_GRAPH_MCP_LOG_LEVEL=INFO
       - CODE_GRAPH_MCP_FILE_WATCHER=false
       - REDIS_URL=redis://redis:6379
     depends_on:

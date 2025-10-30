@@ -379,150 +379,175 @@ class ASTGrepPatterns:
             "class": "class_definition",
             "import": "import_statement",
             "variable": "assignment",
+            "call": "call",
         },
         "javascript": {
             "function": "function_declaration",
             "class": "class_declaration",
             "import": "import_statement",
             "variable": "variable_declarator",
+            "call": "call_expression",
         },
         "typescript": {
             "function": "function_declaration",
             "class": "class_declaration",
             "import": "import_statement",
             "variable": "variable_declarator",
+            "call": "call_expression",
         },
         "java": {
             "function": "method_declaration",
             "class": "class_declaration",
             "import": "import_declaration",
             "variable": "field_declaration",
+            "call": "method_invocation",
         },
         "rust": {
             "function": "function_item",
             "class": "struct_item",
             "import": "use_declaration",
             "variable": "let_statement",
+            "call": "call_expression",
         },
         "go": {
             "function": "function_declaration",
             "class": "type_spec",
             "import": "import_declaration",
             "variable": "var_declaration",
+            "call": "call_expression",
         },
         "cpp": {
             "function": "function_definition",
             "class": "class_specifier",
             "import": "preproc_include",
             "variable": "declaration",
+            "call": "call_expression",
         },
         "c": {
             "function": "function_definition",
             "class": "struct_specifier",
             "import": "preproc_include",
             "variable": "declaration",
+            "call": "call_expression",
         },
         "csharp": {
             "function": "method_declaration",
             "class": "class_declaration",
             "import": "using_directive",
             "variable": "variable_declarator",
+            "call": "invocation_expression",
         },
         "php": {
             "function": "function_definition",
             "class": "class_declaration",
             "import": "require_expression",
             "variable": "assignment",
+            "call": "function_call_expression",
         },
         "ruby": {
             "function": "method",
             "class": "class_definition",
             "import": "require",
             "variable": "assignment",
+            "call": "method_call",
         },
         "swift": {
             "function": "function_declaration",
             "class": "class_declaration",
             "import": "import_statement",
             "variable": "variable_declaration",
+            "call": "function_call_expression",
         },
         "kotlin": {
             "function": "function_declaration",
             "class": "class_declaration",
             "import": "import_header",
             "variable": "property_declaration",
+            "call": "call_expression",
         },
         "scala": {
             "function": "function_definition",
             "class": "class_definition",
             "import": "import_declaration",
             "variable": "val_definition",
+            "call": "call_expression",
         },
         "dart": {
             "function": "function_declaration",
             "class": "class_declaration",
             "import": "import_or_export",
             "variable": "variable_declaration",
+            "call": "method_invocation",
         },
         "lua": {
             "function": "function_definition",
-            "class": "assignment_statement",  # Lua uses tables as classes
+            "class": "assignment_statement",
             "import": "require",
             "variable": "assignment_statement",
+            "call": "function_call",
         },
         "haskell": {
             "function": "function",
             "class": "type_class_declaration",
             "import": "import_declaration",
             "variable": "let_binding",
+            "call": "function_application",
         },
         "elixir": {
-            "function": "definition",  # def/defp
+            "function": "definition",
             "class": "module",
             "import": "alias_or_require",
             "variable": "match_expression",
+            "call": "call",
         },
         "erlang": {
             "function": "function_clause",
-            "class": "attribute",  # -module directive
-            "import": "attribute",  # -import directive
+            "class": "attribute",
+            "import": "attribute",
             "variable": "variable",
+            "call": "call_expression",
         },
         "r": {
             "function": "function_definition",
             "class": "class_definition",
             "import": "library_call",
             "variable": "assignment",
+            "call": "call",
         },
         "matlab": {
             "function": "function_definition",
             "class": "classdef_block",
             "import": "import_statement",
             "variable": "assignment",
+            "call": "function_call",
         },
         "perl": {
             "function": "subroutine_declaration",
             "class": "package_declaration",
             "import": "use_statement",
             "variable": "assignment",
+            "call": "function_call",
         },
         "sql": {
             "function": "create_function_statement",
             "class": "create_table_statement",
             "import": "use_statement",
             "variable": "declare_statement",
+            "call": "function_call",
         },
         "html": {
-            "function": "script_element",  # <script>
-            "class": "attribute_value",  # class attribute
-            "import": "tag",  # <link>, <script>
+            "function": "script_element",
+            "class": "attribute_value",
+            "import": "tag",
             "variable": "attribute_value",
+            "call": "tag",
         },
         "css": {
-            "function": "at_rule",  # @function, @keyframes
+            "function": "at_rule",
             "class": "class_selector",
             "import": "at_import",
             "variable": "custom_property",
+            "call": "function_call",
         },
     }
     
@@ -747,9 +772,13 @@ class UniversalParser:
             imports_count = self._parse_imports_ast(sg_root, file_path, language_config)
             logger.debug(f"_parse_file_content: _parse_imports_ast returned {imports_count}")
             
+            # Extract function calls AFTER functions are parsed (needed for call graph)
+            calls_count = self._extract_function_calls_ast(sg_root, file_path, language_config)
+            logger.debug(f"_parse_file_content: _extract_function_calls_ast returned {calls_count}")
+            
             logger.debug(
                 f"Successfully parsed {file_path} ({language_config.name}): "
-                f"{functions_count} functions, {classes_count} classes, {imports_count} imports"
+                f"{functions_count} functions, {classes_count} classes, {imports_count} imports, {calls_count} calls"
             )
             return True
             
@@ -863,6 +892,82 @@ class UniversalParser:
             traceback.print_exc()
         
         return count
+
+    def _extract_function_calls_ast(self, sg_root: Any, file_path: Path, language_config: LanguageConfig) -> int:
+        """Extract function calls and create CALLS relationships.
+        
+        This method finds all function/method calls in the file and creates CALLS
+        relationships from the calling function to the called function.
+        """
+        count = 0
+        try:
+            pattern = ASTGrepPatterns.get_pattern(language_config.ast_grep_id, "call")
+            if not pattern:
+                return count
+            
+            root_node = sg_root.root()
+            calls = list(root_node.find_all({"rule": {"kind": pattern}}))
+            
+            for call_node in calls:
+                try:
+                    call_name = self._extract_name_from_ast(call_node, language_config)
+                    if not call_name:
+                        continue
+                    
+                    r = call_node.range()
+                    call_line = r.start.line
+                    
+                    # Find the function that contains this call
+                    containing_function = self._find_containing_function(
+                        file_path, call_line, language_config
+                    )
+                    
+                    if not containing_function:
+                        continue
+                    
+                    # Look for a matching called function in our graph
+                    called_nodes = self.graph.find_nodes_by_name(call_name, exact_match=False)
+                    
+                    for called_node in called_nodes:
+                        if called_node.node_type != NodeType.FUNCTION:
+                            continue
+                        
+                        rel = UniversalRelationship(
+                            id=f"calls:{containing_function.id}:{called_node.id}:{call_line}",
+                            source_id=containing_function.id,
+                            target_id=called_node.id,
+                            relationship_type=RelationshipType.CALLS,
+                            metadata={"call_line": call_line}
+                        )
+                        self.graph.add_relationship(rel)
+                        count += 1
+                        
+                except Exception as e:
+                    logger.debug(f"Error extracting call: {e}")
+                    continue
+            
+        except Exception as e:
+            logger.debug(f"Error in _extract_function_calls_ast: {e}")
+        
+        return count
+
+    def _find_containing_function(self, file_path: Path, line_number: int, language_config: LanguageConfig) -> Optional[UniversalNode]:
+        """Find the function node that contains the given line number."""
+        file_node_id = f"file:{file_path}"
+        
+        # Get all functions in this file
+        functions_in_file = [
+            node for node in self.graph.nodes.values()
+            if (node.node_type == NodeType.FUNCTION and
+                node.location.file_path == str(file_path))
+        ]
+        
+        # Find the function that contains this line
+        for func_node in functions_in_file:
+            if func_node.location.start_line <= line_number <= func_node.location.end_line:
+                return func_node
+        
+        return None
 
     def _parse_classes_ast(self, sg_root: Any, file_path: Path, language_config: LanguageConfig) -> int:
         """Parse classes using AST-Grep queries (FIXED: Jan 7, 2025)."""

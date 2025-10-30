@@ -8,8 +8,10 @@ import FilterPanel from './components/FilterPanel.vue'
 import CallChainTracer from './components/CallChainTracer.vue'
 
 const graphStore = useGraphStore()
+const filterStore = useFilterStore()
 const rootNode = ref('')
 const showFilters = ref(false)
+const errorDismissTimer = ref<NodeJS.Timeout | null>(null)
 
 onMounted(async () => {
   await graphStore.loadStats()
@@ -115,14 +117,32 @@ const clearGraph = () => {
 
     <!-- Loading indicator -->
     <div v-if="graphStore.isLoading" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div class="bg-gray-800 px-6 py-4 rounded">
-        <p class="text-white font-medium">Loading...</p>
-      </div>
+      <LoadingSpinner message="Loading graph..." />
     </div>
 
     <!-- Error message -->
-    <div v-if="graphStore.error" class="fixed bottom-4 left-4 bg-red-600 text-white px-4 py-3 rounded shadow-lg max-w-md">
-      {{ graphStore.error }}
-    </div>
+    <transition
+      enter-active-class="transition duration-300 ease-out"
+      enter-from-class="translate-x-full opacity-0"
+      enter-to-class="translate-x-0 opacity-100"
+      leave-active-class="transition duration-300 ease-in"
+      leave-from-class="translate-x-0 opacity-100"
+      leave-to-class="translate-x-full opacity-0"
+    >
+      <div
+        v-if="graphStore.error"
+        class="fixed bottom-4 right-4 bg-red-600 text-white px-6 py-4 rounded shadow-lg max-w-md"
+      >
+        <div class="flex items-center justify-between gap-4">
+          <p>{{ graphStore.error }}</p>
+          <button
+            @click="graphStore.error = null"
+            class="text-white hover:text-red-100 font-bold"
+          >
+            ×
+          </button>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>

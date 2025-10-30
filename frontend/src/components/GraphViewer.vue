@@ -32,6 +32,8 @@ const initCytoscape = () => {
           width: '60px',
           height: '60px',
           'text-wrap': 'wrap',
+          'border-width': '1px',
+          'border-color': '#818CF8',
         },
       },
       {
@@ -40,6 +42,14 @@ const initCytoscape = () => {
           'background-color': '#EC4899',
           'border-width': '3px',
           'border-color': '#FFF',
+        },
+      },
+      {
+        selector: 'node:hover',
+        style: {
+          'background-color': '#6366F1',
+          'border-width': '2px',
+          'border-color': '#FCD34D',
         },
       },
       {

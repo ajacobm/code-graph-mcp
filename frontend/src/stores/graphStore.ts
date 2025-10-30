@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import type { Node, Edge } from '../types/graph'
 import type { GraphStatsResponse } from '../types/graph'
 import { graphClient } from '../api/graphClient'
+import { useFilterStore } from './filterStore'
 
 export const useGraphStore = defineStore('graph', () => {
   const nodes = ref<Map<string, Node>>(new Map())
@@ -13,12 +14,45 @@ export const useGraphStore = defineStore('graph', () => {
   const viewMode = ref<'full' | 'call_chain' | 'seams_only'>('full')
   const stats = ref<GraphStatsResponse | null>(null)
 
+  const filterStore = useFilterStore()
+
   const selectedNode = computed(() => {
     return selectedNodeId.value ? nodes.value.get(selectedNodeId.value) : null
   })
 
   const nodeArray = computed(() => Array.from(nodes.value.values()))
   const edgeArray = computed(() => Array.from(edges.value.values()))
+
+  const filteredNodeArray = computed(() => {
+    return nodeArray.value.filter((node) => {
+      if (filterStore.languages.length > 0 && !filterStore.languages.includes(node.language)) {
+        return false
+      }
+      if (filterStore.nodeTypes.length > 0 && !filterStore.nodeTypes.includes(node.type)) {
+        return false
+      }
+      if (node.complexity < filterStore.complexityRange[0] || node.complexity > filterStore.complexityRange[1]) {
+        return false
+      }
+      if (filterStore.searchQuery && !node.name.toLowerCase().includes(filterStore.searchQuery.toLowerCase())) {
+        return false
+      }
+      return true
+    })
+  })
+
+  const filteredEdgeArray = computed(() => {
+    const nodeIds = new Set(filteredNodeArray.value.map((n) => n.id))
+    return edgeArray.value.filter((edge) => {
+      if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target)) {
+        return false
+      }
+      if (filterStore.seamOnly && !edge.isSeam) {
+        return false
+      }
+      return true
+    })
+  })
 
   async function loadStats() {
     try {
@@ -141,6 +175,8 @@ export const useGraphStore = defineStore('graph', () => {
     selectedNode,
     nodeArray,
     edgeArray,
+    filteredNodeArray,
+    filteredEdgeArray,
     loadStats,
     traverse,
     loadCallChain,

@@ -81,9 +81,9 @@ docker run --rm -v /path/to/code-graph-mcp:/app code-graph-mcp:test uv run pytho
 - Runtime pattern/language addition
 
 ## Session 2: Vue3 Frontend (2025-10-30)
-**Status**: ✅ Complete - MVP ready for testing
-**Files**: 26 new (6 components, 2 stores, 3 API/types, 4 config, 3 docs, 1 script)
-**Lines**: ~1200 new
+**Status**: ✅ Complete + Dockerized
+**Files**: 31 new (6 components, 2 stores, 3 API/types, 4 config, 4 docs, 2 Dockerfiles, 1 script)
+**Lines**: ~1400 new
 
 **Key Deliverables**:
 - Vue 3 + Vite full project scaffold
@@ -93,13 +93,19 @@ docker run --rm -v /path/to/code-graph-mcp:/app code-graph-mcp:test uv run pytho
 - Cytoscape.js graph rendering with DAG layout + hover/select effects
 - Dark theme UX (indigo/pink/gray palette)
 - Responsive layout (header + sidebars + graph)
-- DEV_GUIDE.md + README.md complete
+- DEV_GUIDE.md + README.md + DOCKER.md complete
 - start-dev.sh for integrated testing
+- ✅ **Docker support** (Dockerfile dev + Dockerfile.prod)
+- ✅ **Docker Compose integration** (full stack in one command)
 
-**Known Issue**: Node 18.19.1 vs Vite v7 needs 20+ (workaround: dev works, production build may need Node upgrade)
+**Solved**: Node version issue with containerization
+- Dockerfile uses Node 22-alpine (fixes Vite requirements)
+- No nvm needed on host
+- Full reproducible environment
+- docker-compose-multi.yml includes frontend service
 
 **Branch**: `feature/graph-ui-vue`
-**Commits**: 3 (scaffolding, enhancements, final)
+**Commits**: 6 (scaffolding, enhancements, final, Docker)
 
 ## Next Steps (Session 3)
 1. ✅ Session 1: REST API + graph traversal (DONE)

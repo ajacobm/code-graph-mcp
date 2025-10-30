@@ -29,7 +29,24 @@
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Quick Start
+## Quick Start (Recommended: Docker)
+
+**One Command - Everything:**
+```bash
+docker-compose -f docker-compose-multi.yml up
+```
+
+Then open: **http://localhost:5173**
+
+Services will be ready in ~15 seconds:
+- Frontend: http://localhost:5173
+- Backend: http://localhost:8000
+- Redis: localhost:6379
+- Redis Insight: http://localhost:5540
+
+---
+
+## Quick Start (Local Development)
 
 ### 1. Start Backend
 
@@ -37,23 +54,25 @@
 python -m code_graph_mcp.http_server --host 0.0.0.0 --port 8000
 ```
 
-Or with Docker:
+**Wait for**: `Application startup complete`
+
+### 2. Start Frontend (Docker)
+
+**IMPORTANT**: Your system has Node 18.19.1, but Vite needs Node 20+. Use Docker:
+
+```bash
+docker build -f frontend/Dockerfile -t code-graph-frontend:dev .
+docker run -it --rm \
+  -p 5173:5173 \
+  -v $(pwd)/frontend:/app \
+  -v /app/node_modules \
+  code-graph-frontend:dev
+```
+
+Or use Docker Compose for both:
 ```bash
 docker-compose -f docker-compose-multi.yml up
 ```
-
-**Wait for**: `Application startup complete`
-
-### 2. Start Frontend
-
-In a new terminal:
-```bash
-cd frontend
-npm install  # (first time only)
-npm run dev
-```
-
-**You'll see**: `Local:   http://localhost:5173`
 
 ### 3. Open Browser
 

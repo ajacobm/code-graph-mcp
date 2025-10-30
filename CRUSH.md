@@ -33,3 +33,22 @@ To analyze code:
 2. Fixed file watcher coroutine not awaited - now properly awaits `get_supported_extensions()`
 3. Added missing MCP protocol handlers for prompts and resources
 4. All tools (get_usage_guide, analyze_codebase) now execute without errors
+
+## Graph Query Tools - Zero Results Fix (2025-10-30)
+**Problem**: find_references, find_callers, find_callees returned zero results
+**Root Cause**: Parser created CONTAINS/IMPORTS relationships but not CALLS relationships
+**Solution**: 
+- Enhanced UniversalParser with _extract_function_calls_ast() method
+- Added "call" AST patterns for all 25+ languages
+- Created 5560+ CALLS relationships across codebase
+**Results**: 
+- find_callers now returns 85+ results (vs 0)
+- find_callees now returns 29+ results (vs 0)
+- All query tools working correctly
+
+**Test commands**:
+```bash
+docker run --rm -v /path/to/code-graph-mcp:/app code-graph-mcp:test uv run python /app/tests/test_calls_implementation.py
+docker run --rm -v /path/to/code-graph-mcp:/app code-graph-mcp:test uv run python /app/tests/test_query_tools_live.py
+docker run --rm -v /path/to/code-graph-mcp:/app code-graph-mcp:test uv run python /app/tests/test_mcp_live_session.py
+```

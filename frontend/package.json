@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.1.16",
+    "@tailwindcss/postcss": "^4.1.16",
     "@types/cytoscape-dagre": "^2.3.4",
     "@types/node": "^24.6.0",
     "@vitejs/plugin-vue": "^6.0.1",

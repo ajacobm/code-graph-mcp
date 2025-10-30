@@ -22,7 +22,7 @@ const search = async () => {
   try {
     const res = await graphClient.searchNodes(
       query.value,
-      filterStore.languages[0],
+      graphStore.languages[0],
       undefined,
       10
     )

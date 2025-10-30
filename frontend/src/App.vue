@@ -6,9 +6,9 @@ import NodeDetails from './components/NodeDetails.vue'
 import SearchBar from './components/SearchBar.vue'
 import FilterPanel from './components/FilterPanel.vue'
 import CallChainTracer from './components/CallChainTracer.vue'
+import LoadingSpinner from './components/LoadingSpinner.vue'
 
 const graphStore = useGraphStore()
-const filterStore = useFilterStore()
 const rootNode = ref('')
 const showFilters = ref(false)
 const errorDismissTimer = ref<NodeJS.Timeout | null>(null)

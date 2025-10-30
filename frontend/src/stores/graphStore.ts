@@ -3,7 +3,6 @@ import { ref, computed } from 'vue'
 import type { Node, Edge } from '../types/graph'
 import type { GraphStatsResponse } from '../types/graph'
 import { graphClient } from '../api/graphClient'
-import { useFilterStore } from './filterStore'
 
 export const useGraphStore = defineStore('graph', () => {
   const nodes = ref<Map<string, Node>>(new Map())
@@ -14,7 +13,12 @@ export const useGraphStore = defineStore('graph', () => {
   const viewMode = ref<'full' | 'call_chain' | 'seams_only'>('full')
   const stats = ref<GraphStatsResponse | null>(null)
 
-  const filterStore = useFilterStore()
+  // Local filter state (avoid circular dependency with filterStore)
+  const languages = ref<string[]>([])
+  const nodeTypes = ref<string[]>([])
+  const seamOnly = ref(false)
+  const complexityRange = ref<[number, number]>([0, 50])
+  const searchQuery = ref('')
 
   const selectedNode = computed(() => {
     return selectedNodeId.value ? nodes.value.get(selectedNodeId.value) : null
@@ -25,16 +29,16 @@ export const useGraphStore = defineStore('graph', () => {
 
   const filteredNodeArray = computed(() => {
     return nodeArray.value.filter((node) => {
-      if (filterStore.languages.length > 0 && !filterStore.languages.includes(node.language)) {
+      if (languages.value.length > 0 && !languages.value.includes(node.language)) {
         return false
       }
-      if (filterStore.nodeTypes.length > 0 && !filterStore.nodeTypes.includes(node.type)) {
+      if (nodeTypes.value.length > 0 && !nodeTypes.value.includes(node.type)) {
         return false
       }
-      if (node.complexity < filterStore.complexityRange[0] || node.complexity > filterStore.complexityRange[1]) {
+      if (node.complexity < complexityRange.value[0] || node.complexity > complexityRange.value[1]) {
         return false
       }
-      if (filterStore.searchQuery && !node.name.toLowerCase().includes(filterStore.searchQuery.toLowerCase())) {
+      if (searchQuery.value && !node.name.toLowerCase().includes(searchQuery.value.toLowerCase())) {
         return false
       }
       return true
@@ -47,7 +51,7 @@ export const useGraphStore = defineStore('graph', () => {
       if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target)) {
         return false
       }
-      if (filterStore.seamOnly && !edge.isSeam) {
+      if (seamOnly.value && !edge.isSeam) {
         return false
       }
       return true
@@ -164,6 +168,26 @@ export const useGraphStore = defineStore('graph', () => {
     selectedNodeId.value = null
   }
 
+  function setLanguages(langs: string[]) {
+    languages.value = langs
+  }
+
+  function setNodeTypes(types: string[]) {
+    nodeTypes.value = types
+  }
+
+  function setSeamOnly(value: boolean) {
+    seamOnly.value = value
+  }
+
+  function setComplexityRange(range: [number, number]) {
+    complexityRange.value = range
+  }
+
+  function setSearchQuery(query: string) {
+    searchQuery.value = query
+  }
+
   return {
     nodes,
     edges,
@@ -172,6 +196,11 @@ export const useGraphStore = defineStore('graph', () => {
     error,
     viewMode,
     stats,
+    languages,
+    nodeTypes,
+    seamOnly,
+    complexityRange,
+    searchQuery,
     selectedNode,
     nodeArray,
     edgeArray,
@@ -182,5 +211,10 @@ export const useGraphStore = defineStore('graph', () => {
     loadCallChain,
     selectNode,
     clearGraph,
+    setLanguages,
+    setNodeTypes,
+    setSeamOnly,
+    setComplexityRange,
+    setSearchQuery,
   }
 })

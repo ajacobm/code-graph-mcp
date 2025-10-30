@@ -17,35 +17,40 @@ const availableNodeTypes = computed(() => {
 })
 
 const toggleLanguage = (lang: string) => {
-  const idx = filterStore.languages.indexOf(lang)
+  const idx = graphStore.languages.indexOf(lang)
   if (idx === -1) {
-    filterStore.languages.push(lang)
+    graphStore.languages.push(lang)
   } else {
-    filterStore.languages.splice(idx, 1)
+    graphStore.languages.splice(idx, 1)
   }
+  graphStore.setLanguages([...graphStore.languages])
 }
 
 const toggleNodeType = (type: string) => {
-  const idx = filterStore.nodeTypes.indexOf(type)
+  const idx = graphStore.nodeTypes.indexOf(type)
   if (idx === -1) {
-    filterStore.nodeTypes.push(type)
+    graphStore.nodeTypes.push(type)
   } else {
-    filterStore.nodeTypes.splice(idx, 1)
+    graphStore.nodeTypes.splice(idx, 1)
   }
+  graphStore.setNodeTypes([...graphStore.nodeTypes])
 }
 
 const applyFilters = () => {
-  // TODO: implement graph filtering
   console.log('Filters applied:', {
-    languages: filterStore.languages,
-    nodeTypes: filterStore.nodeTypes,
-    seamOnly: filterStore.seamOnly,
-    complexity: filterStore.complexityRange,
+    languages: graphStore.languages,
+    nodeTypes: graphStore.nodeTypes,
+    seamOnly: graphStore.seamOnly,
+    complexity: graphStore.complexityRange,
   })
 }
 
 const clearFilters = () => {
-  filterStore.reset()
+  graphStore.setLanguages([])
+  graphStore.setNodeTypes([])
+  graphStore.setSeamOnly(false)
+  graphStore.setComplexityRange([0, 50])
+  graphStore.setSearchQuery('')
 }
 </script>
 

@@ -1,0 +1,31 @@
+# docker volume-mount wsl2 docker-desktop redis solution
+Docker Volume Mount Issue (Oct 29, 2025) - SOLVED
+
+PROBLEM:
+- Error: "failed to populate volume: error while mounting volume '/var/lib/docker/volumes/code-graph-mcp_redis-data/_data'"
+- Root cause: Docker Desktop WSL2 volume mount path corrupted
+- The device path in docker-compose-multi.yml referenced a directory that didn't exist: /mnt/c/Users/ADAM/.redis-docker/codegraphmcp
+
+SOLUTION APPLIED:
+1. Created the missing directory: mkdir -p /mnt/c/Users/ADAM/.redis-docker/codegraphmcp
+2. Removed corrupted volume: docker volume rm code-graph-mcp_redis-data
+3. Cleaned up compose: docker-compose -f docker-compose-multi.yml down -v
+4. Brought up fresh: docker-compose -f docker-compose-multi.yml up -d
+
+VERIFICATION:
+- All 3 containers running: code-graph-sse, redis, redis-insight
+- Health endpoint responding: http://localhost:10101/health
+- Redis connected on port 6379
+- SSE server running on port 8000 (mapped to 10101)
+- RedisInsight available on port 5540
+
+KEY LEARNING:
+- WSL2 Docker Desktop needs explicit directory bind mounts
+- The device: path in docker-compose volumes must exist beforehand
+- Clean volumes with docker volume rm when mount paths change
+
+QUICK FIX FOR FUTURE:
+mkdir -p /mnt/c/Users/ADAM/.redis-docker/codegraphmcp
+docker volume rm code-graph-mcp_redis-data 2>/dev/null || true
+docker-compose -f docker-compose-multi.yml down -v && docker-compose -f docker-compose-multi.yml up -d
+

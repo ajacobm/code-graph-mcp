@@ -65,7 +65,7 @@ services:
       context: .
       target: http
     ports:
-      - "8000:8000"
+      - "18000:8000"
     volumes:
       - repo-mount:/app/workspace
     environment:

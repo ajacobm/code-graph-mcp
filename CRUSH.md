@@ -134,7 +134,36 @@ docker run --rm -v /path/to/code-graph-mcp:/app code-graph-mcp:test uv run pytho
 - `compose.sh logs [service]` - View logs
 - State stored in `~/.composesh/.state_*` files
 
+## Docker Mount Fix & 0 Nodes Debug (2025-11-01)
+**Problem**: After Session 2 work, running code-graph-mcp container showed "0 nodes" in analysis
+**Root Causes**:
+1. Windows path in docker-compose-multi.yml (`/mnt/c/Users/ADAM/...`) - symlink issues on Linux
+2. Project root set to `/app/workspace/src/code-graph-mcp` but mount was at `/app/workspace` only
+3. Old Redis cache data being loaded from previous runs with empty/corrupted entries
+
+**Investigation Process**:
+- Verified AST-grep works manually (found 19 functions in cache_manager.py)
+- Tested parsing with Redis config - created 458 nodes successfully
+- Discovered issue was Redis cache loading empty data
+- Fixed docker-compose mount paths to use Linux path `/home/adam/GitHub/code-graph-mcp/src/code_graph_mcp`
+- Cleared Redis cache (`docker exec redis-1 redis-cli FLUSHALL`)
+
+**Solution Applied**:
+1. Fixed `repo-mount` device path in docker-compose-multi.yml (Linux path, no symlink)
+2. Fixed `code-graph-http` volume mount to use `repo-mount` instead of inline path
+3. Fixed `code-graph-http` port mapping from `"8000"` to `"8000:8000"`
+4. Changed project-root from `/app/workspace/src/code-graph-mcp` to `/app/workspace`
+
+**Results After Fix**:
+- Graph now shows 458 nodes, 4157 relationships
+- API endpoints working: `/api/graph/stats`, `/api/graph/nodes/search`, etc.
+- Frontend can fetch graph data from `code-graph-http:8000`
+- No more "0 nodes" issue
+
+**Key Learning**: Redis cache must be flushed when changing code/workspace mounts!
+
 ## Next Steps (Session 3)
 1. ✅ Session 1: REST API + graph traversal (DONE)
 2. ✅ Session 2: Vue3 UI with Cytoscape visualization (DONE + Docker fixes)
-3. 📋 Session 3: DuckDB integration, tagging, graph comparison
+3. ✅ Session 3: Fixed Docker mounts + 0 nodes debug (DONE)
+4. 📋 Session 4: Frontend API integration, tools callable from UI, visualization enhancements

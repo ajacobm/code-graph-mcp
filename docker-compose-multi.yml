@@ -4,13 +4,13 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: /mnt/c/Users/ADAM/GitHub/code-graph-mcp
+      device: ${CODEGRAPHMCP_REPO_MOUNT:-/mnt/c/Users/ADAM/GitHub/code-graph-mcp}
   redis-data:
       driver: local
       driver_opts:
         type: none
         o: bind
-        device: /mnt/c/Users/ADAM/.redis-docker/codegraphmcp
+        device: /home/adam/.redis-docker/codegraphmcp
 
 services:
   # Redis cache service
@@ -38,9 +38,9 @@ services:
     volumes:
       - repo-mount:/app/workspace
     environment:
-      - CODE_GRAPH_MCP_LOG_LEVEL=INFO
-      - CODE_GRAPH_MCP_FILE_WATCHER=false
-      - REDIS_URL=redis://redis:6379
+      - CODEGRAPHMCP_LOG_LEVEL=${CODEGRAPHMCP_LOG_LEVEL:-INFO}
+      - CODEGRAPHMCP_FILE_WATCHER=${CODEGRAPHMCP_FILE_WATCHER:-false}
+      - REDIS_URL=${CODEGRAPHMCP_REDIS_URL:-redis://redis:6379}
     depends_on:
       - redis
     command: >
@@ -50,7 +50,6 @@ services:
       --project-root /app/workspace
       --host 0.0.0.0
       --port 8000
-      --verbose
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
@@ -67,9 +66,9 @@ services:
     ports:
       - "8000"
     volumes:
-      - repo-mount:/app/workspace
+      - ${REPO_MOUNT:-/mnt/c/Users/ADAM/GitHub/code-graph-mcp}:/app/workspace
     environment:
-      - REDIS_URL=redis://redis:6379
+      - REDIS_URL=${CODEGRAPHMCP_REDIS_URL:-redis://redis:6379}
     depends_on:
       - redis
     command: >
@@ -77,7 +76,7 @@ services:
       --project-root /app/workspace
       --host 0.0.0.0
       --port 8000
-      --redis-url redis://redis:6379
+      --redis-url ${CODEGRAPHMCP_REDIS_URL:-redis://redis:6379}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "/app/.venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]

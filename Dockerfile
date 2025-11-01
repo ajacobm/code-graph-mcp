@@ -39,7 +39,7 @@ RUN mkdir -p /app/workspace /app/.cache
 
 EXPOSE 8000
 
-CMD ["uv", "run", "code-graph-mcp", "--verbose"]
+CMD ["uv", "run", "code-graph-mcp", "--mode", "sse", "--host", "0.0.0.0", "--port", "8000", "--enable-cache", "--verbose"]
 
 # Production stage - minimal production dependencies
 FROM base AS production

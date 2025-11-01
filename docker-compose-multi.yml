@@ -4,7 +4,7 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: ${CODEGRAPHMCP_REPO_MOUNT:-/mnt/c/Users/ADAM/GitHub/code-graph-mcp}
+      device: ${CODEGRAPHMCP_REPO_MOUNT:-/home/adam/GitHub/code-graph-mcp/src/code_graph_mcp}
   redis-data:
       driver: local
       driver_opts:
@@ -39,7 +39,7 @@ services:
       - repo-mount:/app/workspace
     environment:
       - CODEGRAPHMCP_LOG_LEVEL=${CODEGRAPHMCP_LOG_LEVEL:-INFO}
-      - CODEGRAPHMCP_FILE_WATCHER=${CODEGRAPHMCP_FILE_WATCHER:-false}
+      - CODEGRAPHMCP_FILE_WATCHER=${CODEGRAPHMCP_FILE_WATCHER:-true}
       - REDIS_URL=${CODEGRAPHMCP_REDIS_URL:-redis://redis:6379}
     depends_on:
       - redis
@@ -47,7 +47,7 @@ services:
       uv run code-graph-mcp
       --mode sse
       --redis-url redis://redis:6379
-      --project-root /app/workspace
+      --project-root ${CODEGRAPHMCP_PROJECT_ROOT:-/app/workspace}
       --host 0.0.0.0
       --port 8000
     restart: unless-stopped
@@ -64,9 +64,9 @@ services:
       context: .
       target: http
     ports:
-      - "8000"
+      - "8000:8000"
     volumes:
-      - ${REPO_MOUNT:-/mnt/c/Users/ADAM/GitHub/code-graph-mcp}:/app/workspace
+      - repo-mount:/app/workspace
     environment:
       - REDIS_URL=${CODEGRAPHMCP_REDIS_URL:-redis://redis:6379}
     depends_on:

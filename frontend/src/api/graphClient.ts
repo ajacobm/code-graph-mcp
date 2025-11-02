@@ -116,6 +116,30 @@ export class GraphClient {
     })
     return data
   }
+
+  async getNodesByCategory(
+    category: 'entry_points' | 'hubs' | 'leaves',
+    limit: number = 50,
+    offset: number = 0
+  ): Promise<{ nodes: any[]; total: number }> {
+    const { data } = await this.client.get(`/graph/nodes/category/${category}`, {
+      params: { limit, offset },
+    })
+    return data
+  }
+
+  async getSubgraph(
+    nodeId: string,
+    depth: number = 2,
+    limit: number = 100
+  ): Promise<TraversalResponse> {
+    const { data } = await this.client.post('/graph/subgraph', {
+      node_id: nodeId,
+      depth,
+      limit,
+    })
+    return data
+  }
 }
 
 export const graphClient = new GraphClient()

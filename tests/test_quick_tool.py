@@ -2,9 +2,12 @@
 """Quick test of a single MCP tool"""
 
 import asyncio
+
+import pytest
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
+@pytest.mark.asyncio
 async def test_single_tool():
     server_params = StdioServerParameters(
         command="code-graph-mcp",

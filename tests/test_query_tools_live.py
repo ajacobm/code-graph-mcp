@@ -5,18 +5,18 @@ Tests find_function_callers, find_function_callees, and find_symbol_references.
 """
 
 import asyncio
-import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+import pytest
 
 from code_graph_mcp.server.analysis_engine import UniversalAnalysisEngine
 
 
+@pytest.mark.asyncio
 async def test_query_tools():
     """Test the query tools with live data."""
     
-    project_root = Path("/app/src/code_graph_mcp")
+    project_root = Path(__file__).parent.parent / "src" / "code_graph_mcp"
     
     print("="*80)
     print("LIVE QUERY TOOLS TEST")

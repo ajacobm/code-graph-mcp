@@ -5,6 +5,27 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>frontend</title>
+    <!-- Include Socket.IO client -->
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+
+    <!-- Include Vibe-Eyes client -->
+    <script src="https://cdn.jsdelivr.net/npm/vibe-eyes-client/dist/index.min.js"></script>
+
+    <!-- Initialize the client -->
+    <script>
+      // Import the initialization function if using as module
+      // import { initializeVibeEyes } from 'vibe-eyes-client';
+      
+      // Initialize with configuration
+      const vibeEyes = initializeVibeEyes({
+        // WebSocket URL to the Vibe-Eyes server
+        serverUrl: 'ws://localhost:8869',
+        // Capture interval in milliseconds
+        captureDelay: 1000,
+        // Start capturing automatically after connection
+        autoCapture: true
+      });
+    </script>
   </head>
   <body>
     <div id="app"></div>

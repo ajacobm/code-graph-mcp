@@ -10,14 +10,11 @@ These tests diagnose why these tools return zero results despite having data in 
 
 import asyncio
 import logging
-import sys
 from pathlib import Path
 from typing import Dict, List, Any
 
 import pytest
 import pytest_asyncio
-
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from code_graph_mcp.server.analysis_engine import UniversalAnalysisEngine
 from code_graph_mcp.universal_graph import RelationshipType, NodeType

@@ -41,7 +41,7 @@ def mock_engine_with_graph():
             language="python",
             complexity=1
         )
-        graph.add_node(f"test_file.py:{name}:1", node)
+        graph.add_node(node)
     
     # Add relationships
     node_ids = [f"test_file.py:{name}:1" for name, _, _ in nodes_data]
@@ -51,22 +51,24 @@ def mock_engine_with_graph():
             source_idx = (i + j + 1) % len(node_ids)
             if source_idx != i:
                 rel = UniversalRelationship(
+                    id=f"rel_{rel_id}",
                     source_id=node_ids[source_idx],
                     target_id=node_ids[i],
                     relationship_type=RelationshipType.CALLS
                 )
-                graph.add_relationship(f"rel_{rel_id}", rel)
+                graph.add_relationship(rel)
                 rel_id += 1
         
         for j in range(out_count):
             target_idx = (i + j + 1) % len(node_ids)
             if target_idx != i:
                 rel = UniversalRelationship(
+                    id=f"rel_{rel_id}",
                     source_id=node_ids[i],
                     target_id=node_ids[target_idx],
                     relationship_type=RelationshipType.CALLS
                 )
-                graph.add_relationship(f"rel_{rel_id}", rel)
+                graph.add_relationship(rel)
                 rel_id += 1
     
     analyzer.graph = graph

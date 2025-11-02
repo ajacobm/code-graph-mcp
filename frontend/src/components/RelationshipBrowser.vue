@@ -8,8 +8,9 @@ const relationshipGroups = computed(() => {
   if (!graphStore.selectedNode) return {}
 
   const groups: Record<string, Array<{id: string, label: string}>> = {}
+  const edges = graphStore.edgeArray || []
 
-  graphStore.edgeArray.forEach((edge) => {
+  edges.forEach((edge) => {
     if (edge.source === graphStore.selectedNode?.id) {
       const type = edge.type || 'UNKNOWN'
       if (!groups[type]) groups[type] = []

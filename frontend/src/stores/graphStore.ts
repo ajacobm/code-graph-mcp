@@ -76,10 +76,19 @@ export const useGraphStore = defineStore('graph', () => {
       error.value = null
       const result = await graphClient.traverse(startNodeId, 'dfs', maxDepth, true)
 
+      if (!result.nodes || result.nodes.length === 0) {
+        error.value = `No nodes found for ${startNodeId}`
+        setTimeout(() => { error.value = null }, 3000)
+        return
+      }
+
       nodes.value.clear()
       edges.value.clear()
 
-      result.nodes.forEach((n) => {
+      const resultNodes = result.nodes || []
+      const resultRelationships = result.relationships || []
+
+      resultNodes.forEach((n) => {
         nodes.value.set(n.id, {
           id: n.id,
           name: n.name,
@@ -92,7 +101,7 @@ export const useGraphStore = defineStore('graph', () => {
         })
       })
 
-      result.relationships.forEach((r) => {
+      resultRelationships.forEach((r) => {
         const edgeId = `${r.source_id}-${r.target_id}`
         edges.value.set(edgeId, {
           id: edgeId,
@@ -107,6 +116,7 @@ export const useGraphStore = defineStore('graph', () => {
       selectedNodeId.value = startNodeId
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to traverse'
+      setTimeout(() => { error.value = null }, 3000)
     } finally {
       isLoading.value = false
     }
@@ -118,10 +128,19 @@ export const useGraphStore = defineStore('graph', () => {
       error.value = null
       const result = await graphClient.getCallChain(startNodeId, true, maxDepth)
 
+      if (!result.chain || result.chain.length === 0) {
+        error.value = `No call chain found for ${startNodeId}`
+        setTimeout(() => { error.value = null }, 3000)
+        return
+      }
+
       nodes.value.clear()
       edges.value.clear()
 
-      result.chain.forEach((n) => {
+      const resultChain = result.chain || []
+      const resultSeams = result.seams || []
+
+      resultChain.forEach((n) => {
         nodes.value.set(n.id, {
           id: n.id,
           name: n.name,
@@ -134,9 +153,9 @@ export const useGraphStore = defineStore('graph', () => {
         })
       })
 
-      for (let i = 0; i < result.chain.length - 1; i++) {
-        const current = result.chain[i]
-        const next = result.chain[i + 1]
+      for (let i = 0; i < resultChain.length - 1; i++) {
+        const current = resultChain[i]
+        const next = resultChain[i + 1]
         if (current && next) {
           const edgeId = `${current.id}-${next.id}`
           edges.value.set(edgeId, {
@@ -144,7 +163,7 @@ export const useGraphStore = defineStore('graph', () => {
             source: current.id,
             target: next.id,
             type: 'CALLS',
-            isSeam: result.seams.some((s) => s.from_index === i),
+            isSeam: resultSeams.some((s) => s.from_index === i),
           })
         }
       }
@@ -153,6 +172,7 @@ export const useGraphStore = defineStore('graph', () => {
       selectedNodeId.value = startNodeId
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load call chain'
+      setTimeout(() => { error.value = null }, 3000)
     } finally {
       isLoading.value = false
     }

@@ -27,11 +27,13 @@ const nodeTypeColors: Record<string, string> = {
 }
 
 const entryPoints = computed(() => {
-  if (!cy) return new Set<string>()
   const hasIncoming = new Set<string>()
-  graphStore.edgeArray.forEach(edge => hasIncoming.add(edge.target))
+  const edges = graphStore.edgeArray || []
+  const nodes = graphStore.nodeArray || []
+  
+  edges.forEach(edge => hasIncoming.add(edge.target))
   return new Set(
-    graphStore.nodeArray
+    nodes
       .filter(node => !hasIncoming.has(node.id))
       .map(node => node.id)
   )
@@ -87,15 +89,7 @@ const initCytoscape = () => {
           'z-index': 999,
         },
       },
-      {
-        selector: 'node:hover',
-        style: {
-          'background-color': '#6366F1',
-          'border-width': '3px',
-          'border-color': '#FCD34D',
-          'cursor': 'pointer',
-        },
-      },
+
       {
         selector: 'node.expandable',
         style: {
@@ -159,12 +153,23 @@ const initCytoscape = () => {
 
   cy.on('mouseover', 'node', (event) => {
     const node = event.target
-    node.addClass('hover')
+    node.style({
+      'background-color': '#6366F1',
+      'border-width': '3px',
+      'border-color': '#FCD34D'
+    })
   })
 
   cy.on('mouseout', 'node', (event) => {
     const node = event.target
-    node.removeClass('hover')
+    const nodeData = graphStore.nodes.get(node.id())
+    if (nodeData) {
+      node.style({
+        'background-color': getNodeColor(nodeData),
+        'border-width': '2px',
+        'border-color': '#1F2937'
+      })
+    }
   })
 }
 

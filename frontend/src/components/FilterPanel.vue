@@ -12,7 +12,8 @@ const availableLanguages = computed(() => {
 
 const availableNodeTypes = computed(() => {
   const types = new Set<string>()
-  graphStore.nodeArray.forEach((n) => types.add(n.type))
+  const nodes = graphStore.nodeArray || []
+  nodes.forEach((n) => types.add(n.type))
   return Array.from(types).sort()
 })
 

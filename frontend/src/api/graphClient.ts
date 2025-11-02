@@ -13,9 +13,22 @@ import type {
 export class GraphClient {
   private client: AxiosInstance
 
-  constructor(baseURL = '/api') {
+  constructor(baseURL?: string) {
+    let apiUrl = baseURL || import.meta.env.VITE_API_URL || ''
+    
+    // If VITE_API_URL contains 'code-graph-http' (Docker service name),
+    // replace it with localhost for browser access
+    if (apiUrl.includes('code-graph-http')) {
+      apiUrl = apiUrl.replace('code-graph-http', 'localhost')
+    }
+    
+    // Use /api as default if no URL provided
+    if (!apiUrl) {
+      apiUrl = '/api'
+    }
+    
     this.client = axios.create({
-      baseURL,
+      baseURL: apiUrl.endsWith('/api') ? apiUrl : `${apiUrl}/api`,
       timeout: 30000,
     })
   }

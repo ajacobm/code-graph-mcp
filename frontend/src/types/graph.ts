@@ -109,7 +109,12 @@ export interface QueryResult {
 }
 
 export interface QueryResultsResponse {
-  results: QueryResult[]
-  count: number
+  symbol: string
+  total_callers?: number
+  total_callees?: number
+  total_references?: number
+  callers?: QueryResult[]
+  callees?: QueryResult[]
+  references?: QueryResult[]
   execution_time_ms: number
 }

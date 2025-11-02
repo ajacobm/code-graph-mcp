@@ -193,7 +193,7 @@ export const useGraphStore = defineStore('graph', () => {
       isLoading.value = true
       error.value = null
       const result = await graphClient.findCallers(symbolName)
-      return result.results
+      return result.callers || []
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to find callers'
       return []
@@ -207,7 +207,7 @@ export const useGraphStore = defineStore('graph', () => {
       isLoading.value = true
       error.value = null
       const result = await graphClient.findCallees(symbolName)
-      return result.results
+      return result.callees || []
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to find callees'
       return []
@@ -221,7 +221,7 @@ export const useGraphStore = defineStore('graph', () => {
       isLoading.value = true
       error.value = null
       const result = await graphClient.findReferences(symbolName)
-      return result.results
+      return result.references || []
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to find references'
       return []

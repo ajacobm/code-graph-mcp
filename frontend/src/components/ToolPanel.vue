@@ -55,11 +55,12 @@ const executeTool = async () => {
         break
     }
 
+    const resultArray = Array.isArray(results) ? results : []
     toolResults.value = {
       symbol: symbolInput.value,
-      results: Array.isArray(results) ? results : [],
+      results: resultArray,
       executionTime: 0,
-      error: results.length === 0 ? `No ${selectedTool.value} found` : undefined
+      error: resultArray.length === 0 ? `No ${selectedTool.value} found` : undefined
     }
   } catch (err) {
     toolResults.value = {

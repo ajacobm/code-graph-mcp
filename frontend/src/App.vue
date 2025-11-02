@@ -11,6 +11,7 @@ import LoadingSpinner from './components/LoadingSpinner.vue'
 import RelationshipBrowser from './components/RelationshipBrowser.vue'
 import TraversalControls from './components/TraversalControls.vue'
 import ToolPanel from './components/ToolPanel.vue'
+import AdminPanel from './components/AdminPanel.vue'
 
 const graphStore = useGraphStore()
 const showFilters = ref(false)
@@ -22,7 +23,10 @@ const viewMode = computed(() => graphStore.nodeArray.length > 0 ? 'graph' : 'bro
   <div class="h-screen w-screen bg-base-100 flex flex-col" data-theme="dark">
     <!-- Browse Mode -->
     <template v-if="viewMode === 'browse'">
-      <NodeBrowser />
+      <div class="p-6 space-y-6 overflow-y-auto">
+        <NodeBrowser />
+        <AdminPanel />
+      </div>
     </template>
 
     <!-- Graph Mode -->

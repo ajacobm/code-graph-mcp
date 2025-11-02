@@ -664,4 +664,97 @@ def create_graph_api_router(engine: UniversalAnalysisEngine) -> APIRouter:
             logger.error(f"Get subgraph failed: {e}")
             raise HTTPException(status_code=500, detail=str(e))
 
+    @router.get("/debug/analysis")
+    async def debug_analysis():
+        """Debug endpoint showing analysis status and file information."""
+        try:
+            if not engine or not engine.analyzer:
+                return {
+                    "status": "not_initialized",
+                    "message": "Analysis engine not initialized",
+                    "project_root": str(engine.project_root) if engine else None
+                }
+            
+            graph = engine.analyzer.graph
+            processed_files = getattr(graph, '_processed_files', set())
+            cache_manager = getattr(engine.analyzer, 'cache_manager', None)
+            
+            return {
+                "status": "initialized",
+                "project_root": str(engine.project_root),
+                "graph_nodes": len(graph.nodes),
+                "graph_relationships": len(graph.relationships),
+                "processed_files_count": len(processed_files),
+                "file_watcher_enabled": getattr(engine, '_enable_file_watcher', False),
+                "file_watcher_running": bool(getattr(engine, '_file_watcher', None) and getattr(getattr(engine, '_file_watcher', None), 'is_running', False)),
+                "is_analyzed": getattr(engine, '_is_analyzed', False),
+                "cache_enabled": cache_manager is not None,
+                "node_types_sample": {
+                    str(node.node_type): sum(1 for n in graph.nodes.values() if n.node_type == node.node_type)
+                    for node in list(graph.nodes.values())[:50]
+                } if graph.nodes else {},
+                "first_10_files": list(processed_files)[:10]
+            }
+        except Exception as e:
+            logger.error(f"Debug analysis failed: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @router.get("/debug/files")
+    async def debug_files(limit: int = Query(50, ge=1, le=500)):
+        """Debug endpoint showing all processed files and their node counts."""
+        try:
+            if not engine or not engine.analyzer:
+                raise HTTPException(status_code=500, detail="Analysis engine not initialized")
+            
+            graph = engine.analyzer.graph
+            processed_files = getattr(graph, '_processed_files', set())
+            
+            file_info = []
+            for file_path_str in sorted(processed_files)[:limit]:
+                file_nodes = [n for n in graph.nodes.values() 
+                            if n.location.file_path == file_path_str]
+                file_info.append({
+                    "file_path": file_path_str,
+                    "node_count": len(file_nodes),
+                    "node_types": {
+                        str(node.node_type): sum(1 for n in file_nodes if n.node_type == node.node_type)
+                        for node in file_nodes
+                    }
+                })
+            
+            return {
+                "total_processed_files": len(processed_files),
+                "showing": len(file_info),
+                "files": file_info
+            }
+        except Exception as e:
+            logger.error(f"Debug files failed: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @router.post("/admin/reanalyze")
+    async def admin_reanalyze(force: bool = Query(False)):
+        """Force re-analysis of the project."""
+        try:
+            if not engine:
+                raise HTTPException(status_code=500, detail="Analysis engine not initialized")
+            
+            logger.info(f"Admin reanalysis requested (force={force})")
+            start_time = time.time()
+            
+            await engine.force_reanalysis()
+            
+            elapsed = time.time() - start_time
+            graph = engine.analyzer.graph if engine.analyzer else None
+            
+            return {
+                "status": "success",
+                "message": "Re-analysis completed",
+                "elapsed_seconds": elapsed,
+                "total_nodes": len(graph.nodes) if graph else 0,
+                "total_relationships": len(graph.relationships) if graph else 0
+            }
+        except Exception as e:
+            logger.error(f"Admin reanalysis failed: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+
     return router

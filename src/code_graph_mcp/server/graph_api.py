@@ -503,4 +503,161 @@ def create_graph_api_router(engine: UniversalAnalysisEngine) -> APIRouter:
             logger.error(f"Find references failed: {e}")
             raise HTTPException(status_code=500, detail=str(e))
 
+    @router.get("/categories/{category}")
+    async def get_nodes_by_category(
+        category: str,
+        limit: int = Query(50, ge=1, le=500),
+        offset: int = Query(0, ge=0)
+    ):
+        """Get nodes by category: entry_points, hubs, or leaves."""
+        try:
+            if not engine or not engine.analyzer or not engine.analyzer.graph:
+                raise HTTPException(status_code=500, detail="Analysis engine not ready")
+            
+            graph = engine.analyzer.graph
+            start_time = time.time()
+            
+            # Calculate node importance metrics
+            in_degree = {}
+            out_degree = {}
+            
+            for node_id in graph.nodes:
+                in_degree[node_id] = len([r for r in graph.relationships.values() if r.target_id == node_id])
+                out_degree[node_id] = len([r for r in graph.relationships.values() if r.source_id == node_id])
+            
+            categorized = []
+            
+            if category == "entry_points":
+                # Nodes with 0 incoming edges
+                categorized = [
+                    node for node_id, node in graph.nodes.items()
+                    if in_degree.get(node_id, 0) == 0
+                ]
+            elif category == "hubs":
+                # Nodes with high degree centrality (both in and out)
+                degree_scores = [
+                    (node_id, in_degree.get(node_id, 0) + out_degree.get(node_id, 0))
+                    for node_id in graph.nodes
+                ]
+                degree_scores.sort(key=lambda x: x[1], reverse=True)
+                top_25_percentile = max(1, len(degree_scores) // 4)
+                hub_ids = {node_id for node_id, _ in degree_scores[:top_25_percentile]}
+                categorized = [
+                    graph.nodes[node_id] for node_id in hub_ids
+                ]
+            elif category == "leaves":
+                # Nodes with 0 outgoing edges
+                categorized = [
+                    node for node_id, node in graph.nodes.items()
+                    if out_degree.get(node_id, 0) == 0
+                ]
+            else:
+                raise HTTPException(status_code=400, detail=f"Unknown category: {category}")
+            
+            # Apply pagination
+            total = len(categorized)
+            paginated = categorized[offset:offset + limit]
+            
+            # Format response
+            nodes = []
+            for node in paginated:
+                node_id = node.node_id if hasattr(node, 'node_id') else str(node.id)
+                nodes.append({
+                    "id": node_id,
+                    "name": node.name,
+                    "type": node.node_type.value if hasattr(node.node_type, 'value') else str(node.node_type),
+                    "language": node.language,
+                    "file_path": node.file_path,
+                    "line": node.line,
+                    "complexity": node.complexity,
+                    "in_degree": in_degree.get(node_id, 0),
+                    "out_degree": out_degree.get(node_id, 0),
+                })
+            
+            return {
+                "category": category,
+                "total": total,
+                "offset": offset,
+                "limit": limit,
+                "nodes": nodes,
+                "execution_time_ms": (time.time() - start_time) * 1000
+            }
+        
+        except Exception as e:
+            logger.error(f"Get nodes by category failed: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @router.post("/subgraph")
+    async def get_subgraph(
+        node_id: str = Query(...),
+        depth: int = Query(2, ge=1, le=10),
+        limit: int = Query(100, ge=10, le=1000)
+    ):
+        """Get focused subgraph around a node with limited depth and node count."""
+        try:
+            if not engine or not engine.analyzer:
+                raise HTTPException(status_code=500, detail="Analysis engine not ready")
+            
+            start_time = time.time()
+            graph = engine.analyzer.graph
+            
+            # Check if node exists
+            if node_id not in graph.nodes:
+                raise HTTPException(status_code=404, detail=f"Node {node_id} not found")
+            
+            # BFS traversal with depth and node limit
+            from collections import deque
+            visited = set()
+            queue = deque([(node_id, 0)])
+            subgraph_nodes = []
+            subgraph_rels = []
+            
+            while queue and len(visited) < limit:
+                current_node_id, current_depth = queue.popleft()
+                
+                if current_node_id in visited or current_depth > depth:
+                    continue
+                
+                visited.add(current_node_id)
+                node = graph.nodes.get(current_node_id)
+                if node:
+                    subgraph_nodes.append({
+                        "id": node.node_id if hasattr(node, 'node_id') else str(node.id),
+                        "name": node.name,
+                        "type": node.node_type.value if hasattr(node.node_type, 'value') else str(node.node_type),
+                        "language": node.language,
+                        "file_path": node.file_path,
+                        "line": node.line,
+                        "complexity": node.complexity,
+                    })
+                
+                # Find connected relationships
+                if current_depth < depth:
+                    for rel in graph.relationships.values():
+                        if rel.source_id == current_node_id or rel.target_id == current_node_id:
+                            next_node = rel.target_id if rel.source_id == current_node_id else rel.source_id
+                            if next_node not in visited and len(visited) < limit:
+                                queue.append((next_node, current_depth + 1))
+                                subgraph_rels.append({
+                                    "id": f"{rel.source_id}-{rel.target_id}",
+                                    "source": rel.source_id,
+                                    "target": rel.target_id,
+                                    "type": rel.relationship_type.value if hasattr(rel.relationship_type, 'value') else str(rel.relationship_type),
+                                })
+            
+            if not subgraph_nodes:
+                raise HTTPException(status_code=404, detail=f"No connections found for {node_id}")
+            
+            return {
+                "node_id": node_id,
+                "depth": depth,
+                "nodes": subgraph_nodes,
+                "relationships": subgraph_rels,
+                "execution_time_ms": (time.time() - start_time) * 1000
+            }
+        
+        except Exception as e:
+            logger.error(f"Get subgraph failed: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+
     return router

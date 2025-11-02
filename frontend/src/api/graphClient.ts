@@ -122,7 +122,7 @@ export class GraphClient {
     limit: number = 50,
     offset: number = 0
   ): Promise<{ nodes: any[]; total: number }> {
-    const { data } = await this.client.get(`/graph/nodes/category/${category}`, {
+    const { data } = await this.client.get(`/graph/categories/${category}`, {
       params: { limit, offset },
     })
     return data

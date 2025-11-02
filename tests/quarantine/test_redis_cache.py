@@ -13,7 +13,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from code_graph_mcp.cache_manager import CacheManager
+from code_graph_mcp.cache_manager import HybridCacheManager
 from code_graph_mcp.redis_cache import RedisCache
 
 

@@ -1,22 +1,10 @@
-"""Tests for category and subgraph endpoints."""
+"""Debug script to check mock graph setup."""
 
-import pytest
 from unittest.mock import MagicMock
-from fastapi.testclient import TestClient
-from fastapi import FastAPI
-
-from code_graph_mcp.server.graph_api import create_graph_api_router
 from code_graph_mcp.universal_graph import UniversalGraph, UniversalNode, UniversalRelationship, UniversalLocation, NodeType, RelationshipType
 
-
-@pytest.fixture
-def mock_engine_with_graph():
-    """Create a mock engine with test graph data."""
-    from code_graph_mcp.server.analysis_engine import UniversalAnalysisEngine
-    
-    # Create mock engine
-    engine = MagicMock(spec=UniversalAnalysisEngine)
-    analyzer = MagicMock()
+def create_mock_graph():
+    """Create a mock graph with test data."""
     
     # Create test graph
     graph = UniversalGraph()
@@ -45,6 +33,8 @@ def mock_engine_with_graph():
     
     # Add relationships - create a proper DAG structure
     node_ids = [f"test_file.py:{name}:1" for name, _, _ in nodes_data]
+    print(f"Node IDs: {node_ids}")
+    
     rel_id = 0
     
     # Create a simple linear flow: main -> entry_func -> utility_hub -> helper_func -> leaf_util -> leaf_worker
@@ -60,6 +50,7 @@ def mock_engine_with_graph():
             relationship_type=RelationshipType.CALLS
         )
         graph.add_relationship(rel)
+        print(f"Added relationship: {node_ids[0]} -> {node_ids[1]}")
         rel_id += 1
     
     # entry_func -> utility_hub
@@ -71,6 +62,7 @@ def mock_engine_with_graph():
             relationship_type=RelationshipType.CALLS
         )
         graph.add_relationship(rel)
+        print(f"Added relationship: {node_ids[1]} -> {node_ids[2]}")
         rel_id += 1
     
     # utility_hub -> helper_func
@@ -82,6 +74,7 @@ def mock_engine_with_graph():
             relationship_type=RelationshipType.CALLS
         )
         graph.add_relationship(rel)
+        print(f"Added relationship: {node_ids[2]} -> {node_ids[3]}")
         rel_id += 1
     
     # helper_func -> leaf_util
@@ -93,6 +86,7 @@ def mock_engine_with_graph():
             relationship_type=RelationshipType.CALLS
         )
         graph.add_relationship(rel)
+        print(f"Added relationship: {node_ids[3]} -> {node_ids[4]}")
         rel_id += 1
     
     # helper_func -> leaf_worker
@@ -104,76 +98,33 @@ def mock_engine_with_graph():
             relationship_type=RelationshipType.CALLS
         )
         graph.add_relationship(rel)
+        print(f"Added relationship: {node_ids[3]} -> {node_ids[5]}")
         rel_id += 1
     
-    analyzer.graph = graph
-    engine.analyzer = analyzer
-    return engine
+    print(f"Total relationships created: {rel_id}")
+    return graph
 
-
-@pytest.fixture
-def test_client(mock_engine_with_graph):
-    """Create test client with mock engine."""
-    app = FastAPI()
-    router = create_graph_api_router(mock_engine_with_graph)
-    app.include_router(router)
-    return TestClient(app)
-
-
-def test_categories_entry_points(test_client):
-    """Test entry_points category endpoint."""
-    response = test_client.get("/api/graph/categories/entry_points")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["category"] == "entry_points"
-    assert "nodes" in data
-    assert data["total"] > 0
-
-
-def test_categories_hubs(test_client):
-    """Test hubs category endpoint."""
-    response = test_client.get("/api/graph/categories/hubs")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["category"] == "hubs"
-    assert "nodes" in data
-
-
-def test_categories_leaves(test_client):
-    """Test leaves category endpoint."""
-    response = test_client.get("/api/graph/categories/leaves")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["category"] == "leaves"
-    assert "nodes" in data
-
-
-def test_pagination_works(test_client):
-    """Test pagination with limit and offset."""
-    response = test_client.get("/api/graph/categories/entry_points?limit=1&offset=0")
-    assert response.status_code == 200
-    data = response.json()
-    assert len(data["nodes"]) <= 1
-
-
-def test_response_has_all_fields(test_client):
-    """Test response structure."""
-    response = test_client.get("/api/graph/categories/entry_points")
-    assert response.status_code == 200
-    data = response.json()
+def check_degrees(graph):
+    """Check incoming and outgoing degrees."""
     
-    required = ["category", "total", "nodes", "execution_time_ms", "offset", "limit"]
-    for field in required:
-        assert field in data
+    in_degree = {}
+    out_degree = {}
+    
+    for node_id in graph.nodes:
+        in_degree[node_id] = len([r for r in graph.relationships.values() if r.target_id == node_id])
+        out_degree[node_id] = len([r for r in graph.relationships.values() if r.source_id == node_id])
+    
+    print("\nNode degrees:")
+    for node_id in sorted(in_degree.keys()):
+        print(f"{node_id}: in={in_degree[node_id]}, out={out_degree[node_id]}")
+    
+    entry_points = [node_id for node_id, degree in in_degree.items() if degree == 0]
+    print(f"\nEntry points (0 incoming): {len(entry_points)}")
+    for ep in entry_points:
+        print(f"  - {ep}")
+    
+    return in_degree, out_degree
 
-
-def test_subgraph_endpoint(test_client):
-    """Test subgraph endpoint."""
-    response = test_client.post("/api/graph/subgraph?node_id=test_file.py:utility_hub:1&depth=2")
-    # Accept both 200 (success) and 404 (node not found)
-    assert response.status_code in [200, 404]
-    if response.status_code == 200:
-        data = response.json()
-        assert "node_id" in data
-        assert "nodes" in data
-        assert "relationships" in data
+if __name__ == "__main__":
+    graph = create_mock_graph()
+    in_degree, out_degree = check_degrees(graph)

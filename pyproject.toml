@@ -98,6 +98,7 @@ line-length = 100
 
 [dependency-groups]
 dev = [
+    "aiohttp>=3.13.2",
     "pytest>=8.4.1",
     "pytest-asyncio>=1.1.0",
     "twine>=6.1.0",

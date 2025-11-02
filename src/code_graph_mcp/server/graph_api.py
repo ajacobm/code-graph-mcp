@@ -630,8 +630,8 @@ def create_graph_api_router(engine: UniversalAnalysisEngine) -> APIRouter:
                         "name": node.name,
                         "type": node.node_type.value if hasattr(node.node_type, 'value') else str(node.node_type),
                         "language": node.language,
-                        "file_path": node.file_path,
-                        "line": node.line,
+                        "file_path": node.location.file_path if node.location else "",
+                        "line": node.location.start_line if node.location else 0,
                         "complexity": node.complexity,
                     })
                 

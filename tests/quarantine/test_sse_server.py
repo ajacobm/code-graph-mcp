@@ -15,7 +15,7 @@ import pytest
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
-from code_graph_mcp.sse_server import SSECodeGraphServer, create_sse_app
+from code_graph_mcp.sse_server import CodeGraphMCPServer, create_sse_app
 
 
 class TestSSEServer:

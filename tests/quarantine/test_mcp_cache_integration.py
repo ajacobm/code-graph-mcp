@@ -15,8 +15,8 @@ import pytest
 from mcp.client.session import ClientSession
 from mcp.client.stdio import stdio_client
 
-from code_graph_mcp.cache_manager import CacheManager
-from code_graph_mcp.universal_ast import UniversalAST
+from code_graph_mcp.cache_manager import HybridCacheManager
+from code_graph_mcp.universal_ast import UniversalASTAnalyzer
 
 
 class TestMCPCacheIntegration:

@@ -249,3 +249,22 @@ python -c "import requests; print(requests.get('http://localhost:8000/api/graph/
 4. Update docker-compose.yml with any configuration changes
 5. Final integration testing across full stack
 
+
+## Frontend Fix (2025-11-01 Post-Session)
+**Issue**: Frontend showing Vite error "Failed to parse source for import analysis"
+**Root Cause**: Docker image built without @vitejs/plugin-vue being available
+**Solution**: Rebuilt frontend image with `docker build -t code-graph-mcp-frontend -f frontend/Dockerfile frontend/`
+**Result**: ✅ Frontend now loads correctly showing:
+- Code Graph Visualizer header
+- Graph controls (Traverse, Call Chain)
+- ToolPanel with "Graph Query Tools" section
+- All 3 query tools visible (Find Callers, Find Callees, Find References)
+
+**Note**: HTTP server (port 8000) needs to be running for full integration testing.
+To start manually:
+```bash
+docker compose -f docker-compose-multi.yml up code-graph-http
+# Or full stack:
+compose.sh up
+```
+

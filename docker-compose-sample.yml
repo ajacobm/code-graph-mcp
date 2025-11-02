@@ -26,8 +26,8 @@ services:
     volumes:
       - "./workspace:/app/workspace:ro"  # Mount your code directory here
     environment:
-      - CODE_GRAPH_MCP_LOG_LEVEL=INFO
-      - CODE_GRAPH_MCP_FILE_WATCHER=true
+      - CODEGRAPHMCP_LOG_LEVEL=INFO
+      - CODEGRAPHMCP_FILE_WATCHER=true
       - REDIS_URL=redis://redis:6379/0  # Optional: Redis will be used if available
       - CODE_GRAPH_CACHE_TTL=604800
     depends_on:
@@ -49,8 +49,8 @@ services:
     volumes:
       - "./workspace:/app/workspace:ro"  # Mount your code directory here
     environment:
-      - CODE_GRAPH_MCP_LOG_LEVEL=INFO
-      - CODE_GRAPH_MCP_FILE_WATCHER=true
+      - CODEGRAPHMCP_LOG_LEVEL=INFO
+      - CODEGRAPHMCP_FILE_WATCHER=true
       - REDIS_URL=redis://redis:6379/0  # Optional: Redis will be used if available
     depends_on:
       redis:
@@ -70,8 +70,8 @@ services:
       - ".:/app"  # Mount entire project for development
       - "./workspace:/app/workspace"  # Mount workspace
     environment:
-      - CODE_GRAPH_MCP_LOG_LEVEL=DEBUG
-      - CODE_GRAPH_MCP_FILE_WATCHER=true
+      - CODEGRAPHMCP_LOG_LEVEL=DEBUG
+      - CODEGRAPHMCP_FILE_WATCHER=true
       - REDIS_URL=redis://redis:6379/0  # Optional: Redis will be used if available
     depends_on:
       redis:

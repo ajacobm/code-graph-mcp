@@ -610,15 +610,13 @@ class UniversalParser:
         if self.cache_manager:
             await self.cache_manager.close()
 
-    @cached_method(ttl=1800, key_generator=lambda self, fp: f"supported:{fp.suffix}")
     async def is_supported_file(self, file_path: Path) -> bool:
-        """Check if a file is supported for parsing with hybrid caching."""
+        """Check if a file is supported for parsing."""
         supported_extensions = await self.registry.get_supported_extensions()
         return file_path.suffix.lower() in supported_extensions
 
-    @cached_method(ttl=1800, key_generator=lambda self, fp: f"detect_lang:{fp.suffix}")
     async def detect_language(self, file_path: Path) -> Optional[LanguageConfig]:
-        """Detect the programming language of a file with hybrid caching."""
+        """Detect the programming language of a file."""
         return await self.registry.get_language_by_extension(file_path)
 
     async def parse_file(self, file_path: Path) -> bool:
@@ -1208,38 +1206,43 @@ class UniversalParser:
             return  # Already loaded for this project
         
         self._project_root = project_root
+        
+        # Prefer .graphignore if it exists, fallback to .gitignore
+        graphignore_path = project_root / '.graphignore'
         gitignore_path = project_root / '.gitignore'
         
-        if not gitignore_path.exists():
+        ignore_path = graphignore_path if graphignore_path.exists() else gitignore_path
+        
+        if not ignore_path.exists():
             self._gitignore_patterns = []
             self._gitignore_compiled = None
-            logger.debug(f"No .gitignore found at {gitignore_path}")
+            logger.debug(f"No .gitignore or .graphignore found at {project_root}")
             return
         
         try:
             # Try to use pathspec for proper gitignore handling
             try:
                 import pathspec
-                with open(gitignore_path, 'r', encoding='utf-8') as f:
+                with open(ignore_path, 'r', encoding='utf-8') as f:
                     patterns = [line.strip() for line in f 
                                if line.strip() and not line.startswith('#')]
                 
                 self._gitignore_patterns = patterns
                 self._gitignore_compiled = pathspec.PathSpec.from_lines('gitwildmatch', patterns)
-                logger.debug(f"Loaded {len(patterns)} gitignore patterns using pathspec from {gitignore_path}")
+                logger.info(f"Loaded {len(patterns)} ignore patterns using pathspec from {ignore_path}")
                 
             except ImportError:
                 # Fallback to simple pattern matching if pathspec not available
-                with open(gitignore_path, 'r', encoding='utf-8') as f:
+                with open(ignore_path, 'r', encoding='utf-8') as f:
                     patterns = [line.strip() for line in f 
                                if line.strip() and not line.startswith('#')]
                 
                 self._gitignore_patterns = patterns
                 self._gitignore_compiled = None
-                logger.debug(f"Loaded {len(patterns)} gitignore patterns using fallback from {gitignore_path}")
+                logger.debug(f"Loaded {len(patterns)} ignore patterns using fallback from {ignore_path}")
                 
         except Exception as e:
-            logger.warning(f"Error loading .gitignore from {gitignore_path}: {e}")
+            logger.warning(f"Error loading ignore file from {ignore_path}: {e}")
             self._gitignore_patterns = []
             self._gitignore_compiled = None
 
@@ -1271,14 +1274,23 @@ class UniversalParser:
             try:
                 relative_path = file_path.relative_to(project_root)
                 path_str = str(relative_path)
+                path_parts = path_str.split('/')
 
                 # Check against each gitignore pattern
                 for pattern in self._gitignore_patterns:
                     if fnmatch.fnmatch(path_str, pattern) or fnmatch.fnmatch(path_str, pattern + '/*'):
                         return True
-                    # Handle directory patterns
-                    if pattern.endswith('/') and path_str.startswith(pattern[:-1] + '/'):
-                        return True
+                    # Handle directory patterns (e.g., "node_modules/")
+                    if pattern.endswith('/'):
+                        dir_name = pattern[:-1]
+                        # Check if any path component matches the directory name
+                        if dir_name in path_parts or path_str.startswith(dir_name + '/'):
+                            return True
+                        # Also check with wildcard patterns
+                        if fnmatch.fnmatch(dir_name, dir_name):
+                            for part in path_parts:
+                                if fnmatch.fnmatch(part, dir_name):
+                                    return True
                         
             except ValueError:
                 # Path is not relative to project root

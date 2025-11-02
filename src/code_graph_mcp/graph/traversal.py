@@ -9,11 +9,11 @@ Provides comprehensive graph traversal and search algorithms:
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import rustworkx as rx
 
-from ..universal_graph import NodeType
+from ..universal_graph import NodeType, RelationshipType
 
 logger = logging.getLogger(__name__)
 
@@ -250,3 +250,170 @@ class GraphTraversalMixin:
 
         except Exception:
             return 0.0
+
+    def dfs_traversal_with_depth(
+        self,
+        start_node_id: str,
+        max_depth: int = 10,
+        include_seams: bool = True,
+        visited: Optional[Set[str]] = None
+    ) -> Dict[str, Any]:
+        """DFS traversal with depth tracking and SEAM edge awareness."""
+        if visited is None:
+            visited = set()
+
+        try:
+            if start_node_id not in self.nodes:
+                return {"nodes_by_depth": {}, "total_nodes": 0, "seam_edges": []}
+
+            depth_map = {start_node_id: 0}
+            current_level = {start_node_id}
+            seam_edges = []
+            nodes_by_depth = {0: [start_node_id]}
+
+            for depth in range(1, max_depth + 1):
+                next_level = set()
+                for node_id in current_level:
+                    if node_id not in visited:
+                        visited.add(node_id)
+                        
+                        rels = self.get_relationships_from(node_id)
+                        for rel in rels:
+                            successor_id = rel.target_id
+                            if successor_id not in visited and successor_id not in depth_map:
+                                depth_map[successor_id] = depth
+                                next_level.add(successor_id)
+                                
+                                if include_seams and rel.relationship_type == RelationshipType.SEAM:
+                                    seam_edges.append((node_id, successor_id))
+
+                if not next_level:
+                    break
+
+                nodes_by_depth[depth] = list(next_level)
+                current_level = next_level
+
+            return {
+                "nodes_by_depth": nodes_by_depth,
+                "total_nodes": len(visited),
+                "seam_edges": seam_edges,
+                "max_depth_reached": max(depth_map.values()) if depth_map else 0,
+            }
+
+        except Exception as e:
+            logger.warning(f"DFS traversal with depth failed: {e}")
+            return {"nodes_by_depth": {}, "total_nodes": 0, "seam_edges": []}
+
+    def find_call_chain(
+        self,
+        start_node_id: str,
+        end_node_id: Optional[str] = None,
+        follow_seams: bool = True,
+        max_depth: int = 50
+    ) -> List[Tuple[str, str]]:
+        """Find shortest path between nodes, optionally crossing language boundaries."""
+        try:
+            if start_node_id not in self.nodes:
+                return []
+
+            if end_node_id is None:
+                bfs_nodes = self.breadth_first_search(start_node_id)
+                return [(bfs_nodes[i], bfs_nodes[i + 1]) 
+                        for i in range(min(len(bfs_nodes) - 1, max_depth))]
+
+            visited = {start_node_id}
+            parent_map = {start_node_id: None}
+            queue = [start_node_id]
+            depth = 0
+
+            while queue and depth < max_depth:
+                next_queue = []
+                for node_id in queue:
+                    if node_id == end_node_id:
+                        path = []
+                        current = end_node_id
+                        while parent_map[current] is not None:
+                            path.append((parent_map[current], current))
+                            current = parent_map[current]
+                        return list(reversed(path))
+
+                    rels = self.get_relationships_from(node_id)
+                    for rel in rels:
+                        successor_id = rel.target_id
+                        if not follow_seams and rel.relationship_type == RelationshipType.SEAM:
+                            continue
+
+                        if successor_id not in visited:
+                            visited.add(successor_id)
+                            parent_map[successor_id] = node_id
+                            next_queue.append(successor_id)
+
+                queue = next_queue
+                depth += 1
+
+            return []
+
+        except Exception as e:
+            logger.warning(f"Call chain search failed: {e}")
+            return []
+
+    def trace_cross_language_flow(
+        self,
+        start_node_id: str,
+        max_depth: int = 20
+    ) -> Dict[str, Any]:
+        """Trace execution flow across language boundaries."""
+        try:
+            language_flow = {}
+            visited = set()
+            queue = [(start_node_id, 0)]
+            seam_bridges = []
+
+            while queue:
+                node_id, depth = queue.pop(0)
+                if depth > max_depth or node_id in visited:
+                    continue
+
+                visited.add(node_id)
+                node = self.nodes.get(node_id)
+                if not node:
+                    continue
+
+                language = getattr(node, 'language', 'unknown')
+                if language not in language_flow:
+                    language_flow[language] = []
+
+                language_flow[language].append({
+                    'node_id': node_id,
+                    'name': getattr(node, 'name', ''),
+                    'depth': depth
+                })
+
+                rels = self.get_relationships_from(node_id)
+                for rel in rels:
+                    successor_id = rel.target_id
+                    if successor_id not in visited:
+                        successor = self.nodes.get(successor_id)
+                        if successor:
+                            successor_lang = getattr(successor, 'language', 'unknown')
+
+                            if successor_lang != language:
+                                seam_bridges.append({
+                                    'from_node': node_id,
+                                    'from_language': language,
+                                    'to_node': successor_id,
+                                    'to_language': successor_lang,
+                                    'type': rel.relationship_type.value if rel.relationship_type else 'unknown'
+                                })
+
+                        queue.append((successor_id, depth + 1))
+
+            return {
+                'language_flow': language_flow,
+                'seam_bridges': seam_bridges,
+                'languages_involved': list(language_flow.keys())
+            }
+
+        except Exception as e:
+            logger.warning(f"Cross-language flow tracing failed: {e}")
+            return {'language_flow': {}, 'seam_bridges': [], 'languages_involved': []}

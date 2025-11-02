@@ -4,13 +4,13 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: /mnt/c/Users/ADAM/GitHub/code-graph-mcp
+      device: ${CODEGRAPHMCP_REPO_MOUNT:-/home/adam/GitHub/code-graph-mcp/src/code_graph_mcp}
   redis-data:
       driver: local
       driver_opts:
         type: none
         o: bind
-        device: /mnt/c/Users/ADAM/.redis-docker/codegraphmcp
+        device: /home/adam/.redis-docker/codegraphmcp
 
 services:
   # Redis cache service
@@ -36,24 +36,50 @@ services:
     ports:
       - "10101:8000"
     volumes:
-      - repo-mount:/app/workspace  # Mount workspace
+      - repo-mount:/app/workspace
     environment:
-      - CODE_GRAPH_MCP_LOG_LEVEL=INFO
-      - CODE_GRAPH_MCP_FILE_WATCHER=false
-      - REDIS_URL=redis://redis:6379
+      - CODEGRAPHMCP_LOG_LEVEL=${CODEGRAPHMCP_LOG_LEVEL:-INFO}
+      - CODEGRAPHMCP_FILE_WATCHER=${CODEGRAPHMCP_FILE_WATCHER:-true}
+      - REDIS_URL=${CODEGRAPHMCP_REDIS_URL:-redis://redis:6379}
     depends_on:
       - redis
     command: >
       uv run code-graph-mcp
       --mode sse
       --redis-url redis://redis:6379
-      --project-root /app/workspace
+      --project-root ${CODEGRAPHMCP_PROJECT_ROOT:-/app/workspace}
       --host 0.0.0.0
       --port 8000
-      --verbose
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  code-graph-http:
+    image: ajacobm/code-graph-mcp:http
+    build:
+      context: .
+      target: http
+    ports:
+      - "8000:8000"
+    volumes:
+      - repo-mount:/app/workspace
+    environment:
+      - REDIS_URL=${CODEGRAPHMCP_REDIS_URL:-redis://redis:6379}
+    depends_on:
+      - redis
+    command: >
+      /app/.venv/bin/python -m code_graph_mcp.http_server
+      --project-root /app/workspace
+      --host 0.0.0.0
+      --port 8000
+      --redis-url ${CODEGRAPHMCP_REDIS_URL:-redis://redis:6379}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/app/.venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -66,3 +92,25 @@ services:
       - "5540:5540"
     depends_on:
       - redis
+
+  # Frontend UI (Vue 3 + Vite)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://code-graph-http:8000
+    depends_on:
+      - code-graph-http
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5173"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s

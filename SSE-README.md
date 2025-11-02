@@ -275,20 +275,20 @@ Options:
 ### Environment Variables
 
 ```bash
-export CODE_GRAPH_MCP_LOG_LEVEL=DEBUG
-export CODE_GRAPH_MCP_CACHE_SIZE=500000
-export CODE_GRAPH_MCP_MAX_FILES=10000
-export CODE_GRAPH_MCP_FILE_WATCHER=true
-export CODE_GRAPH_MCP_DEBOUNCE_DELAY=2.0
+export CODEGRAPHMCP_LOG_LEVEL=DEBUG
+export CODEGRAPHMCP_CACHE_SIZE=500000
+export CODEGRAPHMCP_MAX_FILES=10000
+export CODEGRAPHMCP_FILE_WATCHER=true
+export CODEGRAPHMCP_DEBOUNCE_DELAY=2.0
 ```
 
 ### Docker Environment Variables
 
 ```yaml
 environment:
-  - CODE_GRAPH_MCP_LOG_LEVEL=INFO
-  - CODE_GRAPH_MCP_FILE_WATCHER=true
-  - CODE_GRAPH_MCP_CACHE_SIZE=300000
+  - CODEGRAPHMCP_LOG_LEVEL=INFO
+  - CODEGRAPHMCP_FILE_WATCHER=true
+  - CODEGRAPHMCP_CACHE_SIZE=300000
 ```
 
 ## Docker Deployment
@@ -304,7 +304,7 @@ docker run -d \
   --name code-graph-sse \
   -p 8000:8000 \
   -v /path/to/your/code:/app/workspace:ro \
-  -e CODE_GRAPH_MCP_LOG_LEVEL=INFO \
+  -e CODEGRAPHMCP_LOG_LEVEL=INFO \
   code-graph-mcp \
   code-graph-mcp --mode sse --host 0.0.0.0 --port 8000
 ```
@@ -324,7 +324,7 @@ services:
     volumes:
       - "./your-project:/app/workspace:ro"
     environment:
-      - CODE_GRAPH_MCP_LOG_LEVEL=INFO
+      - CODEGRAPHMCP_LOG_LEVEL=INFO
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -367,7 +367,7 @@ spec:
         ports:
         - containerPort: 8000
         env:
-        - name: CODE_GRAPH_MCP_LOG_LEVEL
+        - name: CODEGRAPHMCP_LOG_LEVEL
           value: "INFO"
         volumeMounts:
         - name: workspace

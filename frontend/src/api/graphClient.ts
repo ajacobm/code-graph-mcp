@@ -7,6 +7,7 @@ import type {
   GraphStatsResponse,
   SearchResultResponse,
   SeamResponse,
+  QueryResultsResponse,
 } from '../types/graph'
 
 export class GraphClient {
@@ -78,6 +79,27 @@ export class GraphClient {
         follow_seams: followSeams,
         max_depth: maxDepth,
       },
+    })
+    return data
+  }
+
+  async findCallers(symbol: string): Promise<QueryResultsResponse> {
+    const { data } = await this.client.get('/graph/query/callers', {
+      params: { symbol },
+    })
+    return data
+  }
+
+  async findCallees(symbol: string): Promise<QueryResultsResponse> {
+    const { data } = await this.client.get('/graph/query/callees', {
+      params: { symbol },
+    })
+    return data
+  }
+
+  async findReferences(symbol: string): Promise<QueryResultsResponse> {
+    const { data } = await this.client.get('/graph/query/references', {
+      params: { symbol },
     })
     return data
   }

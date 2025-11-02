@@ -103,3 +103,13 @@ export interface FilterState {
   complexityRange: [number, number]
   searchQuery: string
 }
+
+export interface QueryResult {
+  [key: string]: unknown
+}
+
+export interface QueryResultsResponse {
+  results: QueryResult[]
+  count: number
+  execution_time_ms: number
+}

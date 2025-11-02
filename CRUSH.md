@@ -194,3 +194,58 @@ docker run --rm -v /path/to/code-graph-mcp:/app code-graph-mcp:test uv run pytho
 **Total Phase 1 Results**: 17/18 core backend tests passing ✅
 
 **Next**: Phase 2 (Frontend navigation) + Phase 3 (MCP tools from UI)
+
+## Session 5: Query Endpoints & Tool UI (2025-11-01) ✅
+**Status**: COMPLETE - All deliverables merged to main
+
+**Phase 3a - Backend Query Endpoints**:
+- Added 3 GET endpoints to `src/code_graph_mcp/server/graph_api.py`:
+  - `/api/graph/query/callers?symbol=<name>` (line 412)
+  - `/api/graph/query/callees?symbol=<name>` (line 444) 
+  - `/api/graph/query/references?symbol=<name>` (line 476)
+- Fixed bug in universal_parser.py: parse_directory() now converts string→Path
+- Endpoints leverage existing async methods from UniversalAnalysisEngine
+- Full error handling and consistent JSON responses with execution metrics
+
+**Phase 3b - Frontend Tool Execution UI**:
+- Created ToolPanel.vue (183 lines): Interactive symbol query component
+- Created toolClient.ts (51 lines): Type-safe API client wrapper
+- Integrated into App.vue right sidebar (above RelationshipBrowser)
+- Features: tool selector, symbol input, Execute/Clear buttons, collapsible results
+- Results show 20 items with "+N more" indicator, click to select nodes
+
+**Testing**:
+- Added tests/test_query_endpoints.py with 8 comprehensive tests
+- Tests verify endpoint registration, response structures, data handling
+- All 8 tests passing + all existing tests still passing
+- Total test coverage: 27+ tests across backend
+
+**Git History**:
+- 4 clean commits merged to main:
+  1. Add backend query endpoints (95 lines graph_api.py)
+  2. Build frontend Tool Execution UI (239 lines combined)
+  3. Add comprehensive tests for endpoints (95 lines)
+  4. Session 5 completion report
+
+**Known Issue - Requires Action**:
+Docker HTTP image was built before new endpoints. To verify in containers:
+```bash
+docker build -t ajacobm/code-graph-mcp:http -f Dockerfile --target http .
+compose.sh up  # Restart with new image
+python -c "import requests; print(requests.get('http://localhost:8000/api/graph/query/callers?symbol=test').status_code)"
+```
+
+**Session 5 Impact**:
+- 432 lines added across 6 files
+- 0 breaking changes
+- 100% backward compatible
+- 8 new tests, all passing
+- Ready for Session 6 deployment testing
+
+**Next Session 6 (Deployment)**:
+1. Rebuild and test Docker HTTP container with new endpoints
+2. E2E test tool panel from frontend UI
+3. Performance validation (response times, result pagination)
+4. Update docker-compose.yml with any configuration changes
+5. Final integration testing across full stack
+

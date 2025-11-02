@@ -9,6 +9,7 @@ import CallChainTracer from './components/CallChainTracer.vue'
 import LoadingSpinner from './components/LoadingSpinner.vue'
 import RelationshipBrowser from './components/RelationshipBrowser.vue'
 import TraversalControls from './components/TraversalControls.vue'
+import ToolPanel from './components/ToolPanel.vue'
 
 const graphStore = useGraphStore()
 const rootNode = ref('')
@@ -111,11 +112,14 @@ const clearGraph = () => {
         </div>
       </div>
 
-      <!-- Right sidebar: Node details + navigation -->
+      <!-- Right sidebar: Node details + navigation + tools -->
       <div class="w-80 border-l border-gray-700 flex flex-col overflow-y-auto">
         <div class="p-4 space-y-6">
           <div>
             <NodeDetails />
+          </div>
+          <div class="border-t border-gray-700 pt-4">
+            <ToolPanel />
           </div>
           <div v-if="graphStore.selectedNode" class="border-t border-gray-700 pt-4">
             <RelationshipBrowser />

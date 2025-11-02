@@ -4,13 +4,19 @@
 Always initialize sessions with: `source ~/.bashrc`
 
 ## Docker Commands
-- **Use compose.sh utility** (in ~/.local/bin): Wrapper for docker-compose with stateful operations
-  - `compose.sh up` - Start stack (uses docker-compose-multi.yml by default)
-  - `compose.sh down` - Stop and remove
-  - `compose.sh restart` - Restart all services
-  - `compose.sh logs [service]` - View logs
-  - `compose.sh config [name] [value]` - Store config variables
-- View logs: `docker logs code-graph-mcp-code-graph-http-1` or `docker logs code-graph-mcp-frontend-1`
+- **Use compose.sh utility** (in ~/.local/bin): Wrapper for docker-compose with stateful operations; aliased in .bash_aliases as 'compose';
+  - 'compose state' - state file ref output per docker-compose folder;
+  - `compose up` - Start stack (uses docker-compose-multi.yml by default per $COMPOSE_FILE .compose.env)
+  - `compose down` - Stop and remove
+  - `compose restart` - Restart all services
+  - `compose logs [service]` - View logs
+  - `compose config [name] [value]` - Store config variables
+- View logs: `compose logs code-graph-http` or `compose logs frontend`
+- The '-p' docker compose stack name option is implicit within the compose.sh script and .compose.env found in project folder
+- 'compose' sources $PWD/.compose.env if it exists; 
+  - Sets anything relevant but usually only these two:
+    - $STACK_NAME
+    - $COMPOSE_FILE: note that secondary overrides should be included simply as <file_name_1> -f <file_name_2> as compose.sh will supply the first -f but not successive files.
 - List running: `docker ps -a | grep code-graph`
 
 ## Development Commands

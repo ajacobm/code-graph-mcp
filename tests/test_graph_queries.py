@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Dict, List, Any
 
 import pytest
+import pytest_asyncio
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
@@ -25,19 +26,19 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-@pytest.fixture(scope="module")
+@pytest_asyncio.fixture(scope="module")
 async def analysis_engine():
     """Initialize analysis engine for testing."""
-    project_root = Path("/app/workspace")
+    project_root = Path(__file__).parent.parent / "src" / "code_graph_mcp"
     if not project_root.exists():
-        pytest.skip("Test workspace not available")
+        pytest.skip("Test project not available")
     
     engine = UniversalAnalysisEngine(
         project_root,
         enable_file_watcher=False,
-        enable_redis_cache=True
+        enable_redis_cache=False
     )
-    await engine.analyze()
+    await engine._analyze_project()
     yield engine
 
 
@@ -201,16 +202,16 @@ async def test_graph_relationship_type_mismatch():
     Diagnose potential issue: find_symbol_references looks for REFERENCES type,
     but the parser might be creating CALLS relationships instead.
     """
-    project_root = Path("/app/workspace")
+    project_root = Path(__file__).parent.parent / "src" / "code_graph_mcp"
     if not project_root.exists():
-        pytest.skip("Test workspace not available")
+        pytest.skip("Test project not available")
     
     engine = UniversalAnalysisEngine(
         project_root,
         enable_file_watcher=False,
-        enable_redis_cache=True
+        enable_redis_cache=False
     )
-    await engine.analyze()
+    await engine._analyze_project()
     graph = engine.graph
     
     # Count each relationship type

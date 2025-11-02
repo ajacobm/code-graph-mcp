@@ -103,3 +103,18 @@ export interface FilterState {
   complexityRange: [number, number]
   searchQuery: string
 }
+
+export interface QueryResult {
+  [key: string]: unknown
+}
+
+export interface QueryResultsResponse {
+  symbol: string
+  total_callers?: number
+  total_callees?: number
+  total_references?: number
+  callers?: QueryResult[]
+  callees?: QueryResult[]
+  references?: QueryResult[]
+  execution_time_ms: number
+}

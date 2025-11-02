@@ -44,28 +44,37 @@ const selectResult = async (nodeId: string) => {
 </script>
 
 <template>
-  <div class="relative">
-    <input
-      v-model="query"
-      @input="search"
-      @focus="showResults = true"
-      type="text"
-      placeholder="Search nodes..."
-      class="w-full px-4 py-2 bg-gray-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-    />
-
-    <div v-if="showResults && (results.length > 0 || loading)" class="absolute top-full mt-1 w-full bg-gray-700 rounded shadow-lg z-10 max-h-64 overflow-y-auto">
-      <div v-if="loading" class="p-2 text-gray-300 text-sm">Searching...</div>
-
-      <button
-        v-for="result in results"
-        :key="result.id"
-        @click="selectResult(result.id)"
-        class="w-full text-left px-4 py-2 hover:bg-gray-600 text-gray-200 text-sm border-b border-gray-600 last:border-b-0 flex justify-between"
-      >
-        <span>{{ result.name }}</span>
-        <span class="text-xs text-gray-400">{{ result.language }}</span>
+  <div class="form-control relative">
+    <div class="input-group">
+      <input
+        v-model="query"
+        @input="search"
+        @focus="showResults = true"
+        type="text"
+        placeholder="Search nodes..."
+        class="input input-bordered input-primary w-full"
+      />
+      <button class="btn btn-square btn-primary">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-5 h-5 stroke-current">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
       </button>
+    </div>
+
+    <div v-if="showResults && (results.length > 0 || loading)" class="dropdown-content menu bg-base-200 rounded-box shadow-2xl z-50 w-full mt-2 p-2 max-h-96 overflow-y-auto">
+      <div v-if="loading" class="p-4 text-center">
+        <span class="loading loading-spinner loading-md text-primary"></span>
+      </div>
+
+      <li v-for="result in results" :key="result.id">
+        <button
+          @click="selectResult(result.id)"
+          class="flex justify-between items-center hover:bg-base-300 rounded-lg p-3"
+        >
+          <span class="font-mono text-sm font-semibold truncate">{{ result.name }}</span>
+          <span class="badge badge-primary badge-sm">{{ result.language }}</span>
+        </button>
+      </li>
     </div>
   </div>
 </template>

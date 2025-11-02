@@ -4,7 +4,7 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: ${CODEGRAPHMCP_REPO_MOUNT:-/home/adam/GitHub/code-graph-mcp/src/code_graph_mcp}
+      device: ${CODEGRAPHMCP_REPO_MOUNT:-/home/adam/GitHub/code-graph-mcp}
   redis-data:
       driver: local
       driver_opts:
@@ -104,7 +104,7 @@ services:
       - ./frontend:/app
       - /app/node_modules
     environment:
-      - VITE_API_URL=http://code-graph-http:8000
+      - VITE_API_URL=http://localhost:8000
     depends_on:
       - code-graph-http
     restart: unless-stopped

@@ -7,14 +7,28 @@ import type {
   GraphStatsResponse,
   SearchResultResponse,
   SeamResponse,
+  QueryResultsResponse,
 } from '../types/graph'
 
 export class GraphClient {
   private client: AxiosInstance
 
-  constructor(baseURL = '/api') {
+  constructor(baseURL?: string) {
+    let apiUrl = baseURL || import.meta.env.VITE_API_URL || ''
+    
+    // If VITE_API_URL contains 'code-graph-http' (Docker service name),
+    // replace it with localhost for browser access
+    if (apiUrl.includes('code-graph-http')) {
+      apiUrl = apiUrl.replace('code-graph-http', 'localhost')
+    }
+    
+    // Use /api as default if no URL provided
+    if (!apiUrl) {
+      apiUrl = '/api'
+    }
+    
     this.client = axios.create({
-      baseURL,
+      baseURL: apiUrl.endsWith('/api') ? apiUrl : `${apiUrl}/api`,
       timeout: 30000,
     })
   }
@@ -78,6 +92,51 @@ export class GraphClient {
         follow_seams: followSeams,
         max_depth: maxDepth,
       },
+    })
+    return data
+  }
+
+  async findCallers(symbol: string): Promise<QueryResultsResponse> {
+    const { data } = await this.client.get('/graph/query/callers', {
+      params: { symbol },
+    })
+    return data
+  }
+
+  async findCallees(symbol: string): Promise<QueryResultsResponse> {
+    const { data } = await this.client.get('/graph/query/callees', {
+      params: { symbol },
+    })
+    return data
+  }
+
+  async findReferences(symbol: string): Promise<QueryResultsResponse> {
+    const { data } = await this.client.get('/graph/query/references', {
+      params: { symbol },
+    })
+    return data
+  }
+
+  async getNodesByCategory(
+    category: 'entry_points' | 'hubs' | 'leaves',
+    limit: number = 50,
+    offset: number = 0
+  ): Promise<{ nodes: any[]; total: number }> {
+    const { data } = await this.client.get(`/graph/categories/${category}`, {
+      params: { limit, offset },
+    })
+    return data
+  }
+
+  async getSubgraph(
+    nodeId: string,
+    depth: number = 2,
+    limit: number = 100
+  ): Promise<TraversalResponse> {
+    const { data } = await this.client.post('/graph/subgraph', {
+      node_id: nodeId,
+      depth,
+      limit,
     })
     return data
   }

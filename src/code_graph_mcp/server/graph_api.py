@@ -562,13 +562,17 @@ def create_graph_api_router(engine: UniversalAnalysisEngine) -> APIRouter:
             nodes = []
             for node in paginated:
                 node_id = node.node_id if hasattr(node, 'node_id') else str(node.id)
+                location = getattr(node, 'location', None)
+                file_path = location.file_path if location else ""
+                line = location.start_line if location else 0
+                
                 nodes.append({
                     "id": node_id,
                     "name": node.name,
                     "type": node.node_type.value if hasattr(node.node_type, 'value') else str(node.node_type),
                     "language": node.language,
-                    "file_path": node.file_path,
-                    "line": node.line,
+                    "file_path": file_path,
+                    "line": line,
                     "complexity": node.complexity,
                     "in_degree": in_degree.get(node_id, 0),
                     "out_degree": out_degree.get(node_id, 0),

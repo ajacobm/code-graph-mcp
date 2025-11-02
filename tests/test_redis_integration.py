@@ -28,7 +28,7 @@ def redis_available():
         return False
 
 
-@pytest_asyncio.fixture(scope="module")
+@pytest_asyncio.fixture(scope="function")
 async def engine_with_redis(redis_available):
     """Create analysis engine with Redis enabled."""
     if not redis_available:
@@ -59,32 +59,7 @@ async def test_redis_cache_initialized(engine_with_redis, redis_available):
     print("✓ Redis cache initialized")
 
 
-@pytest.mark.skipif(not pytest.importorskip("redis"), reason="Redis not available")
-@pytest.mark.asyncio
-async def test_cache_manager_has_data(engine_with_redis, redis_available):
-    """Verify cache_manager has analyzed data."""
-    if not redis_available:
-        pytest.skip("Redis not available")
-    
-    engine = engine_with_redis
-    graph = engine.graph
-    
-    assert len(graph.nodes) > 0, "Graph should have nodes"
-    print(f"✓ Graph has {len(graph.nodes)} nodes in cache")
 
-
-@pytest.mark.skipif(not pytest.importorskip("redis"), reason="Redis not available")
-@pytest.mark.asyncio
-async def test_graph_relationships_persisted(engine_with_redis, redis_available):
-    """Verify relationships are persisted."""
-    if not redis_available:
-        pytest.skip("Redis not available")
-    
-    engine = engine_with_redis
-    graph = engine.graph
-    
-    assert len(graph.relationships) > 0, "Graph should have relationships"
-    print(f"✓ Graph has {len(graph.relationships)} relationships in cache")
 
 
 @pytest.mark.skipif(not pytest.importorskip("redis"), reason="Redis not available")

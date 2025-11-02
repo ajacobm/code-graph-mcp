@@ -1300,6 +1300,8 @@ class UniversalParser:
 
     async def parse_directory(self, directory: Path, recursive: bool = True) -> int:
         """Parse all supported files in a directory with OPTIMIZED gitignore-aware traversal."""
+        if isinstance(directory, str):
+            directory = Path(directory)
         if not directory.is_dir():
             logger.error("Not a directory: %s", directory)
             return 0

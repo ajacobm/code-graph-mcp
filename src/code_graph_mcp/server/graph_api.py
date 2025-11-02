@@ -408,4 +408,99 @@ def create_graph_api_router(engine: UniversalAnalysisEngine) -> APIRouter:
             logger.error(f"Call chain query failed: {e}")
             raise HTTPException(status_code=500, detail=str(e))
 
+    @router.get("/query/callers", response_model=Dict[str, Any])
+    async def find_callers(symbol: str = Query(..., description="Function name to find callers for")):
+        """Find all functions that call the specified function."""
+        try:
+            if not engine:
+                raise HTTPException(status_code=500, detail="Analysis engine not ready")
+            
+            start_time = time.time()
+            callers = await engine.find_function_callers(symbol)
+            
+            results = []
+            for caller in callers:
+                results.append({
+                    "caller_id": f"{caller['file']}:{caller['caller']}",
+                    "caller": caller['caller'],
+                    "caller_type": caller['caller_type'],
+                    "file": caller['file'],
+                    "line": caller['line'],
+                    "target_function": caller['target_function']
+                })
+            
+            return {
+                "symbol": symbol,
+                "total_callers": len(results),
+                "callers": results,
+                "execution_time_ms": (time.time() - start_time) * 1000
+            }
+        
+        except Exception as e:
+            logger.error(f"Find callers failed: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @router.get("/query/callees", response_model=Dict[str, Any])
+    async def find_callees(symbol: str = Query(..., description="Function name to find callees for")):
+        """Find all functions called by the specified function."""
+        try:
+            if not engine:
+                raise HTTPException(status_code=500, detail="Analysis engine not ready")
+            
+            start_time = time.time()
+            callees = await engine.find_function_callees(symbol)
+            
+            results = []
+            for callee in callees:
+                results.append({
+                    "callee_id": f"{callee['file']}:{callee['callee']}",
+                    "callee": callee['callee'],
+                    "callee_type": callee['callee_type'],
+                    "file": callee['file'],
+                    "line": callee['line'],
+                    "call_line": callee['call_line']
+                })
+            
+            return {
+                "symbol": symbol,
+                "total_callees": len(results),
+                "callees": results,
+                "execution_time_ms": (time.time() - start_time) * 1000
+            }
+        
+        except Exception as e:
+            logger.error(f"Find callees failed: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @router.get("/query/references", response_model=Dict[str, Any])
+    async def find_references(symbol: str = Query(..., description="Symbol name to find references for")):
+        """Find all references to a symbol."""
+        try:
+            if not engine:
+                raise HTTPException(status_code=500, detail="Analysis engine not ready")
+            
+            start_time = time.time()
+            references = await engine.find_symbol_references(symbol)
+            
+            results = []
+            for ref in references:
+                results.append({
+                    "reference_id": f"{ref['file']}:{ref['line']}",
+                    "referencing_symbol": ref['referencing_symbol'],
+                    "file": ref['file'],
+                    "line": ref['line'],
+                    "context": ref['context']
+                })
+            
+            return {
+                "symbol": symbol,
+                "total_references": len(results),
+                "references": results,
+                "execution_time_ms": (time.time() - start_time) * 1000
+            }
+        
+        except Exception as e:
+            logger.error(f"Find references failed: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+
     return router

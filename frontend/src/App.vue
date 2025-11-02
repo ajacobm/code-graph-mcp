@@ -7,6 +7,8 @@ import SearchBar from './components/SearchBar.vue'
 import FilterPanel from './components/FilterPanel.vue'
 import CallChainTracer from './components/CallChainTracer.vue'
 import LoadingSpinner from './components/LoadingSpinner.vue'
+import RelationshipBrowser from './components/RelationshipBrowser.vue'
+import TraversalControls from './components/TraversalControls.vue'
 
 const graphStore = useGraphStore()
 const rootNode = ref('')
@@ -109,9 +111,19 @@ const clearGraph = () => {
         </div>
       </div>
 
-      <!-- Right sidebar: Node details -->
-      <div class="w-80 border-l border-gray-700 flex flex-col">
-        <NodeDetails />
+      <!-- Right sidebar: Node details + navigation -->
+      <div class="w-80 border-l border-gray-700 flex flex-col overflow-y-auto">
+        <div class="p-4 space-y-6">
+          <div>
+            <NodeDetails />
+          </div>
+          <div v-if="graphStore.selectedNode" class="border-t border-gray-700 pt-4">
+            <RelationshipBrowser />
+          </div>
+          <div v-if="graphStore.selectedNode" class="border-t border-gray-700 pt-4">
+            <TraversalControls />
+          </div>
+        </div>
       </div>
     </div>
 

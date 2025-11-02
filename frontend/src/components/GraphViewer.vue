@@ -92,14 +92,14 @@ const initCytoscape = () => {
 const updateGraph = () => {
   if (!cy) return
 
-  const nodes = graphStore.nodeArray.map((n) => ({
+  const nodes = (graphStore.nodeArray || []).map((n) => ({
     data: {
       id: n.id,
       label: n.name.substring(0, 15),
     },
   }))
 
-  const edges = graphStore.edgeArray.map((e) => ({
+  const edges = (graphStore.edgeArray || []).map((e) => ({
     data: {
       id: e.id,
       source: e.source,
@@ -108,6 +108,7 @@ const updateGraph = () => {
     },
   }))
 
+  if (!cy) return
   cy.elements().remove()
   cy.add([...nodes, ...edges])
 

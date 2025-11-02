@@ -188,6 +188,48 @@ export const useGraphStore = defineStore('graph', () => {
     searchQuery.value = query
   }
 
+  async function findCallers(symbolName: string) {
+    try {
+      isLoading.value = true
+      error.value = null
+      const result = await graphClient.findCallers(symbolName)
+      return result.results
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to find callers'
+      return []
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function findCallees(symbolName: string) {
+    try {
+      isLoading.value = true
+      error.value = null
+      const result = await graphClient.findCallees(symbolName)
+      return result.results
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to find callees'
+      return []
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function findReferences(symbolName: string) {
+    try {
+      isLoading.value = true
+      error.value = null
+      const result = await graphClient.findReferences(symbolName)
+      return result.results
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to find references'
+      return []
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   return {
     nodes,
     edges,
@@ -216,5 +258,8 @@ export const useGraphStore = defineStore('graph', () => {
     setSeamOnly,
     setComplexityRange,
     setSearchQuery,
+    findCallers,
+    findCallees,
+    findReferences,
   }
 })

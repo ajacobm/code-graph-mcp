@@ -171,3 +171,21 @@ class ErrorResponse:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return asdict(self)
+
+
+@dataclass
+class EntryPointResponse:
+    """Response for entry point detection."""
+    id: str
+    name: str
+    file_path: str
+    language: str
+    line_number: int
+    pattern_matched: str
+    confidence_score: float
+    complexity: int
+    type: str = "entry_point"
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return asdict(self)

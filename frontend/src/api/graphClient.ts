@@ -10,6 +10,18 @@ import type {
   QueryResultsResponse,
 } from '../types/graph'
 
+export interface EntryPointResponse {
+  id: string
+  name: string
+  file_path: string
+  language: string
+  line_number: number
+  pattern_matched: string
+  confidence_score: number
+  complexity: number
+  type: string
+}
+
 export class GraphClient {
   private client: AxiosInstance
 
@@ -137,6 +149,16 @@ export class GraphClient {
       node_id: nodeId,
       depth,
       limit,
+    })
+    return data
+  }
+
+  async getEntryPoints(
+    limit: number = 50,
+    minConfidence: number = 0.5
+  ): Promise<{ entry_points: EntryPointResponse[]; total_count: number }> {
+    const { data } = await this.client.get('/graph/entry-points', {
+      params: { limit, min_confidence: minConfidence },
     })
     return data
   }

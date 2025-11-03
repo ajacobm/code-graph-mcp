@@ -1,165 +1,192 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useGraphStore } from './stores/graphStore'
-import NodeBrowser from './components/NodeBrowser.vue'
 import GraphViewer from './components/GraphViewer.vue'
+import NodeBrowser from './components/NodeBrowser.vue'
 import NodeDetails from './components/NodeDetails.vue'
 import SearchBar from './components/SearchBar.vue'
 import FilterPanel from './components/FilterPanel.vue'
-import CallChainTracer from './components/CallChainTracer.vue'
-import LoadingSpinner from './components/LoadingSpinner.vue'
-import RelationshipBrowser from './components/RelationshipBrowser.vue'
-import TraversalControls from './components/TraversalControls.vue'
 import ToolPanel from './components/ToolPanel.vue'
+import TraversalControls from './components/TraversalControls.vue'
+import CallChainTracer from './components/CallChainTracer.vue'
+import RelationshipBrowser from './components/RelationshipBrowser.vue'
 import AdminPanel from './components/AdminPanel.vue'
+import EntryPointExplorer from './components/EntryPointExplorer.vue'
+import LoadingSpinner from './components/LoadingSpinner.vue'
 
 const graphStore = useGraphStore()
-const showFilters = ref(false)
+const activeTab = ref('graph')
+const showAdmin = ref(false)
 
-const viewMode = computed(() => graphStore.nodeArray.length > 0 ? 'graph' : 'browse')
+const tabs = [
+  { id: 'graph', name: 'Graph View', icon: '📊' },
+  { id: 'browser', name: 'Node Browser', icon: '📂' },
+  { id: 'entry-points', name: 'Entry Points', icon: '🚀' },
+  { id: 'relationships', name: 'Relationships', icon: '🔗' },
+  { id: 'call-chain', name: 'Call Chain', icon: 'CALLTYPE' },
+]
+
+onMounted(() => {
+  graphStore.initialize()
+})
 </script>
 
 <template>
-  <div class="h-screen w-screen bg-base-100 flex flex-col" data-theme="dark">
-    <!-- Browse Mode -->
-    <template v-if="viewMode === 'browse'">
-      <div class="p-6 space-y-6 overflow-y-auto">
-        <NodeBrowser />
-        <AdminPanel />
+  <div class="app-container flex flex-col h-screen bg-base-200">
+    <!-- Header -->
+    <header class="bg-base-100 shadow-lg z-10">
+      <div class="navbar bg-base-100">
+        <div class="flex-1">
+          <h1 class="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            Code Graph Visualizer
+          </h1>
+        </div>
+        
+        <div class="flex-none gap-2">
+          <SearchBar />
+          <button 
+            @click="showAdmin = !showAdmin"
+            class="btn btn-ghost btn-sm"
+            title="Admin Panel"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
+        </div>
       </div>
-    </template>
+      
+      <!-- Tabs -->
+      <div class="tabs tabs-bordered px-4">
+        <button
+          v-for="tab in tabs"
+          :key="tab.id"
+          class="tab"
+          :class="{ 'tab-active': activeTab === tab.id }"
+          @click="activeTab = tab.id"
+        >
+          <span class="mr-2">{{ tab.icon }}</span>
+          {{ tab.name }}
+        </button>
+      </div>
+    </header>
 
-    <!-- Graph Mode -->
-    <template v-else>
-      <header class="bg-base-200 border-b border-base-300 px-6 py-4 shadow-lg">
-        <div class="flex items-center justify-between">
-          <div>
-            <h1 class="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Code Graph Visualizer
-            </h1>
-            <div v-if="graphStore.stats" class="flex items-center gap-4 mt-2">
-              <div class="badge badge-primary badge-lg gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 stroke-current">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                {{ graphStore.stats.total_nodes }} nodes
-              </div>
-              <div class="badge badge-secondary badge-lg gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 stroke-current">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                {{ graphStore.stats.total_relationships }} edges
-              </div>
-            </div>
+    <!-- Main Content -->
+    <div class="flex-1 flex overflow-hidden">
+      <!-- Left Sidebar -->
+      <div class="w-80 bg-base-100 border-r border-base-300 flex flex-col">
+        <div class="p-4 border-b border-base-300">
+          <FilterPanel />
+        </div>
+        
+        <div class="flex-1 overflow-y-auto">
+          <div v-if="activeTab === 'graph'" class="p-4">
+            <TraversalControls />
           </div>
-
-          <div class="flex items-center gap-3">
-            <div class="w-72">
-              <SearchBar />
-            </div>
-            <button @click="showFilters = !showFilters" class="btn btn-primary gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-5 h-5 stroke-current">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-              </svg>
-              {{ showFilters ? 'Hide' : 'Show' }} Filters
-            </button>
-            <button @click="graphStore.clearGraph" class="btn btn-error gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-5 h-5 stroke-current">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              Clear
-            </button>
-            <button @click="graphStore.clearGraph" class="btn btn-ghost gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-5 h-5 stroke-current">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Back to Browse
-            </button>
+          
+          <div v-else-if="activeTab === 'browser'" class="p-4">
+            <NodeBrowser />
+          </div>
+          
+          <div v-else-if="activeTab === 'entry-points'" class="p-4">
+            <EntryPointExplorer />
+          </div>
+          
+          <div v-else-if="activeTab === 'relationships'" class="p-4">
+            <RelationshipBrowser />
+          </div>
+          
+          <div v-else-if="activeTab === 'call-chain'" class="p-4">
+            <CallChainTracer />
           </div>
         </div>
-      </header>
-
-      <div class="flex-1 flex overflow-hidden">
-        <transition
-          enter-active-class="transition-all duration-300 ease-out"
-          enter-from-class="-translate-x-full opacity-0"
-          enter-to-class="translate-x-0 opacity-100"
-          leave-active-class="transition-all duration-300 ease-in"
-          leave-from-class="translate-x-0 opacity-100"
-          leave-to-class="-translate-x-full opacity-0"
-        >
-          <aside v-if="showFilters" class="w-80 bg-base-200 border-r border-base-300 overflow-y-auto shadow-xl">
-            <FilterPanel />
-          </aside>
-        </transition>
-
-        <main class="flex-1 flex flex-col overflow-hidden">
-          <CallChainTracer />
-
-          <div class="flex-1 overflow-hidden relative">
-            <GraphViewer />
-          </div>
-        </main>
-
-        <aside class="w-96 bg-base-200 border-l border-base-300 flex flex-col overflow-hidden shadow-xl">
-          <div class="flex-1 overflow-y-auto">
-            <div class="p-6 space-y-6">
-              <div class="card bg-base-300 shadow-xl">
-                <div class="card-body p-4">
-                  <NodeDetails />
-                </div>
-              </div>
-
-              <div class="card bg-base-300 shadow-xl">
-                <div class="card-body p-4">
-                  <ToolPanel />
-                </div>
-              </div>
-
-              <div v-if="graphStore.selectedNode" class="card bg-base-300 shadow-xl">
-                <div class="card-body p-4">
-                  <RelationshipBrowser />
-                </div>
-              </div>
-
-              <div v-if="graphStore.selectedNode" class="card bg-base-300 shadow-xl">
-                <div class="card-body p-4">
-                  <TraversalControls />
-                </div>
-              </div>
-            </div>
-          </div>
-        </aside>
       </div>
-    </template>
 
-    <div v-if="graphStore.isLoading" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-      <div class="card bg-base-200 shadow-2xl">
-        <div class="card-body items-center">
-          <LoadingSpinner message="Loading graph..." />
+      <!-- Main Graph Area -->
+      <div class="flex-1 relative">
+        <div v-if="graphStore.isLoading" class="absolute inset-0 flex items-center justify-center bg-base-200 bg-opacity-70 z-50">
+          <LoadingSpinner />
+        </div>
+        
+        <GraphViewer v-if="activeTab === 'graph'" class="w-full h-full" />
+        
+        <div v-else-if="activeTab === 'browser'" class="w-full h-full flex items-center justify-center bg-base-100">
+          <div class="text-center">
+            <div class="text-5xl mb-4">📂</div>
+            <h2 class="text-xl font-semibold mb-2">Node Browser</h2>
+            <p class="text-base-content/70">Switch to Graph View to visualize the code structure</p>
+          </div>
+        </div>
+        
+        <div v-else-if="activeTab === 'entry-points'" class="w-full h-full flex items-center justify-center bg-base-100">
+          <div class="text-center">
+            <div class="text-5xl mb-4">🚀</div>
+            <h2 class="text-xl font-semibold mb-2">Entry Point Explorer</h2>
+            <p class="text-base-content/70">Switch to Graph View to visualize the code structure</p>
+          </div>
+        </div>
+        
+        <div v-else-if="activeTab === 'relationships'" class="w-full h-full flex items-center justify-center bg-base-100">
+          <div class="text-center">
+            <div class="text-5xl mb-4">🔗</div>
+            <h2 class="text-xl font-semibold mb-2">Relationship Browser</h2>
+            <p class="text-base-content/70">Switch to Graph View to visualize the code structure</p>
+          </div>
+        </div>
+        
+        <div v-else-if="activeTab === 'call-chain'" class="w-full h-full flex items-center justify-center bg-base-100">
+          <div class="text-center">
+            <div class="text-5xl mb-4">CALLTYPE</div>
+            <h2 class="text-xl font-semibold mb-2">Call Chain Tracer</h2>
+            <p class="text-base-content/70">Switch to Graph View to visualize the code structure</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Sidebar -->
+      <div class="w-80 bg-base-100 border-l border-base-300 flex flex-col">
+        <div class="flex-1 overflow-y-auto">
+          <ToolPanel class="p-4" />
+          <NodeDetails v-if="graphStore.selectedNodeId" class="p-4 border-t border-base-300" />
         </div>
       </div>
     </div>
 
-    <transition
-      enter-active-class="transition duration-300 ease-out"
-      enter-from-class="translate-x-full opacity-0"
-      enter-to-class="translate-x-0 opacity-100"
-      leave-active-class="transition duration-300 ease-in"
-      leave-from-class="translate-x-0 opacity-100"
-      leave-to-class="translate-x-full opacity-0"
-    >
-      <div v-if="graphStore.error" class="toast toast-end toast-bottom z-50">
-        <div class="alert alert-error shadow-lg">
-          <div class="flex items-center gap-3">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-6 h-6 stroke-current flex-shrink-0">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span>{{ graphStore.error }}</span>
-            <button @click="graphStore.error = null" class="btn btn-sm btn-circle btn-ghost">✕</button>
+    <!-- Admin Panel Overlay -->
+    <div v-if="showAdmin" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+      <div class="bg-base-100 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div class="p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold">Admin Panel</h2>
+            <button @click="showAdmin = false" class="btn btn-sm btn-circle">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
+          <AdminPanel />
         </div>
       </div>
-    </transition>
+    </div>
+
+    <!-- Global Error Message -->
+    <div v-if="graphStore.error" class="toast toast-top toast-center">
+      <div class="alert alert-error">
+        <span>{{ graphStore.error }}</span>
+      </div>
+    </div>
   </div>
 </template>
+
+<style>
+.app-container {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+</style>

@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from ..server.analysis_engine import UniversalAnalysisEngine
 from ..universal_graph import NodeType
+from ..entry_detector import EntryDetector
 from ..graph.query_response import (
     NodeResponse,
     RelationshipResponse,
@@ -23,6 +24,7 @@ from ..graph.query_response import (
     GraphStatsResponse,
     SeamResponse,
     ErrorResponse,
+    EntryPointResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -755,6 +757,85 @@ def create_graph_api_router(engine: UniversalAnalysisEngine) -> APIRouter:
             }
         except Exception as e:
             logger.error(f"Admin reanalysis failed: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @router.get("/entry-points", response_model=Dict[str, Any])
+    async def get_entry_points(limit: int = Query(50, ge=1, le=500), min_confidence: float = Query(0.5, ge=0.0, le=10.0)):
+        """Get detected entry points with confidence scoring."""
+        try:
+            if not engine or not engine.analyzer or not engine.analyzer.graph:
+                raise HTTPException(status_code=500, detail="Analysis engine not ready")
+            
+            start_time = time.time()
+            graph = engine.analyzer.graph
+            
+            # Initialize entry detector
+            detector = EntryDetector()
+            
+            # Prepare node data and file contents for analysis
+            nodes_data = []
+            file_contents = {}
+            
+            # Collect all nodes with their file information
+            for node_id, node in graph.nodes.items():
+                location = getattr(node, 'location', None)
+                file_path = location.file_path if location else ""
+                
+                if file_path:
+                    node_data = {
+                        'id': node_id,
+                        'name': getattr(node, 'name', ''),
+                        'file_path': file_path,
+                        'line': location.start_line if location else 0,
+                        'complexity': getattr(node, 'complexity', 0),
+                        'language': getattr(node, 'language', ''),
+                        'type': str(getattr(node, 'node_type', ''))
+                    }
+                    nodes_data.append(node_data)
+                    
+                    # Read file content if not already cached
+                    if file_path not in file_contents:
+                        try:
+                            with open(file_path, 'r', encoding='utf-8') as f:
+                                file_contents[file_path] = f.read()
+                        except Exception as e:
+                            logger.warning(f"Could not read file {file_path}: {e}")
+                            file_contents[file_path] = ""
+            
+            # Detect entry points
+            candidates = detector.detect_entry_points(nodes_data, file_contents)
+            
+            # Filter by minimum confidence
+            filtered_candidates = [c for c in candidates if c.confidence_score >= min_confidence]
+            
+            # Apply limit
+            limited_candidates = filtered_candidates[:limit]
+            
+            # Convert to response format
+            entry_points_response = []
+            for candidate in limited_candidates:
+                entry_point = EntryPointResponse(
+                    id=candidate.node_id,
+                    name=candidate.name,
+                    file_path=candidate.file_path,
+                    language=candidate.language,
+                    line_number=candidate.line_number,
+                    pattern_matched=candidate.pattern_matched,
+                    confidence_score=candidate.confidence_score,
+                    complexity=candidate.complexity
+                )
+                entry_points_response.append(entry_point)
+            
+            return {
+                "entry_points": [ep.to_dict() for ep in entry_points_response],
+                "total_count": len(entry_points_response),
+                "filtered_count": len(filtered_candidates),
+                "min_confidence": min_confidence,
+                "execution_time_ms": (time.time() - start_time) * 1000
+            }
+            
+        except Exception as e:
+            logger.error(f"Entry points detection failed: {e}")
             raise HTTPException(status_code=500, detail=str(e))
 
     return router

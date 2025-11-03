@@ -1,32 +1,64 @@
 <script setup lang="ts">
-import { onMounted, ref, watch, computed } from 'vue'
+import { onMounted, ref, watch, computed, onUnmounted } from 'vue'
 import cytoscape from 'cytoscape'
 import dagre from 'cytoscape-dagre'
+import cola from 'cytoscape-cola'
+import klay from 'cytoscape-klay'
 import { useGraphStore } from '../stores/graphStore'
-import type { Core, NodeSingular } from 'cytoscape'
+import { useEntryPointStore } from '../stores/entryPointStore'
+import type { Core, NodeSingular, ElementDefinition } from 'cytoscape'
 
 cytoscape.use(dagre)
+cytoscape.use(cola)
+cytoscape.use(klay)
 
 const graphStore = useGraphStore()
+const entryPointStore = useEntryPointStore()
 
 const container = ref<HTMLElement>()
 let cy: Core | null = null
 
 const expandMode = ref<'callers' | 'callees' | 'both'>('both')
 const showMinimap = ref(false)
-const layoutType = ref<'dagre' | 'breadthfirst' | 'circle'>('breadthfirst')
+const layoutType = ref<'dagre' | 'breadthfirst' | 'circle' | 'cola' | 'klay'>('dagre')
+const showEntryPointHighlights = ref(true)
+const nodeSizeMode = ref<'degree' | 'complexity' | 'fixed'>('degree')
 
+// Enhanced color scheme with better contrast
 const nodeTypeColors: Record<string, string> = {
-  function: '#4F46E5',
-  class: '#EC4899',
-  method: '#8B5CF6',
-  module: '#10B981',
-  variable: '#F59E0B',
-  interface: '#06B6D4',
-  default: '#6B7280'
+  function: '#4F46E5',    // indigo
+  class: '#EC4899',       // pink
+  method: '#8B5CF6',      // violet
+  module: '#10B981',      // emerald
+  variable: '#F59E0B',    // amber
+  interface: '#06B6D4',   // cyan
+  entry_point: '#22D3EE', // sky
+  default: '#6B7280'      // gray
 }
 
 const entryPoints = computed(() => {
+  // Use actual entry point detection from backend when available
+  if (entryPointStore.entryPoints.length > 0) {
+    return new Set(entryPointStore.entryPoints.map(ep => ep.id))
+  }
+  
+  // Fallback to simple incoming edge detection
+  const hasIncoming = new Set<string>()
+  const edges = graphStore.edgeArray || []
+  const nodes = graphStore.nodeArray || []
+  
+  edges.forEach(edge => hasIncoming.add(edge.target))
+  return new Set(
+    nodes
+      .filter(node => !hasIncoming.has(node.id))
+      .map(node => node.id)
+  )
+})
+  if (entryPointStore.entryPoints.length > 0) {
+    return new Set(entryPointStore.entryPoints.map(ep => ep.id))
+  }
+  
+  // Fallback to simple incoming edge detection
   const hasIncoming = new Set<string>()
   const edges = graphStore.edgeArray || []
   const nodes = graphStore.nodeArray || []
@@ -255,22 +287,43 @@ const expandNode = async (nodeId: string) => {
   updateGraph()
 }
 
-const calculateNodeSize = (nodeId: string): number => {
+const calculateNodeSize = (nodeId: string, node: any): number => {
   if (!cy) return 60
   
-  const inDegree = graphStore.edgeArray.filter(e => e.target === nodeId).length
-  const outDegree = graphStore.edgeArray.filter(e => e.source === nodeId).length
-  const degree = inDegree + outDegree
-  
-  const baseSize = 50
-  const maxSize = 100
-  const sizeIncrement = Math.min(degree * 5, 50)
-  
-  return baseSize + sizeIncrement
+  switch (nodeSizeMode.value) {
+    case 'degree':
+      const inDegree = graphStore.edgeArray.filter(e => e.target === nodeId).length
+      const outDegree = graphStore.edgeArray.filter(e => e.source === nodeId).length
+      const degree = inDegree + outDegree
+      const baseSize = 50
+      const maxSize = 100
+      const sizeIncrement = Math.min(degree * 5, 50)
+      return baseSize + sizeIncrement
+    
+    case 'complexity':
+      const complexity = node.complexity || 1
+      const minSize = 40
+      const maxSize = 120
+      return minSize + Math.min(complexity * 8, maxSize - minSize)
+    
+    case 'fixed':
+    default:
+      return 60
+  }
 }
 
-const getNodeColor = (node: any): string => {
-  return nodeTypeColors[node.type] || nodeTypeColors.default
+const getNodeColor = (node: any, nodeId: string): string => {
+  // Check if this is an entry point
+  if (entryPoints.value.has(nodeId)) {
+    return nodeTypeColors.entry_point
+  }
+  
+  // Check for specific node types
+  if (node.type && nodeTypeColors[node.type]) {
+    return nodeTypeColors[node.type]
+  }
+  
+  return nodeTypeColors.default
 }
 
 const updateGraph = () => {
@@ -278,18 +331,20 @@ const updateGraph = () => {
 
   const nodes = (graphStore.nodeArray || []).map((n) => {
     const isEntryPoint = entryPoints.value.has(n.id)
-    const size = calculateNodeSize(n.id)
+    const size = calculateNodeSize(n.id, n)
     const isHub = size > 80
     
     return {
       data: {
         id: n.id,
-        label: n.name.substring(0, 20),
-        color: getNodeColor(n),
+        label: n.name.substring(0, 20) + (n.name.length > 20 ? '...' : ''),
+        color: getNodeColor(n, n.id),
         size: size,
         type: n.type,
         isEntryPoint,
         isHub,
+        complexity: n.complexity || 0,
+        language: n.language || 'unknown',
       },
       classes: [
         isEntryPoint ? 'entry-point' : '',
@@ -305,6 +360,7 @@ const updateGraph = () => {
       source: e.source,
       target: e.target,
       isSeam: e.isSeam,
+      type: e.type,
     },
   }))
 
@@ -326,14 +382,37 @@ const runLayout = () => {
     padding: 50,
   }
 
-  if (layoutType.value === 'dagre') {
-    layoutConfig.rankDir = 'TB'
-    layoutConfig.ranker = 'longest-path'
-    layoutConfig.nodeSep = 80
-    layoutConfig.rankSep = 100
-  } else if (layoutType.value === 'breadthfirst') {
-    layoutConfig.spacingFactor = 1.8
-    layoutConfig.roots = Array.from(entryPoints.value)
+  switch (layoutType.value) {
+    case 'dagre':
+      layoutConfig.rankDir = 'TB'
+      layoutConfig.ranker = 'longest-path'
+      layoutConfig.nodeSep = 80
+      layoutConfig.rankSep = 100
+      break
+      
+    case 'breadthfirst':
+      layoutConfig.spacingFactor = 1.8
+      layoutConfig.roots = Array.from(entryPoints.value)
+      break
+      
+    case 'circle':
+      layoutConfig.avoidOverlap = true
+      layoutConfig.spacingFactor = 1.2
+      break
+      
+    case 'cola':
+      layoutConfig.refresh = 10
+      layoutConfig.maxSimulationTime = 1500
+      layoutConfig.padding = 10
+      break
+      
+    case 'klay':
+      layoutConfig.klay = {
+        direction: 'RIGHT',
+        edgeRouting: 'ORTHOGONAL',
+        nodePlacement: 'LINEAR_SEGMENTS'
+      }
+      break
   }
 
   cy.layout(layoutConfig).run()
@@ -386,9 +465,22 @@ watch(layoutType, runLayout)
               <span class="label-text text-xs">Layout</span>
             </label>
             <select v-model="layoutType" class="select select-bordered select-xs">
-              <option value="breadthfirst">Hierarchical</option>
-              <option value="dagre">DAG</option>
-              <option value="circle">Circle</option>
+              <option value="dagre">DAG (Hierarchical)</option>
+              <option value="breadthfirst">Breadth-First</option>
+              <option value="circle">Circular</option>
+              <option value="cola">Force-Directed (COLA)</option>
+              <option value="klay">KLay</option>
+            </select>
+          </div>
+
+          <div class="form-control">
+            <label class="label py-1">
+              <span class="label-text text-xs">Node Size</span>
+            </label>
+            <select v-model="nodeSizeMode" class="select select-bordered select-xs">
+              <option value="degree">By Degree</option>
+              <option value="complexity">By Complexity</option>
+              <option value="fixed">Fixed Size</option>
             </select>
           </div>
 
@@ -403,20 +495,31 @@ watch(layoutType, runLayout)
             </select>
           </div>
 
+          <div class="form-control">
+            <label class="label cursor-pointer py-1">
+              <span class="label-text text-xs">Show Entry Points</span>
+              <input 
+                type="checkbox" 
+                class="toggle toggle-primary toggle-xs" 
+                v-model="showEntryPointHighlights"
+              />
+            </label>
+          </div>
+
           <div class="divider my-1"></div>
 
           <button @click="fitGraph" class="btn btn-primary btn-xs gap-1">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-3 h-3 stroke-current">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
             </svg>
-            Fit
+            Fit Graph
           </button>
 
           <button @click="centerOnSelected" :disabled="!graphStore.selectedNodeId" class="btn btn-secondary btn-xs gap-1">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-3 h-3 stroke-current">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
-            Center
+            Center Selected
           </button>
         </div>
       </div>

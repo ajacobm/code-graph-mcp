@@ -4,7 +4,7 @@ Test cases for entry-points API endpoint.
 
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, mock_open
 import sys
 import os
 
@@ -13,8 +13,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from src.code_graph_mcp.server.graph_api import create_graph_api_router
 from src.code_graph_mcp.server.analysis_engine import UniversalAnalysisEngine
-from src.code_graph_mcp.universal_graph import UniversalGraph, Node, NodeType, Relationship, RelationshipType
-from src.code_graph_mcp.entry_detector import EntryPointCandidate
+from src.code_graph_mcp.universal_graph import UniversalGraph, UniversalNode, NodeType, UniversalRelationship, RelationshipType
 
 class TestEntryPointsEndpoint:
     
@@ -26,7 +25,7 @@ class TestEntryPointsEndpoint:
         engine.analyzer.graph = Mock(spec=UniversalGraph)
         
         # Mock graph data
-        mock_node1 = Mock()
+        mock_node1 = Mock(spec=UniversalNode)
         mock_node1.node_id = "node1"
         mock_node1.name = "main"
         mock_node1.language = "python"
@@ -36,7 +35,7 @@ class TestEntryPointsEndpoint:
         mock_node1.location.start_line = 10
         mock_node1.node_type = NodeType.FUNCTION
         
-        mock_node2 = Mock()
+        mock_node2 = Mock(spec=UniversalNode)
         mock_node2.node_id = "node2"
         mock_node2.name = "app"
         mock_node2.language = "javascript"

@@ -27,7 +27,7 @@ const tabs = [
 ]
 
 onMounted(() => {
-  graphStore.initialize()
+  graphStore.loadStats()
 })
 </script>
 

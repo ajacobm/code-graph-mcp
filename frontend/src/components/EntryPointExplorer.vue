@@ -69,7 +69,7 @@ const loadEntryPoints = async () => {
 const selectEntryPoint = async (entryPointId: string) => {
   entryPointStore.selectEntryPoint(entryPointId)
   // Load the node in the graph viewer
-  await graphStore.loadNode(entryPointId)
+  await graphStore.traverse(entryPointId, 3)
   graphStore.selectNode(entryPointId)
 }
 
@@ -104,7 +104,7 @@ onMounted(() => {
       <div class="card-body p-4">
         <div class="flex items-center justify-between mb-4">
           <h2 class="card-title text-lg">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
             Entry Point Explorer

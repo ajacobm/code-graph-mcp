@@ -54,22 +54,6 @@ const entryPoints = computed(() => {
       .map(node => node.id)
   )
 })
-  if (entryPointStore.entryPoints.length > 0) {
-    return new Set(entryPointStore.entryPoints.map(ep => ep.id))
-  }
-  
-  // Fallback to simple incoming edge detection
-  const hasIncoming = new Set<string>()
-  const edges = graphStore.edgeArray || []
-  const nodes = graphStore.nodeArray || []
-  
-  edges.forEach(edge => hasIncoming.add(edge.target))
-  return new Set(
-    nodes
-      .filter(node => !hasIncoming.has(node.id))
-      .map(node => node.id)
-  )
-})
 
 const initCytoscape = () => {
   if (!container.value) return
@@ -194,10 +178,11 @@ const initCytoscape = () => {
 
   cy.on('mouseout', 'node', (event) => {
     const node = event.target
-    const nodeData = graphStore.nodes.get(node.id())
+    const nodeId = node.id()
+    const nodeData = graphStore.nodes.get(nodeId)
     if (nodeData) {
       node.style({
-        'background-color': getNodeColor(nodeData),
+        'background-color': getNodeColor(nodeData, nodeId),
         'border-width': '2px',
         'border-color': '#1F2937'
       })
@@ -291,7 +276,7 @@ const calculateNodeSize = (nodeId: string, node: any): number => {
   if (!cy) return 60
   
   switch (nodeSizeMode.value) {
-    case 'degree':
+    case 'degree': {
       const inDegree = graphStore.edgeArray.filter(e => e.target === nodeId).length
       const outDegree = graphStore.edgeArray.filter(e => e.source === nodeId).length
       const degree = inDegree + outDegree
@@ -299,12 +284,14 @@ const calculateNodeSize = (nodeId: string, node: any): number => {
       const maxSize = 100
       const sizeIncrement = Math.min(degree * 5, 50)
       return baseSize + sizeIncrement
+    }
     
-    case 'complexity':
+    case 'complexity': {
       const complexity = node.complexity || 1
-      const minSize = 40
-      const maxSize = 120
-      return minSize + Math.min(complexity * 8, maxSize - minSize)
+      const minSizeComp = 40
+      const maxSizeComp = 120
+      return minSizeComp + Math.min(complexity * 8, maxSizeComp - minSizeComp)
+    }
     
     case 'fixed':
     default:

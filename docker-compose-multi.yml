@@ -47,7 +47,7 @@ services:
       uv run code-graph-mcp
       --mode sse
       --redis-url redis://redis:6379
-      --project-root ${CODEGRAPHMCP_PROJECT_ROOT:-/app/workspace}
+      --project-root ${CODEGRAPHMCP_PROJECT_ROOT:-/app/workspace/src/code_graph_mcp}
       --host 0.0.0.0
       --port 8000
     restart: unless-stopped
@@ -73,7 +73,7 @@ services:
       - redis
     command: >
       /app/.venv/bin/python -m code_graph_mcp.http_server
-      --project-root /app/workspace
+      --project-root /app/workspace/src/code_graph_mcp
       --host 0.0.0.0
       --port 8000
       --redis-url ${CODEGRAPHMCP_REDIS_URL:-redis://redis:6379}

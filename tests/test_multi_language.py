@@ -423,7 +423,7 @@ async def test_integration_end_to_end():
 
         # Test complete pipeline
         parser = UniversalParser(temp_dir)
-        file_count = await parser.parse_directory(temp_dir)
+        _ = await parser.parse_directory(temp_dir)
         graph = parser.graph
 
         # Verify multi-language support works end-to-end

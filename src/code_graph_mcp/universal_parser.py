@@ -951,7 +951,6 @@ class UniversalParser:
 
     def _find_containing_function(self, file_path: Path, line_number: int, language_config: LanguageConfig) -> Optional[UniversalNode]:
         """Find the function node that contains the given line number."""
-        file_node_id = f"file:{file_path}"
         
         # Get all functions in this file
         functions_in_file = [
@@ -986,7 +985,6 @@ class UniversalParser:
                             if not class_name:
                                 continue
                             
-                            # FIXED: Use range().start and range().end instead of start() and end() methods
                             r = class_node.range()
                             start_pos = r.start
                             end_pos = r.end

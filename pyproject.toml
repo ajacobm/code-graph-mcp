@@ -22,6 +22,7 @@ dependencies = [
     # Redis cache dependencies
     "redis>=5.0.0",
     "msgpack>=1.0.0",
+    "pathspec>=0.12.1",
 ]
 keywords = [
     "mcp", "code-analysis", "ast", "claude-code", "graph", "intelligence", 

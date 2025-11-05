@@ -6,8 +6,7 @@ FastAPI routes for graph traversal, search, and analysis endpoints.
 
 import logging
 import time
-from typing import List, Optional, Dict, Any
-from pathlib import Path
+from typing import Optional, Dict, Any
 
 from fastapi import APIRouter, Query, HTTPException
 from pydantic import BaseModel, Field
@@ -23,7 +22,6 @@ from ..graph.query_response import (
     CallChainResponse,
     GraphStatsResponse,
     SeamResponse,
-    ErrorResponse,
     EntryPointResponse,
 )
 

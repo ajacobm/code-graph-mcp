@@ -6,7 +6,6 @@ Replaces inefficient rglob() with intelligent tree traversal that
 prunes entire directory subtrees when they match gitignore patterns.
 """
 
-import os
 import fnmatch
 from pathlib import Path
 from typing import Iterator, Set, List, Optional, Any
@@ -230,7 +229,7 @@ async def optimized_parse_directory_replacement(
     
     # Get supported extensions
     supported_extensions = await parser.registry.get_supported_extensions()
-    logger.info(f"Supported extensions: {list(supported_extensions)[:10]}...")
+    logger.info(f"Supported extensions: {list(supported_extensions)}...")
     
     # Use optimized traversal instead of rglob()
     if recursive:
@@ -241,7 +240,7 @@ async def optimized_parse_directory_replacement(
         # Non-recursive: just check immediate directory
         files_to_process = []
         for item in directory.iterdir():
-            if (item.is_file() and 
+            if (item.is_file() and
                 not parser._should_ignore_path(item, directory) and
                 item.suffix.lower() in supported_extensions):
                 files_to_process.append(item)

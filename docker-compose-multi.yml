@@ -1,16 +1,5 @@
 volumes:
-  repo-mount:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${CODEGRAPHMCP_REPO_MOUNT:-/home/adam/GitHub/code-graph-mcp}
   redis-data:
-      driver: local
-      driver_opts:
-        type: none
-        o: bind
-        device: /home/adam/.redis-docker/codegraphmcp
 
 services:
   # Redis cache service
@@ -36,7 +25,7 @@ services:
     ports:
       - "10101:8000"
     volumes:
-      - repo-mount:/app/workspace
+      - ${CODEGRAPHMCP_REPO_MOUNT:-/home/adam/GitHub/code-graph-mcp}:/app/workspace
     environment:
       - CODEGRAPHMCP_LOG_LEVEL=${CODEGRAPHMCP_LOG_LEVEL:-INFO}
       - CODEGRAPHMCP_FILE_WATCHER=${CODEGRAPHMCP_FILE_WATCHER:-true}
@@ -66,7 +55,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - repo-mount:/app/workspace
+      - ${CODEGRAPHMCP_REPO_MOUNT:-/home/adam/GitHub/code-graph-mcp}:/app/workspace
     environment:
       - REDIS_URL=${CODEGRAPHMCP_REDIS_URL:-redis://redis:6379}
     depends_on:

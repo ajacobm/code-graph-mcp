@@ -10,7 +10,7 @@ from mcp.client.stdio import stdio_client
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-async def test_mcp_tool(session, tool_name, arguments=None):
+async def run_mcp_tool_test(session, tool_name, arguments=None):
     """Test a specific MCP tool and return results."""
     if arguments is None:
         arguments = {}
@@ -36,7 +36,7 @@ async def test_mcp_tool(session, tool_name, arguments=None):
 
 async def run_all_tests():
     """Run all MCP tool tests."""
-    project_root = '/home/shawn/workspace/0-projects/code-graph-mcp'
+    project_root = '/home/adam/GitHub/code-graph-mcp/src/code_graph_mcp'
 
     server_params = StdioServerParameters(
         command='uv',
@@ -73,7 +73,7 @@ async def run_all_tests():
 
                 # Test each tool
                 for tool_name, args in test_cases:
-                    result = await test_mcp_tool(session, tool_name, args)
+                    result = await run_mcp_tool_test(session, tool_name, args)
                     results.append(result)
 
                     # Add a small delay between tests

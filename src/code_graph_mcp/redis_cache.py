@@ -14,10 +14,9 @@ import hashlib
 import json
 import logging
 import pickle
-import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Optional
 
 import redis.asyncio as redis
 from redis.asyncio import Redis
@@ -30,7 +29,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class RedisConfig:
     """Configuration for Redis cache backend."""
-    url: str = "redis://localhost:6379"
+    url: str = "redis://redis:6379"
     db: int = 0
     password: Optional[str] = None
     socket_timeout: float = 5.0

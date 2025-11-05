@@ -24,7 +24,7 @@ from starlette.types import Receive, Scope, Send
 
 # Import our existing MCP infrastructure
 from code_graph_mcp.server.mcp_server import (
-    get_tool_definitions, 
+    get_tool_definitions,
     get_tool_handlers,
     ensure_analysis_engine_ready,
     cleanup_analysis_engine

@@ -9,12 +9,12 @@ import json
 import tempfile
 import time
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from code_graph_mcp.cache_manager import HybridCacheManager
-from code_graph_mcp.redis_cache import RedisCache
+from code_graph_mcp.cache_manager import HybridCacheManager as CacheManager
+from code_graph_mcp.redis_cache import RedisCacheBackend as RedisCache
 
 
 class TestRedisCache:

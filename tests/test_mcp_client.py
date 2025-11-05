@@ -5,9 +5,8 @@ Tests the graph query tools via MCP protocol.
 """
 
 import asyncio
-import json
 import sys
-from pathlib import Path
+import pytest
 
 try:
     from mcp import ClientSession, StdioServerParameters
@@ -18,6 +17,7 @@ except ImportError:
     sys.exit(1)
 
 
+@pytest.mark.asyncio
 async def test_mcp_tools():
     """Test MCP tools via stdio connection."""
     

@@ -579,9 +579,9 @@ class UniversalASTAnalyzer:
             for pattern in entry_point_patterns
         )
 
-    def export_analysis_report(self, output_path: Path) -> None:
+    async def export_analysis_report(self, output_path: Path) -> None:
         """Export comprehensive analysis report to a file."""
-        analysis = self.analyze_project()
+        analysis = await self.analyze_project()
 
         report_content = f"""# Code Analysis Report
 

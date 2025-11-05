@@ -9,13 +9,13 @@ import json
 import tempfile
 import time
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
-from code_graph_mcp.sse_server import CodeGraphMCPServer, create_sse_app
+from code_graph_mcp.sse_server import CodeGraphMCPServer as SSECodeGraphServer, create_sse_app
 
 
 class TestSSEServer:

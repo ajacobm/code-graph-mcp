@@ -10,6 +10,7 @@ import shutil
 import asyncio
 from pathlib import Path
 from unittest.mock import Mock, patch
+import pytest
 
 # Add source to path
 sys.path.insert(0, 'src')
@@ -121,6 +122,7 @@ def test_no_lru_cache_conflicts():
         return False
 
 
+@pytest.mark.asyncio
 async def test_gitignore_optimization():
     """Test the optimized gitignore functionality."""
     try:
@@ -210,14 +212,21 @@ build/
 
 
 
+@pytest.mark.asyncio
 async def test_cache_method_decorators():
     """Test that cached_method decorators work properly."""
     from code_graph_mcp.universal_parser import UniversalParser, LanguageRegistry
     
     # Create a mock cache manager since Redis might not be available
     mock_cache = Mock()
-    mock_cache.get.return_value = None  # Cache miss
-    mock_cache.set.return_value = True  # Cache success
+    # Make get return an awaitable None
+    async def async_none(*args, **kwargs):
+        return None
+    mock_cache.get = Mock(side_effect=async_none)
+    # Make set return an awaitable True
+    async def async_true(*args, **kwargs):
+        return True
+    mock_cache.set = Mock(side_effect=async_true)
     
     # Test LanguageRegistry cached methods
     registry = LanguageRegistry(mock_cache)
@@ -248,6 +257,7 @@ async def test_cache_method_decorators():
 
 
 
+@pytest.mark.asyncio
 async def test_parser_optimization_performance():
     """Test that parser optimizations don't break functionality."""
     from code_graph_mcp.universal_parser import UniversalParser
@@ -292,6 +302,7 @@ async def test_parser_optimization_performance():
 
 
 
+@pytest.mark.asyncio
 async def test_cache_state_persistence():
     """Test that cache state persists across operations."""
     from code_graph_mcp.universal_parser import UniversalParser

@@ -8,12 +8,14 @@ import asyncio
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from code_graph_mcp.universal_parser import UniversalParser
 from code_graph_mcp.universal_graph import RelationshipType, NodeType
 
-
+@pytest.mark.asyncio
 async def test_calls_extraction():
     """Test that function calls are being extracted and CALLS relationships created."""
     

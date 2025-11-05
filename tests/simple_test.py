@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Simple MCP server test"""
 
+import pytest
 import asyncio
 import subprocess
 
+@pytest.mark.asyncio
 async def test_basic_functionality():
     """Test basic server functionality"""
     print("🚀 Testing Code Graph MCP Server")

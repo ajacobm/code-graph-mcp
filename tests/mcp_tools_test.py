@@ -4,6 +4,7 @@ Manual MCP Tools Test - Direct server communication
 Tests all 8 MCP tools and generates a comprehensive report
 """
 
+import pytest
 import asyncio
 import json
 from pathlib import Path
@@ -13,6 +14,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 
+@pytest.mark.asyncio
 async def test_all_mcp_tools():
     """Test all MCP tools and generate report"""
 

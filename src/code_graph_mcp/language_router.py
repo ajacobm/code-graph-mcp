@@ -282,14 +282,14 @@ class LanguageDetector:
 
         return None
 
-    def analyze_project_languages(self, project_root: Path) -> Dict[str, int]:
+    async def analyze_project_languages(self, project_root: Path) -> Dict[str, int]:
         """Analyze all languages used in a project."""
         language_counts = defaultdict(int)
 
         # Scan all files in the project
         for file_path in project_root.rglob('*'):
             if file_path.is_file() and not self._should_ignore_file(file_path):
-                lang_config = self.detect_file_language(file_path)
+                lang_config = await self.detect_file_language(file_path)
                 if lang_config:
                     language_counts[lang_config.name] += 1
 
@@ -402,14 +402,14 @@ class ProjectAnalyzer:
             'dotnet': ['*.csproj', '*.sln'],
         }
 
-    def analyze_project(self, project_root: Path) -> ProjectStructure:
+    async def analyze_project(self, project_root: Path) -> ProjectStructure:
         """Perform comprehensive project analysis."""
         logger.info("Analyzing project structure: %s", project_root)
 
         structure = ProjectStructure(root_path=project_root)
 
         # Language analysis
-        structure.languages = self.language_detector.analyze_project_languages(project_root)
+        structure.languages = await self.language_detector.analyze_project_languages(project_root)
         if structure.languages:
             structure.primary_language = max(structure.languages.keys(), key=lambda lang: structure.languages[lang])
 
@@ -807,10 +807,10 @@ def get_project_languages() -> List[str]:
     return [config.name for config in registry.get_all_languages()]
 
 
-def analyze_project_structure(project_root: Path) -> ProjectStructure:
+async def analyze_project_structure(project_root: Path) -> ProjectStructure:
     """Convenience function to analyze project structure."""
     analyzer = ProjectAnalyzer()
-    return analyzer.analyze_project(project_root)
+    return await analyzer.analyze_project(project_root)
 
 
 def detect_file_language(file_path: Path) -> Optional[str]:

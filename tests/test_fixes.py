@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Test script to verify the fixes to the MCP server."""
 
+import pytest
 import asyncio
 import httpx
-import json
-from time import sleep
 
+@pytest.mark.asyncio
 async def test_mcp_server():
     """Test the MCP server functionality."""
     

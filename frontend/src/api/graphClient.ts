@@ -133,7 +133,7 @@ export class GraphClient {
     category: 'entry_points' | 'hubs' | 'leaves',
     limit: number = 50,
     offset: number = 0
-  ): Promise<{ nodes: any[]; total: number }> {
+  ): Promise<{ nodes: NodeResponse[]; total: number }> {
     const { data } = await this.client.get(`/graph/categories/${category}`, {
       params: { limit, offset },
     })

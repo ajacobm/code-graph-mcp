@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, computed, onBeforeUnmount } from 'vue'
+import { ref, onMounted, watch, computed, onBeforeUnmount, nextTick } from 'vue'
 import ForceGraph from 'force-graph'
 import type { GraphData } from '../types/graph'
 
@@ -211,14 +211,31 @@ const handleResize = () => {
   }
 }
 
-onMounted(() => {
-  initGraph()
-  window.addEventListener('resize', handleResize)
+onMounted(async () => {
+  // Wait for DOM to be ready
+  await nextTick()
   
-  // Fit view after initial layout
-  setTimeout(() => {
-    fitView()
-  }, 100)
+  // Ensure container has dimensions
+  if (containerRef.value) {
+    const width = containerRef.value.clientWidth
+    const height = containerRef.value.clientHeight
+    
+    if (width > 0 && height > 0) {
+      initGraph()
+      window.addEventListener('resize', handleResize)
+      
+      // Fit view after initial layout
+      setTimeout(() => {
+        fitView()
+      }, 100)
+    } else {
+      console.warn('Container has no dimensions yet, retrying...')
+      setTimeout(() => {
+        initGraph()
+        window.addEventListener('resize', handleResize)
+      }, 100)
+    }
+  }
 })
 
 onBeforeUnmount(() => {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useGraphStore } from './stores/graphStore'
-import ForceGraphViewer from './components/ForceGraphViewer.vue'
+import GraphViewer from './components/GraphViewer.vue'
 import ConnectionsList from './components/ConnectionsList.vue'
 import NodeBrowser from './components/NodeBrowser.vue'
 import NodeDetails from './components/NodeDetails.vue'
@@ -12,14 +12,12 @@ import RelationshipBrowser from './components/RelationshipBrowser.vue'
 import LoadingSpinner from './components/LoadingSpinner.vue'
 
 const graphStore = useGraphStore()
-const activeTab = ref('force-graph')
-const selectedNodeId = ref<string | null>(null)
+const activeTab = ref('browser')
 const showStats = ref(false)
 
 const tabs = [
-  { id: 'force-graph', name: 'Force Graph', icon: '🌐', component: 'force-graph' },
-  { id: 'connections', name: 'Connections', icon: '🔗', component: 'connections' },
   { id: 'browser', name: 'Browse Nodes', icon: '📂', component: 'browser' },
+  { id: 'connections', name: 'Connections', icon: '🔗', component: 'connections' },
   { id: 'entry-points', name: 'Entry Points', icon: '🚀', component: 'entry-points' },
   { id: 'query', name: 'Query Tools', icon: '🔍', component: 'query' },
 ]
@@ -37,7 +35,7 @@ const stats = computed(() => ({
 }))
 
 function handleNodeClick(node: any) {
-  selectedNodeId.value = node.id
+  graphStore.selectNode(node.id)
   // Switch to connections view if not already there
   if (activeTab.value === 'force-graph') {
     activeTab.value = 'connections'
@@ -143,22 +141,10 @@ onMounted(async () => {
       <!-- Main Panel (changes based on active tab) -->
       <div class="flex-1 flex flex-col bg-base-300">
         
-        <!-- Force Graph View -->
-        <div v-show="activeTab === 'force-graph'" class="w-full h-full">
-          <ForceGraphViewer 
-            v-if="graphData.nodes.length > 0"
-            :graph-data="graphData"
-            :selected-node-id="selectedNodeId"
-            @node-click="handleNodeClick"
-          />
-          <div v-else class="flex items-center justify-center h-full">
-            <LoadingSpinner message="Loading graph data..." />
-          </div>
-        </div>
-        
+
         <!-- Connections List View -->
         <div v-show="activeTab === 'connections'" class="w-full h-full overflow-auto">
-          <ConnectionsList :node-id="selectedNodeId" />
+          <ConnectionsList :node-id="graphStore.selectedNodeId" />
         </div>
         
         <!-- Node Browser View -->
@@ -180,20 +166,20 @@ onMounted(async () => {
 
       <!-- Right Sidebar - Node Details (collapsible) -->
       <div 
-        v-if="selectedNodeId"
+        v-if="graphStore.selectedNodeId"
         class="w-80 bg-base-100 border-l border-base-300 flex flex-col overflow-hidden"
       >
         <div class="p-4 border-b border-base-300 flex justify-between items-center">
           <h3 class="font-bold">Node Details</h3>
           <button 
-            @click="selectedNodeId = null"
+            @click="graphStore.selectNode(null)"
             class="btn btn-ghost btn-xs btn-circle"
           >
             ✕
           </button>
         </div>
         <div class="flex-1 overflow-y-auto">
-          <NodeDetails :node-id="selectedNodeId" />
+          <NodeDetails :node-id="graphStore.selectedNodeId" />
         </div>
       </div>
     </div>

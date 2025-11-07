@@ -60,18 +60,23 @@ export const useGraphStore = defineStore('graph', () => {
       isLoading.value = true
       error.value = null
       
-      // Get all nodes via search with empty query
-      const searchResults = await graphClient.searchNodes('')
-      const apiNodes = searchResults.results || []
+      // Load nodes from all categories (workaround - backend has no GET /nodes endpoint)
+      const [entryPoints, hubs, leaves] = await Promise.all([
+        graphClient.getNodesByCategory('entry_points', 500, 0).catch(() => ({ nodes: [] as NodeResponse[], total: 0 })),
+        graphClient.getNodesByCategory('hubs', 500, 0).catch(() => ({ nodes: [] as NodeResponse[], total: 0 })),
+        graphClient.getNodesByCategory('leaves', 500, 0).catch(() => ({ nodes: [] as NodeResponse[], total: 0 }))
+      ])
+      
+      // Combine and deduplicate
+      const allNodes = [...entryPoints.nodes, ...hubs.nodes, ...leaves.nodes]
+      const uniqueNodesMap = new Map<string, NodeResponse>()
+      allNodes.forEach(n => uniqueNodesMap.set(n.id, n))
       
       // Convert to internal format
-      nodes.value = apiNodes.map(toInternalNode)
-      
-      // For now, don't load all relationships (too many)
-      // Instead, load on-demand when a node is selected
+      nodes.value = Array.from(uniqueNodesMap.values()).map(toInternalNode)
       relationships.value = []
       
-      console.log(`Loaded ${nodes.value.length} nodes`)
+      console.log(`Loaded ${nodes.value.length} nodes from categories`)
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load graph'
       console.error('Failed to load graph:', err)
@@ -92,8 +97,8 @@ export const useGraphStore = defineStore('graph', () => {
       // Load callers and callees
       const symbol = node.name
       const [callersResult, calleesResult] = await Promise.all([
-        graphClient.findCallers(symbol).catch(() => ({ results: [] })),
-        graphClient.findCallees(symbol).catch(() => ({ results: [] }))
+        graphClient.findCallers(symbol).catch(() => ({ results: [] as any[] })),
+        graphClient.findCallees(symbol).catch(() => ({ results: [] as any[] }))
       ])
       
       // Add any new nodes we discovered
@@ -190,6 +195,12 @@ export const useGraphStore = defineStore('graph', () => {
     }
   }
 
+  async function traverse(nodeId: string, depth: number = 2) {
+    // Simplified traverse - just load connections for the node
+    // Old implementation used backend traverse endpoint which we can add later
+    await loadNodeConnections(nodeId)
+  }
+
   function clearGraph() {
     nodes.value = []
     relationships.value = []
@@ -214,6 +225,7 @@ export const useGraphStore = defineStore('graph', () => {
     loadNodeConnections,
     reanalyze,
     selectNode,
+    traverse,
     clearGraph
   }
 })

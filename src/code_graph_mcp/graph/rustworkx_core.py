@@ -11,7 +11,7 @@ Provides fundamental graph operations including:
 import logging
 import threading
 from functools import lru_cache
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set
 from contextlib import contextmanager
 
 import rustworkx as rx
@@ -19,7 +19,6 @@ import rustworkx as rx
 from ..universal_graph import (
     UniversalNode,
     UniversalRelationship,
-    UniversalLocation,
     NodeType,
     RelationshipType,
     CacheConfig

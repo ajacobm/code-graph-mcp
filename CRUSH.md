@@ -354,3 +354,56 @@ docker compose -f docker-compose-multi.yml up code-graph-http
 compose.sh up
 ```
 
+## Session 8: Zero Nodes Root Cause Fix (2025-11-07) ✅
+**Problem**: Graph API and frontend showed 0 nodes despite code working in tests
+
+**Root Causes**:
+1. Redis cache had stale/empty data from previous runs
+2. Redis serialization failing: `asdict()` doesn't convert Enum objects to strings
+3. msgpack can't serialize NodeType/RelationshipType enum values
+
+**Investigation**:
+- Verified parsing works locally: 481 nodes, 4396 edges (without Redis)
+- HTTP server showing 0 nodes (with Redis)
+- Redis had 180 keys but with corrupt/empty data
+- Serialization errors: "can not serialize 'builtin_function_or_method' object"
+
+**Solution Applied**:
+1. **Fixed Redis serialization** (`src/code_graph_mcp/redis_cache.py`):
+   - Added `serialize_node()` helper function
+   - Added `serialize_relationship()` helper function
+   - Convert `NodeType` and `RelationshipType` enums to `.value` strings
+   - Updated `set_file_nodes()` and `set_file_relationships()` to use helpers
+
+2. **Redis cache management**:
+   ```bash
+   docker exec code-graph-mcp-redis-1 redis-cli FLUSHALL  # Clear stale cache
+   docker restart code-graph-mcp-code-graph-http-1        # Rebuild graph
+   ```
+
+3. **Re-analyze endpoint** (already exists):
+   - POST `/api/graph/admin/reanalyze` - Force full graph rebuild
+   - Clears caches and re-analyzes entire project
+
+**Results**:
+- Graph now stable: **483 nodes, 4469 relationships** ✅
+- Redis caching works: 76 keys, no serialization errors ✅
+- All query tools working (find_callers, find_callees, find_references) ✅
+- Tests passing: test_graph_queries.py all green ✅
+
+**Docker Image Update Required**:
+```bash
+docker build -t ajacobm/code-graph-mcp:http -f Dockerfile --target http .
+compose.sh restart
+```
+
+**Key Learning**: 
+- Always flush Redis when changing code/workspace mounts
+- Enum types in dataclasses must be converted to primitives for msgpack
+- Docker cache can hide code changes - use `docker cp` for quick testing
+
+**Next TODO**:
+1. Fix test warnings (return→assert in phase3 tests)
+2. Add frontend "Re-analyze" button calling `/api/graph/admin/reanalyze`
+3. Add graph state indicator showing node/edge counts
+

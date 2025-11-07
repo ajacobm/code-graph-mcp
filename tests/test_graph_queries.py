@@ -26,14 +26,16 @@ logger = logging.getLogger(__name__)
 @pytest_asyncio.fixture(scope="module")
 async def analysis_engine():
     """Initialize analysis engine for testing."""
+    
     project_root = Path(__file__).parent.parent / "src" / "code_graph_mcp"
+    logger.info(f"Initializing analysis engine for project: {project_root}")
     if not project_root.exists():
         pytest.skip("Test project not available")
     
     engine = UniversalAnalysisEngine(
         project_root,
         enable_file_watcher=False,
-        enable_redis_cache=False
+        enable_redis_cache=True
     )
     await engine._analyze_project()
     yield engine

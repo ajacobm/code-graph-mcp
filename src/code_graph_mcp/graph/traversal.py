@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 import rustworkx as rx
 
-from ..universal_graph import NodeType, RelationshipType
+from ..universal_graph import RelationshipType
 
 logger = logging.getLogger(__name__)
 

@@ -11,7 +11,7 @@ Provides comprehensive graph export and import functionality:
 import json
 import logging
 import time
-from typing import Any, Dict, List, Optional
+from typing import Dict, Optional
 
 import rustworkx as rx
 
@@ -20,8 +20,7 @@ from ..universal_graph import (
     UniversalRelationship,
     UniversalLocation,
     NodeType,
-    RelationshipType,
-    CacheConfig
+    RelationshipType
 )
 
 logger = logging.getLogger(__name__)

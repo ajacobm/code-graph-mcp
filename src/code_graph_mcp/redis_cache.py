@@ -21,9 +21,27 @@ from typing import Any, Dict, List, Optional
 import redis.asyncio as redis
 from redis.asyncio import Redis
 
-from .universal_graph import UniversalNode, UniversalRelationship
+from .universal_graph import UniversalNode, UniversalRelationship, NodeType, RelationshipType
 
 logger = logging.getLogger(__name__)
+
+
+def serialize_node(node: UniversalNode) -> Dict[str, Any]:
+    """Convert UniversalNode to serializable dict, handling Enums."""
+    data = asdict(node)
+    # Convert Enum to string
+    if 'node_type' in data and isinstance(data['node_type'], NodeType):
+        data['node_type'] = data['node_type'].value
+    return data
+
+
+def serialize_relationship(rel: UniversalRelationship) -> Dict[str, Any]:
+    """Convert UniversalRelationship to serializable dict, handling Enums."""
+    data = asdict(rel)
+    # Convert Enum to string
+    if 'relationship_type' in data and isinstance(data['relationship_type'], RelationshipType):
+        data['relationship_type'] = data['relationship_type'].value
+    return data
 
 
 @dataclass
@@ -385,7 +403,7 @@ class RedisCacheBackend:
             key = self._make_key(self.config.nodes_prefix, file_path)
             
             # Convert nodes to serializable format
-            serializable_nodes = [asdict(node) for node in nodes]
+            serializable_nodes = [serialize_node(node) for node in nodes]
             data = self.serializer.serialize(serializable_nodes)
             
             ttl = ttl or self.config.default_ttl
@@ -424,7 +442,7 @@ class RedisCacheBackend:
             key = self._make_key(self.config.edges_prefix, file_path)
             
             # Convert relationships to serializable format
-            serializable_rels = [asdict(rel) for rel in relationships]
+            serializable_rels = [serialize_relationship(rel) for rel in relationships]
             data = self.serializer.serialize(serializable_rels)
             
             ttl = ttl or self.config.default_ttl

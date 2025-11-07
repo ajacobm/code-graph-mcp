@@ -404,6 +404,87 @@ compose.sh restart
 
 **Next TODO**:
 1. Fix test warnings (return→assert in phase3 tests)
-2. Add frontend "Re-analyze" button calling `/api/graph/admin/reanalyze`
-3. Add graph state indicator showing node/edge counts
+2. ~~Add frontend "Re-analyze" button~~ ✅ Done in Session 9
+3. ~~Add graph state indicator~~ ✅ Done in Session 9
+
+## Session 9: Force Graph UI & UX Redesign (2025-11-07) ⚠️ IN PROGRESS
+**Problem**: UI was cluttered, graph visualization (Cytoscape) wasn't usable, no clear navigation
+
+**Solution**: Complete UX redesign with force-graph library + signpost navigation
+
+**New Components** (940 lines):
+1. **NodeTile.vue** - Reusable signpost tile
+   - Distance indicators with color coding (🟢 nearby, 🔴 far)
+   - Direction arrows (🔵 callers, 🟢 callees, 🟡 siblings)
+   - Node type icons (🚀 entry, 🔀 hub, 🍃 leaf)
+   - Hover effects and click handling
+
+2. **ConnectionsList.vue** - "You are here" navigation
+   - Current node card with stats
+   - Three sections: ↑ Callers, ↓ Callees, ── Siblings
+   - Loads connections via API (find_callers, find_callees)
+   - Distance/hop count display
+   - "Paris 1024km" signpost metaphor
+
+3. **ForceGraphViewer.vue** - 2D force-directed graph
+   - Uses `force-graph` library (canvas-based, fast)
+   - Handles 500+ nodes smoothly
+   - Color-coded by node type
+   - Sized by complexity
+   - Interactive: click, hover, zoom, pan
+   - Special node indicators (borders for entry/hub/leaf)
+   - Particle animations on connections
+   - Legend and hover info overlays
+
+4. **App.vue** - Complete redesign
+   - Clean tabbed layout
+   - Header with stats + re-analyze button
+   - Main content switches based on active tab
+   - Right sidebar only when node selected
+   - No cluttered left sidebar
+
+**Dependencies Added**:
+```bash
+npm install force-graph
+```
+
+**New Tabs**:
+- 🌐 Force Graph - 2D visualization
+- 🔗 Connections - Signpost list view
+- 📂 Browse Nodes - Category browser
+- 🚀 Entry Points - Entry point explorer
+- 🔍 Query Tools - Symbol query
+
+**Store Enhancements**:
+- `loadFullGraph()` - Load all nodes
+- `loadNodeConnections(nodeId)` - Load specific node's connections
+- `reanalyze()` - Trigger backend re-analysis
+- Simplified state management (arrays instead of Maps)
+
+**Design Philosophy** - "Code Geography":
+- 📍 "You are here" → Current node
+- Distance indicators → Hop counts like road signs
+- Direction arrows → Upstream/downstream flow
+- Neighborhoods → Siblings in same file
+- Map view → Force graph overview
+
+**Status**:
+- ✅ Components created and committed
+- ⚠️ TypeScript errors (type mismatches)
+- ⬜ Needs browser testing
+- ⬜ Navigation flow incomplete
+
+**Branch**: `feature/force-graph-ui`  
+**Commit**: `0cb6fe2` - feat: Add force-graph visualization and redesigned UX
+
+**Next Steps**:
+1. Fix TypeScript type errors (API response types)
+2. Test in browser with Playwright
+3. Wire up navigation between graph and connections
+4. Add breadcrumb history
+5. Implement actual distance calculation (BFS)
+
+**Documentation**:
+- Design proposal: `docs/REDESIGN_PROPOSAL.md`
+- Session log: `docs/sessions/current/SESSION_9_FORCE_GRAPH_IMPLEMENTATION.md`
 

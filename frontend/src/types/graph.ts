@@ -1,20 +1,25 @@
+// API Response Types (match backend exactly)
 export interface NodeResponse {
   id: string
   name: string
-  type: string
+  node_type: string
   language: string
-  file_path: string
-  line: number
-  column: number
-  complexity: number
+  complexity?: number
   docstring?: string
+  location?: {
+    file_path: string
+    start_line: number
+    end_line: number
+  }
+  metadata?: Record<string, any>
 }
 
 export interface RelationshipResponse {
+  id: string
   source_id: string
   target_id: string
-  type: string
-  metadata?: Record<string, unknown>
+  relationship_type: string
+  metadata?: Record<string, any>
 }
 
 export interface TraversalResponse {
@@ -46,75 +51,71 @@ export interface GraphStatsResponse {
   total_nodes: number
   total_relationships: number
   languages: Record<string, number>
-  top_functions: Array<{
+  node_types?: Record<string, number>
+  top_functions?: Array<{
     id: string
     name: string
-    call_count: number
+    complexity: number
   }>
 }
 
 export interface SearchResultResponse {
   results: NodeResponse[]
-  count: number
+  total: number
 }
 
-export interface SeamResponse {
-  source_id: string
-  target_id: string
-  source_language: string
-  target_language: string
-  seam_type: string
-  confidence: number
+export interface QueryResult {
+  id: string
+  name: string
+  node_type: string
+  language: string
+  complexity?: number
+  location?: {
+    file_path: string
+    start_line: number
+  }
 }
 
+export interface QueryResultsResponse {
+  symbol: string
+  results?: QueryResult[]
+  total_callers?: number
+  total_callees?: number
+  total_references?: number
+  execution_time_ms: number
+}
+
+export interface SubgraphResponse {
+  nodes: NodeResponse[]
+  relationships: RelationshipResponse[]
+  total_nodes: number
+  total_relationships: number
+}
+
+// Internal Store Types (simplified)
 export interface Node {
   id: string
   name: string
-  type: string
+  node_type: string
   language: string
-  file_path: string
-  line: number
   complexity: number
-  docstring?: string
+  location?: {
+    file_path: string
+    start_line: number
+  }
+  metadata?: Record<string, any>
 }
 
 export interface Edge {
   id: string
   source: string
   target: string
-  type: string
+  relationship_type: string
   isSeam: boolean
 }
 
-export interface GraphState {
-  nodes: Map<string, Node>
-  edges: Map<string, Edge>
-  selectedNodeId: string | null
-  isLoading: boolean
-  error: string | null
-  viewMode: 'full' | 'call_chain' | 'seams_only'
-  stats: GraphStatsResponse | null
-}
-
-export interface FilterState {
-  languages: string[]
-  nodeTypes: string[]
-  seamOnly: boolean
-  complexityRange: [number, number]
-  searchQuery: string
-}
-
-export interface QueryResult {
-  [key: string]: unknown
-}
-
-export interface QueryResultsResponse {
-  symbol: string
-  total_callers?: number
-  total_callees?: number
-  total_references?: number
-  callers?: QueryResult[]
-  callees?: QueryResult[]
-  references?: QueryResult[]
-  execution_time_ms: number
+// Force Graph Types
+export interface GraphData {
+  nodes: Node[]
+  relationships: Edge[]
 }

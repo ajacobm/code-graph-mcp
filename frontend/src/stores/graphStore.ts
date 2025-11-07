@@ -1,63 +1,47 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { Node, Edge } from '../types/graph'
-import type { GraphStatsResponse } from '../types/graph'
+import type { Node, Edge, NodeResponse, RelationshipResponse, GraphStatsResponse } from '../types/graph'
 import { graphClient } from '../api/graphClient'
 
 export const useGraphStore = defineStore('graph', () => {
-  const nodes = ref<Map<string, Node>>(new Map())
-  const edges = ref<Map<string, Edge>>(new Map())
+  // State
+  const nodes = ref<Node[]>([])
+  const relationships = ref<Edge[]>([])
   const selectedNodeId = ref<string | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
-  const viewMode = ref<'full' | 'call_chain' | 'seams_only'>('full')
   const stats = ref<GraphStatsResponse | null>(null)
 
-  // Local filter state (avoid circular dependency with filterStore)
-  const languages = ref<string[]>([])
-  const nodeTypes = ref<string[]>([])
-  const seamOnly = ref(false)
-  const complexityRange = ref<[number, number]>([0, 50])
-  const searchQuery = ref('')
-
+  // Computed
   const selectedNode = computed(() => {
-    return selectedNodeId.value ? nodes.value.get(selectedNodeId.value) : null
+    return nodes.value.find(n => n.id === selectedNodeId.value) || null
   })
 
-  const nodeArray = computed(() => Array.from(nodes.value.values()))
-  const edgeArray = computed(() => Array.from(edges.value.values()))
+  // Helper to convert API node to internal format
+  function toInternalNode(n: NodeResponse): Node {
+    return {
+      id: n.id,
+      name: n.name,
+      node_type: n.node_type,
+      language: n.language || 'unknown',
+      complexity: n.complexity || 0,
+      location: n.location,
+      metadata: n.metadata
+    }
+  }
 
-  const filteredNodeArray = computed(() => {
-    return nodeArray.value.filter((node) => {
-      if (languages.value.length > 0 && !languages.value.includes(node.language)) {
-        return false
-      }
-      if (nodeTypes.value.length > 0 && !nodeTypes.value.includes(node.type)) {
-        return false
-      }
-      if (node.complexity < complexityRange.value[0] || node.complexity > complexityRange.value[1]) {
-        return false
-      }
-      if (searchQuery.value && !node.name.toLowerCase().includes(searchQuery.value.toLowerCase())) {
-        return false
-      }
-      return true
-    })
-  })
+  // Helper to convert API relationship to internal format
+  function toInternalEdge(r: RelationshipResponse): Edge {
+    return {
+      id: r.id || `${r.source_id}-${r.target_id}`,
+      source: r.source_id,
+      target: r.target_id,
+      relationship_type: r.relationship_type,
+      isSeam: r.relationship_type === 'seam'
+    }
+  }
 
-  const filteredEdgeArray = computed(() => {
-    const nodeIds = new Set(filteredNodeArray.value.map((n) => n.id))
-    return edgeArray.value.filter((edge) => {
-      if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target)) {
-        return false
-      }
-      if (seamOnly.value && !edge.isSeam) {
-        return false
-      }
-      return true
-    })
-  })
-
+  // Actions
   async function loadStats() {
     try {
       isLoading.value = true
@@ -65,114 +49,134 @@ export const useGraphStore = defineStore('graph', () => {
       stats.value = await graphClient.getStats()
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load stats'
+      console.error('Failed to load stats:', err)
     } finally {
       isLoading.value = false
     }
   }
 
-  async function traverse(startNodeId: string, maxDepth: number = 5) {
+  async function loadFullGraph() {
     try {
       isLoading.value = true
       error.value = null
-      const result = await graphClient.traverse(startNodeId, 'dfs', maxDepth, true)
-
-      if (!result.nodes || result.nodes.length === 0) {
-        error.value = `No nodes found for ${startNodeId}`
-        setTimeout(() => { error.value = null }, 3000)
-        return
-      }
-
-      nodes.value.clear()
-      edges.value.clear()
-
-      const resultNodes = result.nodes || []
-      const resultRelationships = result.relationships || []
-
-      resultNodes.forEach((n) => {
-        nodes.value.set(n.id, {
-          id: n.id,
-          name: n.name,
-          type: n.type,
-          language: n.language,
-          file_path: n.file_path,
-          line: n.line,
-          complexity: n.complexity,
-          docstring: n.docstring,
-        })
-      })
-
-      resultRelationships.forEach((r) => {
-        const edgeId = `${r.source_id}-${r.target_id}`
-        edges.value.set(edgeId, {
-          id: edgeId,
-          source: r.source_id,
-          target: r.target_id,
-          type: r.type,
-          isSeam: r.type === 'SEAM',
-        })
-      })
-
-      viewMode.value = 'full'
-      selectedNodeId.value = startNodeId
+      
+      // Get all nodes via search with empty query
+      const searchResults = await graphClient.searchNodes('')
+      const apiNodes = searchResults.results || []
+      
+      // Convert to internal format
+      nodes.value = apiNodes.map(toInternalNode)
+      
+      // For now, don't load all relationships (too many)
+      // Instead, load on-demand when a node is selected
+      relationships.value = []
+      
+      console.log(`Loaded ${nodes.value.length} nodes`)
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to traverse'
-      setTimeout(() => { error.value = null }, 3000)
+      error.value = err instanceof Error ? err.message : 'Failed to load graph'
+      console.error('Failed to load graph:', err)
     } finally {
       isLoading.value = false
     }
   }
 
-  async function loadCallChain(startNodeId: string, maxDepth: number = 10) {
+  async function loadNodeConnections(nodeId: string) {
     try {
       isLoading.value = true
       error.value = null
-      const result = await graphClient.getCallChain(startNodeId, true, maxDepth)
-
-      if (!result.chain || result.chain.length === 0) {
-        error.value = `No call chain found for ${startNodeId}`
-        setTimeout(() => { error.value = null }, 3000)
-        return
-      }
-
-      nodes.value.clear()
-      edges.value.clear()
-
-      const resultChain = result.chain || []
-      const resultSeams = result.seams || []
-
-      resultChain.forEach((n) => {
-        nodes.value.set(n.id, {
-          id: n.id,
-          name: n.name,
-          type: n.type,
-          language: n.language,
-          file_path: n.file_path,
-          line: n.line,
-          complexity: n.complexity,
-          docstring: n.docstring,
-        })
-      })
-
-      for (let i = 0; i < resultChain.length - 1; i++) {
-        const current = resultChain[i]
-        const next = resultChain[i + 1]
-        if (current && next) {
-          const edgeId = `${current.id}-${next.id}`
-          edges.value.set(edgeId, {
-            id: edgeId,
-            source: current.id,
-            target: next.id,
-            type: 'CALLS',
-            isSeam: resultSeams.some((s) => s.from_index === i),
+      
+      // Get node and its immediate connections
+      const node = nodes.value.find(n => n.id === nodeId)
+      if (!node) return
+      
+      // Load callers and callees
+      const symbol = node.name
+      const [callersResult, calleesResult] = await Promise.all([
+        graphClient.findCallers(symbol).catch(() => ({ results: [] })),
+        graphClient.findCallees(symbol).catch(() => ({ results: [] }))
+      ])
+      
+      // Add any new nodes we discovered
+      const discoveredNodes = [
+        ...(callersResult.results || []),
+        ...(calleesResult.results || [])
+      ]
+      
+      discoveredNodes.forEach((n: any) => {
+        if (!nodes.value.find(existing => existing.id === n.id)) {
+          nodes.value.push({
+            id: n.id,
+            name: n.name,
+            node_type: n.node_type,
+            language: n.language || 'unknown',
+            complexity: n.complexity || 0,
+            location: n.location,
+            metadata: {}
           })
         }
-      }
-
-      viewMode.value = 'call_chain'
-      selectedNodeId.value = startNodeId
+      })
+      
+      // Create relationship edges
+      const newEdges: Edge[] = []
+      
+      callersResult.results?.forEach((caller: any) => {
+        newEdges.push({
+          id: `${caller.id}-${nodeId}`,
+          source: caller.id,
+          target: nodeId,
+          relationship_type: 'calls',
+          isSeam: false
+        })
+      })
+      
+      calleesResult.results?.forEach((callee: any) => {
+        newEdges.push({
+          id: `${nodeId}-${callee.id}`,
+          source: nodeId,
+          target: callee.id,
+          relationship_type: 'calls',
+          isSeam: false
+        })
+      })
+      
+      // Add edges that don't already exist
+      newEdges.forEach(edge => {
+        if (!relationships.value.find(e => e.id === edge.id)) {
+          relationships.value.push(edge)
+        }
+      })
+      
+      console.log(`Loaded connections for ${node.name}: ${callersResult.results?.length || 0} callers, ${calleesResult.results?.length || 0} callees`)
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to load call chain'
-      setTimeout(() => { error.value = null }, 3000)
+      error.value = err instanceof Error ? err.message : 'Failed to load node connections'
+      console.error('Failed to load node connections:', err)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function reanalyze() {
+    try {
+      isLoading.value = true
+      error.value = null
+      
+      const response = await fetch('http://localhost:8000/api/graph/admin/reanalyze', {
+        method: 'POST'
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const result = await response.json()
+      console.log('Re-analysis complete:', result)
+      
+      // Reload graph data
+      await loadFullGraph()
+      await loadStats()
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to re-analyze'
+      console.error('Failed to re-analyze:', err)
     } finally {
       isLoading.value = false
     }
@@ -180,106 +184,36 @@ export const useGraphStore = defineStore('graph', () => {
 
   function selectNode(nodeId: string | null) {
     selectedNodeId.value = nodeId
+    // Auto-load connections when a node is selected
+    if (nodeId) {
+      loadNodeConnections(nodeId)
+    }
   }
 
   function clearGraph() {
-    nodes.value.clear()
-    edges.value.clear()
+    nodes.value = []
+    relationships.value = []
     selectedNodeId.value = null
   }
 
-  function setLanguages(langs: string[]) {
-    languages.value = langs
-  }
-
-  function setNodeTypes(types: string[]) {
-    nodeTypes.value = types
-  }
-
-  function setSeamOnly(value: boolean) {
-    seamOnly.value = value
-  }
-
-  function setComplexityRange(range: [number, number]) {
-    complexityRange.value = range
-  }
-
-  function setSearchQuery(query: string) {
-    searchQuery.value = query
-  }
-
-  async function findCallers(symbolName: string) {
-    try {
-      isLoading.value = true
-      error.value = null
-      const result = await graphClient.findCallers(symbolName)
-      return result.callers || []
-    } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to find callers'
-      return []
-    } finally {
-      isLoading.value = false
-    }
-  }
-
-  async function findCallees(symbolName: string) {
-    try {
-      isLoading.value = true
-      error.value = null
-      const result = await graphClient.findCallees(symbolName)
-      return result.callees || []
-    } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to find callees'
-      return []
-    } finally {
-      isLoading.value = false
-    }
-  }
-
-  async function findReferences(symbolName: string) {
-    try {
-      isLoading.value = true
-      error.value = null
-      const result = await graphClient.findReferences(symbolName)
-      return result.references || []
-    } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to find references'
-      return []
-    } finally {
-      isLoading.value = false
-    }
-  }
-
   return {
+    // State
     nodes,
-    edges,
+    relationships,
     selectedNodeId,
     isLoading,
     error,
-    viewMode,
     stats,
-    languages,
-    nodeTypes,
-    seamOnly,
-    complexityRange,
-    searchQuery,
+    
+    // Computed
     selectedNode,
-    nodeArray,
-    edgeArray,
-    filteredNodeArray,
-    filteredEdgeArray,
+    
+    // Actions
     loadStats,
-    traverse,
-    loadCallChain,
+    loadFullGraph,
+    loadNodeConnections,
+    reanalyze,
     selectNode,
-    clearGraph,
-    setLanguages,
-    setNodeTypes,
-    setSeamOnly,
-    setComplexityRange,
-    setSearchQuery,
-    findCallers,
-    findCallees,
-    findReferences,
+    clearGraph
   }
 })

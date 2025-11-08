@@ -584,3 +584,60 @@ Once Vite picks up the graphClient changes (container restart or HMR refresh):
 - 2025-11-08 ad6a7c8 Fix Vite dev proxy config
 - 2025-11-08 aec2e22 Fix API client localhost detection
 
+
+## Session 10 Summary: API Format + Proxy Fixes Complete ✅
+
+**Timeline**:
+- Part 1: Fixed backend API response format (type → node_type)
+- Part 2: Identified and fixed Vite proxy + graphClient URL construction
+- Part 3: Documented all learnings to cortexgraph for future sessions
+
+**Commits Made**:
+1. df26cf7 - Fix backend API response format for categories endpoint
+2. dffdc88 - Session 10: Document API fix and frontend selection bug
+3. ad6a7c8 - Fix Vite dev server proxy configuration for Docker
+4. aec2e22 - Fix API client to detect localhost and connect directly to backend
+5. 38f1b37 - Session 10 Part 2: Document proxy and environment lessons learned
+
+**Issues Fixed**:
+✅ Backend API returning wrong field names (type vs node_type)
+✅ API response format not matching TypeScript interfaces
+✅ Frontend getting 500 errors from broken Vite proxy
+✅ GraphClient trying to use environment variables at runtime (impossible in browser)
+✅ Docker localhost DNS confusion (host vs container perspectives)
+
+**Remaining Issues**:
+⚠️ Frontend Vue component click handler not triggering store updates (Session 10 Part 1)
+⚠️ Vite HMR caching - needs container restart to pick up code changes
+⚠️ Node selection flow incomplete (needs debugging in Part 1)
+
+**What's Working Now**:
+✅ Backend API returns proper JSON with 200 OK
+✅ GraphClient can connect directly to localhost:8000 from browser
+✅ Docker networking (service-to-service) is solid
+✅ Category endpoints return nodes with correct fields
+✅ Frontend loads and renders category cards
+
+**Cortexgraph Memory Status**:
+✅ Docker networking lessons saved
+✅ Vite dev environment patterns saved
+✅ Playwright browser testing guide saved
+✅ compose.sh utility reference saved
+✅ Session 10 debugging findings saved
+
+**How to Continue**:
+```bash
+# Use cortexgraph search to find relevant debugging tips
+mcp_cortexgraph_search_memory --query "localhost Docker frontend proxy"
+
+# Full stack ready to test
+compose.sh up
+
+# Frontend on :5173 will now properly connect to :8000 backend
+# (after container restart picks up graphClient.ts changes)
+```
+
+**Key Learning**: Cortexgraph is being actively used and effective!
+Search returned 5 highly relevant memories from this session.
+Will continue to leverage it for architectural patterns and environment setup.
+

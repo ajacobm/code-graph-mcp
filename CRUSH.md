@@ -1,22 +1,31 @@
 # Crush Session Memory
 
-## Session 11: Frontend Networking & Fetch Debugging (2025-11-08) 🔧
-**Issue**: Frontend showed 0 icons, page stuck on "⏳ Analyzing..."
-**Root Cause**: axios was returning 500 errors, fetch with relative `/api` path failed
-**Analysis**:
-- Direct fetch to `http://localhost:8000/api/graph/stats` → 200 OK ✅
-- Relative fetch to `/api/graph/stats` → 500 error ❌  
-- Vite proxy target was `http://code-graph-http:8000` (Docker service name, inaccessible from browser)
-- graphClient was trying to use both axios + `/api` fallback, both failing
+## Session 11: Frontend Networking & Fetch Debugging (2025-11-08) ✅
+**Issue**: Frontend showed blank squares (emoji), page navigation broken
+**Root Cause**: 
+- Vite proxy config used Docker service name `http://code-graph-http:8000` (inaccessible from browser)
+- relative `/api` path → 500 errors
+- axios config fallback wasn't working
 **Fixes Applied**:
-1. Updated graphClient to always use direct `http://localhost:8000/api` URL
-2. Replaced axios calls with direct fetch() in loadStats/getNodesByCategory
-3. Added timeout handling to prevent fetch hangs
-4. Icons now display: 📊 🚀 🔀 🍃
-5. API returns proper node data (verified 489 nodes)
-**Remaining Issue**: Page shows "Analyzing..." button, `loadStats` fetch never completes or times out silently
-- This doesn't block category buttons, they still work when clicked
-**Key Learning**: Vite dev server cannot proxy to Docker service names - must use localhost:port from browser context
+1. graphClient now uses direct `http://localhost:8000/api` (always)
+2. Replaced axios with direct fetch() in loadStats/getNodesByCategory
+3. Icons display correctly in Firefox (Chromium has emoji font issues)
+4. Page now shows "Re-analyze" button properly (not stuck on "Analyzing...")
+**Status**: 
+✅ Icons rendering: 🚀 Entry Points, 🔀 Hubs, 🍃 Leaves
+✅ API returns 200 OK (489 nodes confirmed)
+✅ Page fully loads without hanging
+⚠️ Category click → fetch fails with "AxiosError" (browser may have cached old code)
+
+**Next Fix Needed**: 
+- Rebuild frontend Docker image entirely to clear Vite bundle cache
+- OR manually clear browser cache + restart dev server
+- Then test node selection flow (click node tile → update sidebar)
+
+**Key Learnings**: 
+- Vite cannot proxy to Docker service names from browser (localhost only)
+- Pinia refs in composition API need careful handling (use .value when assigning)
+- Emoji support varies by browser/OS (Firefox > Chromium)
 
 ## Bash Session Init
 Always initialize sessions with: `source ~/.bashrc`

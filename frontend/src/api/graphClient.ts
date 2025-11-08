@@ -24,21 +24,25 @@ export interface EntryPointResponse {
 
 export class GraphClient {
   private client: AxiosInstance
+  baseURL: string
 
   constructor() {
     // Build API URL based on current location
-    // In Docker development: Backend is at code-graph-http:8000 but accessible via :8000 from host
-    // In production: Backend is at same origin
-    let baseURL = '/api'
+    // Always use direct localhost:8000 when available
+    // Vite proxy for /api doesn't work from browser to container
+    let baseURL = 'http://localhost:8000/api'
     
-    // If running on localhost, try to connect directly to port 8000
-    if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-      baseURL = 'http://localhost:8000/api'
+    // In production (non-localhost), fall back to relative path
+    if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+      baseURL = '/api'
     }
+    
+    this.baseURL = baseURL
     
     this.client = axios.create({
       baseURL,
       timeout: 30000,
+      withCredentials: false,
     })
   }
 

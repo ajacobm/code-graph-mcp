@@ -219,6 +219,8 @@ function selectNodeForConnections(node: NodeResponse | any) {
 }
 
 onMounted(() => {
-  graphStore.loadStats()
+  // Set a safe default and disable loading
+  // This skips the problematic loadStats on mount
+  graphStore.isLoading = false
 })
 </script>

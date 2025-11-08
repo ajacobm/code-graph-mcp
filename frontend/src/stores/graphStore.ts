@@ -39,23 +39,42 @@ export const useGraphStore = defineStore('graph', () => {
 
   // Actions
   async function loadStats() {
+    isLoading.value = true
+    error.value = null
     try {
-      isLoading.value = true
+      // Use direct fetch instead of axios to bypass any axios issues
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 5000)
+      
+      const response = await fetch(`${graphClient.baseURL}/graph/stats`, {
+        signal: controller.signal
+      })
+      clearTimeout(timeoutId)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+      stats.value = await response.json()
       error.value = null
-      stats.value = await graphClient.getStats()
-    } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to load stats'
-      console.error('Failed to load stats:', err)
-    } finally {
-      isLoading.value = false
+    } catch (err: any) {
+      const errMsg = err instanceof Error ? err.message : 'Failed to load stats'
+      error.value = errMsg
+      console.log('Failed to load stats:', { errMsg, url: graphClient.baseURL })
     }
+    isLoading.value = false
   }
 
   async function getNodesByCategory(category: 'entry_points' | 'hubs' | 'leaves', limit: number, offset: number) {
     try {
       isLoading.value = true
       error.value = null
-      const result = await graphClient.getNodesByCategory(category, limit, offset)
+      // Use direct fetch instead of axios
+      const url = `${graphClient.baseURL}/graph/categories/${category}?limit=${limit}&offset=${offset}`
+      const response = await fetch(url)
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+      const result = await response.json()
       return result
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load nodes'
@@ -176,7 +195,8 @@ export const useGraphStore = defineStore('graph', () => {
       isLoading.value = true
       error.value = null
       
-      const response = await fetch('http://localhost:8000/api/graph/admin/reanalyze', {
+      // Use graphClient's configured baseURL
+      const response = await fetch(`${graphClient.baseURL}/graph/admin/reanalyze`, {
         method: 'POST'
       })
       

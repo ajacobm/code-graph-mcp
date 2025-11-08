@@ -488,3 +488,57 @@ npm install force-graph
 - Design proposal: `docs/REDESIGN_PROPOSAL.md`
 - Session log: `docs/sessions/current/SESSION_9_FORCE_GRAPH_IMPLEMENTATION.md`
 
+
+## Session 10: Frontend Testing & API Format Fix (2025-11-08) ⚠️ DEBUGGING
+
+**Baseline Testing**: Started with Playwright browser automation to test full UI flow
+- ✅ Frontend loads in Docker (Node 22-alpine)
+- ✅ Backend HTTP server running with 489 nodes, 4475 relationships
+- ✅ Category cards display (Entry Points, Hubs, Leaves)
+- ✅ Entry Points grid loads 20 nodes and shows totals
+
+**API Format Bug Found**: GET /api/graph/categories/{category} response format mismatch
+- **Problem**: Returned field "type" but frontend expects "node_type" (per NodeResponse interface)
+- **Also**: Missing location/metadata object nesting
+- **Solution Applied**: Modified graph_api.py lines 561-585
+  - Changed `"type"` → `"node_type"`
+  - Restructured location info into location object
+  - Added metadata object for degree info
+- **Result**: ✅ API format now correct, nodes display with proper node_type values
+
+**Frontend Node Selection Bug**: After fixing API, clicking nodes doesn't trigger selection
+- **Symptoms**: Grid loads correctly, nodes display, click doesn't set sidebar/connections
+- **Click Flow Works**: Page switches to Connections tab (empty "Select a node" state)
+- **Root Cause**: Unknown - likely Vue event binding or store reactivity issue
+  - selectNodeForConnections() function defined correctly
+  - store.selectNode() exported and has correct signature
+  - Node objects have id field from API
+  - Click handler attached via @click directive
+- **Next Debug Steps**:
+  1. Verify `node.id` isn't undefined in v-for loop
+  2. Check if Vue is properly binding @click to dynamic elements
+  3. Add logging to selectNode() to confirm it's being called
+  4. Test if selectNode(hardcodedId) works from console
+
+**Files Modified**:
+- src/code_graph_mcp/server/graph_api.py - Fixed categories endpoint response format
+- frontend/src/App.vue - Added debug logging (may have been hot-reloaded away)
+
+**Docker Status**:
+- Full stack running: compose.sh up ✅
+- Backend on :8000 ✅
+- Frontend on :5173 ✅
+- Redis on :6379 ✅
+
+**Testing Environment**:
+- Using Playwright for E2E testing (F12 console, network analysis)
+- Local Node 18 (can't upgrade - nvm network issues)
+- Docker frontend uses Node 22-alpine (works perfectly)
+- Docker backend uses Python 3.12 with uv
+
+**Key Files for Next Session**:
+- frontend/src/App.vue - selectNodeForConnections() function (line 214+)
+- frontend/src/stores/graphStore.ts - selectNode() store action (line 201+)
+- frontend/src/types/graph.ts - NodeResponse interface definition
+- src/code_graph_mcp/server/graph_api.py - categories endpoint (line 510+)
+

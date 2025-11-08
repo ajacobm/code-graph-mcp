@@ -1,6 +1,11 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { Node, Edge, NodeResponse, RelationshipResponse, GraphStatsResponse } from '../types/graph'
+import type {
+  Node,
+  Edge,
+  NodeResponse,
+  GraphStatsResponse,
+} from '../types/graph'
 import { graphClient } from '../api/graphClient'
 
 export const useGraphStore = defineStore('graph', () => {
@@ -30,16 +35,7 @@ export const useGraphStore = defineStore('graph', () => {
     }
   }
 
-  // Helper to convert API relationship to internal format
-  function toInternalEdge(r: RelationshipResponse): Edge {
-    return {
-      id: r.id || `${r.source_id}-${r.target_id}`,
-      source: r.source_id,
-      target: r.target_id,
-      relationship_type: r.relationship_type,
-      isSeam: r.relationship_type === 'seam'
-    }
-  }
+
 
   // Actions
   async function loadStats() {
@@ -50,6 +46,21 @@ export const useGraphStore = defineStore('graph', () => {
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load stats'
       console.error('Failed to load stats:', err)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function getNodesByCategory(category: 'entry_points' | 'hubs' | 'leaves', limit: number, offset: number) {
+    try {
+      isLoading.value = true
+      error.value = null
+      const result = await graphClient.getNodesByCategory(category, limit, offset)
+      return result
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to load nodes'
+      console.error('Failed to load nodes:', err)
+      return { nodes: [], total: 0 }
     } finally {
       isLoading.value = false
     }
@@ -195,12 +206,6 @@ export const useGraphStore = defineStore('graph', () => {
     }
   }
 
-  async function traverse(nodeId: string, depth: number = 2) {
-    // Simplified traverse - just load connections for the node
-    // Old implementation used backend traverse endpoint which we can add later
-    await loadNodeConnections(nodeId)
-  }
-
   function clearGraph() {
     nodes.value = []
     relationships.value = []
@@ -221,11 +226,11 @@ export const useGraphStore = defineStore('graph', () => {
     
     // Actions
     loadStats,
+    getNodesByCategory,
     loadFullGraph,
     loadNodeConnections,
     reanalyze,
     selectNode,
-    traverse,
     clearGraph
   }
 })

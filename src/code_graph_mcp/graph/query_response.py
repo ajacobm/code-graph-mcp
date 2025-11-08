@@ -173,6 +173,54 @@ class ErrorResponse:
         return asdict(self)
 
 
+
+
+@dataclass
+class NodeAnalysisResponse:
+    node_id: str
+    metrics: Dict[str, Any]
+    metadata: Dict[str, Any]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class GraphMetricsResponse:
+    nodes: List[NodeAnalysisResponse]
+    execution_time_ms: float
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "nodes": [node.to_dict() for node in self.nodes],
+            "execution_time_ms": self.execution_time_ms,
+        }
+
+
+@dataclass
+class HopAnalysisResponse:
+    source_id: str
+    target_id: Optional[str]
+    distance: Optional[float]
+    path: Optional[List[str]]
+    distances: Optional[Dict[str, float]]
+    paths: Optional[Dict[str, List[str]]]
+    nodes: Optional[List[NodeResponse]]
+    execution_time_ms: float
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "source_id": self.source_id,
+            "target_id": self.target_id,
+            "distance": self.distance,
+            "path": self.path,
+            "distances": self.distances,
+            "paths": self.paths,
+            "nodes": [node.to_dict() for node in self.nodes] if self.nodes else None,
+            "execution_time_ms": self.execution_time_ms,
+        }
+
+
 @dataclass
 class EntryPointResponse:
     """Response for entry point detection."""

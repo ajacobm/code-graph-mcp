@@ -542,3 +542,45 @@ npm install force-graph
 - frontend/src/types/graph.ts - NodeResponse interface definition
 - src/code_graph_mcp/server/graph_api.py - categories endpoint (line 510+)
 
+
+## Session 10 Part 2: Proxy & API Connectivity Fixes ✅
+
+**Root Cause Found**: Vite proxy misconfiguration + graphClient URL construction
+- GraphClient was trying to use VITE_API_URL (http://localhost:8000) from Docker
+- From browser perspective, localhost = browser machine, not Docker container
+- Vite proxy was configured but broken (returning 500 errors with empty body)
+
+**Fixes Applied**:
+
+1. **GraphClient Constructor** (frontend/src/api/graphClient.ts):
+   - Removed environment variable dependency
+   - Added localhost detection: if browser is on localhost, connect to http://localhost:8000/api
+   - Otherwise fallback to /api (for production where frontend/API are same origin)
+   - Simplifies constructor - no complex URL manipulation
+
+2. **Vite Config** (frontend/vite.config.ts):
+   - Changed proxy target from env var to static 'http://code-graph-http:8000'
+   - Docker service name is reliable DNS entry for cross-container communication
+   - Added explicit rewrite function (identity - no path manipulation)
+
+**Testing Results**:
+- ✅ Direct fetch to http://localhost:8000/api/graph/stats returns 489 nodes in 7ms
+- ✅ Backend health check passing (200 OK on all endpoints)
+- ✅ Docker networking working (container to container via service names)
+- ⚠️ Vite HMR caching issue - frontend app not hot-reloading code changes
+  - Restarting frontend container picks up changes
+  - But HMR from file save doesn't always work reliably
+
+**Next Step for Frontend**:
+Once Vite picks up the graphClient changes (container restart or HMR refresh):
+1. Entry Points grid should load successfully
+2. Node selection click handler should work
+3. Can then debug the remaining Vue reactivity issue from Session 10 Part 1
+
+**Branch Status**: feature/sigma-graph-spike
+**Clean commits**: 
+- 2025-11-08 df26cf7 Fix backend API response format
+- 2025-11-08 dffdc88 Session 10: Document API fix and bug
+- 2025-11-08 ad6a7c8 Fix Vite dev proxy config
+- 2025-11-08 aec2e22 Fix API client localhost detection
+

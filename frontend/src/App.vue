@@ -212,7 +212,9 @@ async function loadCategory(category: 'entry_points' | 'hubs' | 'leaves') {
 }
 
 function selectNodeForConnections(node: NodeResponse | any) {
+  console.log('selectNodeForConnections called with:', { id: node?.id, name: node?.name, node })
   graphStore.selectNode(node.id)
+  console.log('After selectNode, selectedNodeId:', graphStore.selectedNodeId, 'selectedNode:', graphStore.selectedNode)
   activeTab.value = 'connections'
 }
 

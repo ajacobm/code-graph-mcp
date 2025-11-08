@@ -569,13 +569,18 @@ def create_graph_api_router(engine: UniversalAnalysisEngine) -> APIRouter:
                 nodes.append({
                     "id": node_id,
                     "name": node.name,
-                    "type": node.node_type.value if hasattr(node.node_type, 'value') else str(node.node_type),
+                    "node_type": node.node_type.value if hasattr(node.node_type, 'value') else str(node.node_type),
                     "language": node.language,
-                    "file_path": file_path,
-                    "line": line,
                     "complexity": node.complexity,
-                    "in_degree": in_degree.get(node_id, 0),
-                    "out_degree": out_degree.get(node_id, 0),
+                    "location": {
+                        "file_path": file_path,
+                        "start_line": line,
+                        "end_line": line
+                    } if file_path else None,
+                    "metadata": {
+                        "in_degree": in_degree.get(node_id, 0),
+                        "out_degree": out_degree.get(node_id, 0),
+                    }
                 })
             
             return {

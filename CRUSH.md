@@ -1,31 +1,48 @@
 # Crush Session Memory
 
-## Session 11: Frontend Networking & Fetch Debugging (2025-11-08) ✅
-**Issue**: Frontend showed blank squares (emoji), page navigation broken
-**Root Cause**: 
-- Vite proxy config used Docker service name `http://code-graph-http:8000` (inaccessible from browser)
-- relative `/api` path → 500 errors
-- axios config fallback wasn't working
-**Fixes Applied**:
-1. graphClient now uses direct `http://localhost:8000/api` (always)
-2. Replaced axios with direct fetch() in loadStats/getNodesByCategory
-3. Icons display correctly in Firefox (Chromium has emoji font issues)
-4. Page now shows "Re-analyze" button properly (not stuck on "Analyzing...")
-**Status**: 
-✅ Icons rendering: 🚀 Entry Points, 🔀 Hubs, 🍃 Leaves
-✅ API returns 200 OK (489 nodes confirmed)
-✅ Page fully loads without hanging
-⚠️ Category click → fetch fails with "AxiosError" (browser may have cached old code)
+## Session 11: Frontend Networking & Vite Caching Issues (2025-11-08) ⚠️
+**Problem**: Frontend stuck showing "AxiosError" on category clicks despite working API
 
-**Next Fix Needed**: 
-- Rebuild frontend Docker image entirely to clear Vite bundle cache
-- OR manually clear browser cache + restart dev server
-- Then test node selection flow (click node tile → update sidebar)
+**Fixes Attempted**:
+✅ graphClient now uses direct `http://localhost:8000/api` (not service name)
+✅ Switched getNodesByCategory in store to use fetch() instead of axios  
+✅ Icons render correctly in Firefox (Chromium emoji font issue)
+✅ Page loads without hanging ("Re-analyze" button shows properly)
+✅ Verified API returns 200 OK with working fetch in browser console
+✅ Rebuilt frontend Docker image to clear Vite cache
+
+**Remaining Issue**: 
+- Clicking Entry Points still shows "AxiosError @ line 44"  
+- BUT manual fetch from browser console works perfectly (returns 20 nodes)
+- Suggests Vite dev server not hot-reloading compiled code properly
+- Browser running old axios code despite disk files having fetch()
+
+**Blocking Issue**: Vite HMR (Hot Module Replacement) caching
+- Code changes on disk not reaching browser compiled bundle
+- Rebuilding Docker image didn't help
+- Need either: hard browser cache clear, production build, or different approach
+
+**What Works**:
+✅ API endpoints (all 200 OK, data verified)
+✅ Icons display correctly  
+✅ Page layout responsive
+✅ Direct fetch calls work from console
+
+**What's Blocked**:
+❌ Category grid loading (fetch failing despite working in console)
+❌ Node selection flow (can't test click handlers)
+❌ Full E2E user journey
+
+**Next Session TODO**:
+1. Try production build instead of dev server: `npm run build`
+2. Or use Firefox browser dev tools to check actual compiled JS
+3. Or restart dev server completely with `npm run dev`
+4. Test node tile click → sidebar update
 
 **Key Learnings**: 
-- Vite cannot proxy to Docker service names from browser (localhost only)
-- Pinia refs in composition API need careful handling (use .value when assigning)
-- Emoji support varies by browser/OS (Firefox > Chromium)
+- Vite dev server caching can silently run old code
+- Always verify browser actually running latest code (check network tab)
+- Docker service names don't work from browser (localhost:port required)
 
 ## Bash Session Init
 Always initialize sessions with: `source ~/.bashrc`

@@ -76,9 +76,12 @@ export const useGraphStore = defineStore('graph', () => {
       }
       const result = await response.json()
       return result
-    } catch (err) {
+    } catch (err: any) {
+      console.log('getNodesByCategory error details:', {
+        type: err?.constructor?.name,
+        message: err?.message
+      });
       error.value = err instanceof Error ? err.message : 'Failed to load nodes'
-      console.error('Failed to load nodes:', err)
       return { nodes: [], total: 0 }
     } finally {
       isLoading.value = false

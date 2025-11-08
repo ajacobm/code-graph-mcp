@@ -1,5 +1,23 @@
 # Crush Session Memory
 
+## Session 11: Frontend Networking & Fetch Debugging (2025-11-08) 🔧
+**Issue**: Frontend showed 0 icons, page stuck on "⏳ Analyzing..."
+**Root Cause**: axios was returning 500 errors, fetch with relative `/api` path failed
+**Analysis**:
+- Direct fetch to `http://localhost:8000/api/graph/stats` → 200 OK ✅
+- Relative fetch to `/api/graph/stats` → 500 error ❌  
+- Vite proxy target was `http://code-graph-http:8000` (Docker service name, inaccessible from browser)
+- graphClient was trying to use both axios + `/api` fallback, both failing
+**Fixes Applied**:
+1. Updated graphClient to always use direct `http://localhost:8000/api` URL
+2. Replaced axios calls with direct fetch() in loadStats/getNodesByCategory
+3. Added timeout handling to prevent fetch hangs
+4. Icons now display: 📊 🚀 🔀 🍃
+5. API returns proper node data (verified 489 nodes)
+**Remaining Issue**: Page shows "Analyzing..." button, `loadStats` fetch never completes or times out silently
+- This doesn't block category buttons, they still work when clicked
+**Key Learning**: Vite dev server cannot proxy to Docker service names - must use localhost:port from browser context
+
 ## Bash Session Init
 Always initialize sessions with: `source ~/.bashrc`
 

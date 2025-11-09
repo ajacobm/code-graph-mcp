@@ -219,11 +219,17 @@ async def setup_cdc_broadcaster(cdc_manager: CDCManager, ws_manager: WebSocketCo
         }
         await ws_manager.broadcast(message)
 
-    # Subscribe to CDC events
-    try:
-        await cdc_manager.subscribe_to_pubsub(broadcast_cdc_event)  # type: ignore[arg-type]
-    except Exception as e:
-        logger.error(f"Failed to subscribe to CDC events: {e}")
+    # Subscribe to CDC events in background (non-blocking)
+    async def listen_for_events() -> None:
+        """Listen for CDC events and broadcast them."""
+        try:
+            await cdc_manager.subscribe_to_pubsub(broadcast_cdc_event)  # type: ignore[arg-type]
+        except Exception as e:
+            logger.error(f"Failed to subscribe to CDC events: {e}")
+
+    # Create background task instead of awaiting synchronously
+    import asyncio
+    asyncio.create_task(listen_for_events())
 
 
 __all__ = [

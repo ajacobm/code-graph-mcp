@@ -1,0 +1,77 @@
+volumes:
+  redis-data:
+
+services:
+  # Redis cache service
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # G4 Framework Validation - HTTP Server
+  code-graph-http:
+    image: ajacobm/code-graph-mcp:http
+    build:
+      context: .
+      target: http
+    ports:
+      - "8000:8000"
+    volumes:
+      - /home/adam/GitHub/.private/uts/g4/g4-framework/src/EnterpriseStudio:/app/workspace
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - PROJECT_ROOT=/app/workspace
+    depends_on:
+      - redis
+    command: >
+      /app/.venv/bin/python -m code_graph_mcp.http_server
+      --project-root /app/workspace
+      --host 0.0.0.0
+      --port 8000
+      --redis-url redis://redis:6379
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/app/.venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  # Frontend UI (Vue 3 + Vite)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - code-graph-http
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5173"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Redis monitoring (optional)
+  redis-insight:
+    image: redislabs/redisinsight:latest
+    ports:
+      - "5540:5540"
+    depends_on:
+      - redis

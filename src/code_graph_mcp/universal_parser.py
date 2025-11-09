@@ -796,6 +796,9 @@ class UniversalParser:
     def _create_file_node(self, file_path: Path, language_config: LanguageConfig, content: str) -> UniversalNode:
         """Create a file node."""
         line_count = len(content.splitlines())
+        # Ensure at least 1 line for end_line (empty files get 1)
+        if line_count < 1:
+            line_count = 1
 
         return UniversalNode(
             id=f"file:{file_path}",
@@ -848,6 +851,11 @@ class UniversalParser:
                             end_pos = r.end
                             start_line = start_pos.line
                             end_line = end_pos.line
+                            
+                            # VALIDATION: Skip nodes with invalid line ranges (can happen with C# interfaces)
+                            if start_line < 1 or end_line < 1 or end_line < start_line:
+                                print(f"[TRACE] _parse_functions_ast: skipping invalid line range {start_line}-{end_line}")
+                                continue
                             
                             # Create function node
                             node = UniversalNode(
@@ -1000,6 +1008,10 @@ class UniversalParser:
                             start_line = start_pos.line
                             end_line = end_pos.line
                             
+                            # VALIDATION: Skip nodes with invalid line ranges
+                            if start_line < 1 or end_line < 1 or end_line < start_line:
+                                continue
+                            
                             # Create class node
                             node = UniversalNode(
                                 id=f"class:{file_path}:{class_name}:{start_line}",
@@ -1064,6 +1076,10 @@ class UniversalParser:
                             r = import_node.range()
                             start_pos = r.start
                             start_line = start_pos.line
+                            
+                            # VALIDATION: Skip imports with invalid line
+                            if start_line < 1:
+                                continue
                             
                             # Create import node
                             node = UniversalNode(

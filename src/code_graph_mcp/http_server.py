@@ -15,8 +15,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from .cdc_manager import CDCManager
 from .server.analysis_engine import UniversalAnalysisEngine
 from .server.graph_api import create_graph_api_router
+from .websocket_server import create_websocket_router, setup_cdc_broadcaster
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +45,7 @@ class GraphAPIServer:
             version="1.0.0"
         )
         self.engine: Optional[UniversalAnalysisEngine] = None
+        self.cdc_manager: Optional[CDCManager] = None
         self._setup_app()
     
     def _setup_app(self):
@@ -57,15 +60,19 @@ class GraphAPIServer:
         )
         
         @self.app.on_event("startup")
-        async def startup_event():
-            """Initialize analysis engine on startup."""
+        async def startup_event() -> None:
+            """Initialize analysis engine and CDC on startup."""
             try:
                 logger.info(f"Initializing analysis engine for {self.project_root}")
                 from code_graph_mcp.redis_cache import RedisConfig
+                from redis.asyncio import from_url
                 
                 redis_config = None
+                redis_client = None
                 if self.enable_redis_cache:
                     redis_config = RedisConfig(url=self.redis_url) if self.redis_url else RedisConfig()
+                    redis_url = self.redis_url or "redis://redis:6379"
+                    redis_client = await from_url(redis_url)
                 
                 self.engine = UniversalAnalysisEngine(
                     self.project_root,
@@ -74,20 +81,36 @@ class GraphAPIServer:
                     enable_file_watcher=False
                 )
                 
+                self.cdc_manager = CDCManager(redis_client=redis_client)
+                if redis_client:
+                    await self.cdc_manager.initialize()
+                setattr(self.engine.graph, 'cdc_manager', self.cdc_manager)
+                
                 self.app.include_router(create_graph_api_router(self.engine))
+                
+                ws_router = create_websocket_router(self.cdc_manager)
+                self.app.include_router(ws_router)
+                
                 await self.engine.force_reanalysis()
-                logger.info("Analysis engine initialized successfully")
+                
+                await setup_cdc_broadcaster(self.cdc_manager, getattr(ws_router, 'ws_manager'))
+                
+                logger.info("Analysis engine and WebSocket server initialized successfully")
             except Exception as e:
                 logger.error(f"Failed to initialize analysis engine: {e}")
                 raise
         
         @self.app.on_event("shutdown")
         async def shutdown_event():
-            """Clean up analysis engine on shutdown."""
+            """Clean up analysis engine and CDC on shutdown."""
             try:
+                if self.cdc_manager:
+                    await self.cdc_manager.cleanup()
+                    logger.info("CDC manager cleaned up")
+                
                 if self.engine:
                     await self.engine.cleanup()
-                logger.info("Analysis engine cleaned up")
+                    logger.info("Analysis engine cleaned up")
             except Exception as e:
                 logger.error(f"Error during cleanup: {e}")
         

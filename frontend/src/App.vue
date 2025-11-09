@@ -26,9 +26,9 @@
     </header>
 
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto px-4 py-8">
+    <main class="w-full overflow-hidden">
       <!-- Tab Navigation -->
-      <div class="flex gap-1 mb-6 border-b border-slate-700 overflow-x-auto">
+      <div class="flex gap-1 mb-6 border-b border-slate-700 overflow-x-auto px-4">
         <button
           v-for="tab in tabs"
           :key="tab.id"
@@ -45,12 +45,12 @@
       </div>
 
       <!-- Error Display -->
-      <div v-if="graphStore.error" class="mb-4 p-4 bg-red-900/30 border border-red-700 rounded text-red-200 text-sm">
+      <div v-if="graphStore.error" class="mb-4 p-4 mx-4 bg-red-900/30 border border-red-700 rounded text-red-200 text-sm">
         ⚠️ {{ graphStore.error }}
       </div>
 
       <!-- Tab Content -->
-      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 px-4 max-w-7xl mx-auto">
         <!-- Main Panel (3 cols on desktop, full width on mobile) -->
         <div class="lg:col-span-3 order-2 lg:order-1">
           <!-- Browse Tab -->

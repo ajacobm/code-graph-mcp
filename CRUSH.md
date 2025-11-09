@@ -1,5 +1,55 @@
 # Crush Session Memory
 
+## Session 13 Architecture Decision: Memgraph + Event-Driven (2025-11-08) 🎯
+
+**Decision**: Adopting Memgraph as graph database with event-driven CDC pipeline via Redis Streams.
+
+**Architecture Overview**:
+```
+Parse Code → Rustworkx (in-memory) → Redis Streams (CDC) → Memgraph (Cypher queries)
+                                    ↓
+                              Redis Pub/Sub → WebSocket → Frontend (real-time updates)
+```
+
+**Phase 1 (Sessions 13-14): Redis Event-Driven Foundation**
+- ✅ Redis Streams for Change Data Capture (every graph mutation logged)
+- ✅ Redis Pub/Sub for real-time notifications (analysis complete, progress)
+- ✅ Redis Search for full-text node search
+- ✅ Redis JSON for analysis metadata
+
+**Phase 2 (Sessions 15-16): Memgraph Integration**
+- 🎯 Memgraph container in docker-compose (port 7687 Bolt, 3000 Lab UI)
+- 🎯 Native stream transformation OR Python sync worker consuming Redis Streams
+- 🎯 Dual query strategy: Simple queries → rustworkx, Complex Cypher → Memgraph
+- 🎯 MCP Resources library with 10+ pre-built Cypher navigation patterns
+- 🎯 MCP Prompts library for natural language workflows
+
+**Why Memgraph Over Neo4j**:
+1. **Performance**: 10-100x faster for real-time queries (in-memory first)
+2. **Event-Driven Native**: Built-in Redis Streams support via transformations
+3. **Cypher Compatible**: Standard query language, easy migration path
+4. **Lower Latency**: <1ms queries vs Neo4j's 10-50ms
+5. **Resource Efficient**: ~500MB RAM vs Neo4j's 2GB+
+6. **Dev-Friendly Licensing**: Free for <4 cores
+
+**MCP Resources Examples**:
+- `cypher://entry-to-db-paths` - Find HTTP endpoint → database operation paths
+- `cypher://impact-analysis` - What breaks if I change function X?
+- `cypher://circular-dependencies` - Detect cycles in call graph
+- `cypher://architectural-seams` - High coupling between modules
+
+**MCP Prompts Examples**:
+- "Show me authentication flow"
+- "What breaks if I change X?"
+- "Find untested code"
+
+**Testing Commitment**: Continue Playwright-first TDD for ALL UI features.
+
+**Documentation Updated**:
+- ✅ `docs/GRAPH_DATABASE_EVALUATION.md` - Rewritten for Memgraph architecture
+- ✅ `docs/PLAYWRIGHT_TESTING_GUIDE.md` - Added event-driven & Memgraph test patterns
+- ✅ Cortexgraph memories saved (architecture, Python driver, MCP patterns)
+
 ## Session 12: P0 Performance Fixes (2025-11-08) ✅
 **Outcome**: All blocking performance issues resolved
 

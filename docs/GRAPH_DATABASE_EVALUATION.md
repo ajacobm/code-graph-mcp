@@ -1,6 +1,8 @@
-# Graph Database Evaluation: Redis, Neo4j, Memgraph
+# Graph Database Architecture: Memgraph + Event-Driven Pipeline
 
-**Context**: Currently using Redis as cache + rustworkx as in-memory graph. Evaluating migration to native graph databases for advanced querying.
+**Decision**: Adopting Memgraph as queryable graph database with event-driven sync from Rustworkx via Redis Streams.
+
+**Architecture**: Hybrid model - Rustworkx for fast parsing, Memgraph for powerful Cypher queries, Redis Streams for CDC.
 
 ---
 
@@ -280,21 +282,22 @@ async def sync_graph_to_neo4j():
 
 ---
 
-## Memgraph: High-Performance Alternative
+## Memgraph: Event-Driven Graph Database
 
-### What is Memgraph?
-- **Neo4j-compatible** (uses Cypher query language)
-- **In-memory first** (faster than Neo4j for real-time queries)
-- **Streaming support** (Kafka, Pulsar integration)
-- **Lower resource usage** than Neo4j
-- **Business Source License** (free for <4 cores)
-
-### Memgraph Advantages Over Neo4j
-1. **Performance**: 10-100x faster for real-time queries (in-memory)
-2. **Streaming**: Native Kafka/Pulsar connectors for event-driven
-3. **Cypher Compatible**: Can reuse Neo4j queries
-4. **Lower Latency**: <1ms for simple queries vs Neo4j's 10-50ms
+### Why Memgraph Over Neo4j?
+1. **Performance**: 10-100x faster for real-time queries (in-memory first)
+2. **Event-Driven Native**: Built-in Kafka/Redis Streams support
+3. **Cypher Compatible**: Standard query language, easy learning curve
+4. **Lower Latency**: <1ms for simple queries vs Neo4j's 10-50ms  
 5. **Smaller Footprint**: ~500MB RAM vs Neo4j's 2GB+
+6. **Licensing**: Free for <4 cores (dev-friendly)
+
+### Event-Driven Integration with Redis Streams
+**Why This Matters for Code Graphs**:
+- Code changes trigger analysis → CDC events → Memgraph auto-updates
+- File watcher detects changes → incremental re-parse → stream delta to Memgraph
+- LLM generates summaries → stored in Redis JSON → linked to graph nodes
+- Real-time collaboration: Multiple users see live graph updates via Pub/Sub
 
 ### Memgraph Use Cases for Code Graph
 ```cypher
@@ -316,15 +319,42 @@ ORDER BY rank DESC
 LIMIT 10
 ```
 
-**Recommendation**: Memgraph might be better fit than Neo4j for real-time code analysis workflows.
+**Decision**: Memgraph chosen as primary graph database for event-driven architecture.
+
+### Docker Compose Integration
+```yaml
+services:
+  memgraph:
+    image: memgraph/memgraph-platform:latest
+    ports:
+      - "7687:7687"  # Bolt protocol (Cypher queries)
+      - "3000:3000"  # Memgraph Lab UI
+    environment:
+      - MEMGRAPH_LOG_LEVEL=WARNING
+    volumes:
+      - memgraph-data:/var/lib/memgraph
+    command: ["--stream-enabled=true"]
+  
+  memgraph-sync-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: sync-worker
+    depends_on:
+      - redis
+      - memgraph
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - MEMGRAPH_URL=bolt://memgraph:7687
+```
 
 ---
 
 ## Redis ↔ Graph Database Connectors
 
-### Redis → Neo4j Sync Patterns
+### Redis Streams → Memgraph CDC Pipeline
 
-**Pattern 1: Change Data Capture (CDC)**
+**Pattern 1: Event-Driven Sync (Recommended)**
 ```python
 # Use Redis Streams as CDC log
 async def on_graph_mutation(event):
@@ -335,48 +365,108 @@ async def on_graph_mutation(event):
     })
 
 # Separate worker consumes stream and syncs to Neo4j
-async def neo4j_sync_worker():
+async def memgraph_sync_worker():
+    """Background worker consuming Redis Streams and syncing to Memgraph."""
+    last_id = '0-0'  # Start from beginning
+    
     while True:
-        messages = await redis.xread({'graph:cdc': last_id})
-        for msg in messages:
-            await sync_to_neo4j(msg)
+        # Block for 1 second waiting for new events
+        messages = await redis.xread({'graph:cdc': last_id}, block=1000)
+        
+        for stream_id, msg in messages:
+            event_type = msg['type']
+            data = json.loads(msg['data'])
+            
+            if event_type == 'node_added':
+                await memgraph.execute("""
+                    MERGE (n:Node {id: $id})
+                    SET n.name = $name,
+                        n.node_type = $node_type,
+                        n.language = $language
+                """, data)
+            
+            elif event_type == 'edge_added':
+                await memgraph.execute("""
+                    MATCH (a {id: $source_id})
+                    MATCH (b {id: $target_id})
+                    MERGE (a)-[r:CALLS]->(b)
+                    SET r.type = $rel_type
+                """, data)
+            
+            last_id = stream_id  # Update cursor
 ```
 
-**Pattern 2: Dual Write**
+**Pattern 2: Dual Write (Not Recommended - Breaks Event Sourcing)**
 ```python
+# DON'T DO THIS - Loses CDC audit trail
 async def add_relationship(rel):
-    # Write to both simultaneously
     await asyncio.gather(
         redis.set_relationship(rel),
-        neo4j.create_relationship(rel)
+        memgraph.create_relationship(rel)  # Bypasses event log
     )
 ```
 
-**Pattern 3: Read-Through Cache**
+**Why Event-Driven is Better**:
+- Single source of truth (Redis Streams)
+- Replay events for debugging
+- Easy to add more consumers (analytics, exports)
+- Decouples write path from read path
+
+**Pattern 3: Query Router (Recommended)**
 ```python
-async def find_callers(function_name):
-    # Check Redis cache first
-    cached = await redis.get(f'callers:{function_name}')
-    if cached:
-        return cached
+class HybridGraphQueryEngine:
+    """Route queries to rustworkx (fast) or Memgraph (complex)."""
     
-    # Query Neo4j if cache miss
-    result = await neo4j.query("""
-        MATCH (caller)-[:CALLS]->(func:Function {name: $name})
-        RETURN caller
-    """, name=function_name)
+    async def find_callers(self, symbol: str):
+        # Simple query → Use rustworkx (in-memory, <1ms)
+        return self.rustworkx_graph.predecessors(symbol)
     
-    # Cache result
-    await redis.setex(f'callers:{function_name}', 3600, result)
-    return result
+    async def find_all_paths(self, start: str, end: str, max_hops: int = 10):
+        # Complex query → Use Memgraph Cypher
+        return await self.memgraph.query("""
+            MATCH path = (a:Function {id: $start})
+                        -[:CALLS*1..$max_hops]->
+                        (b:Function {id: $end})
+            RETURN path
+            ORDER BY length(path)
+            LIMIT 10
+        """, start=start, end=end, max_hops=max_hops)
+    
+    async def find_architectural_seams(self):
+        # Pattern matching → Only Cypher can do this efficiently
+        return await self.memgraph.query("""
+            MATCH (a:Function)-[r:CALLS]->(b:Function)
+            WHERE a.file <> b.file
+            WITH a.file as file_a, b.file as file_b, count(r) as coupling
+            WHERE coupling > 10
+            RETURN file_a, file_b, coupling
+            ORDER BY coupling DESC
+        """)
 ```
 
-### Existing Tools
-- **Neo4j Redis Connector**: Community plugin (experimental, not official)
-- **Kafka Connect**: Redis Source → Kafka → Neo4j Sink
-- **Custom ETL**: Most common pattern (Python script with redis-py + neo4j-driver)
+### Memgraph Stream Support
+**Built-in Streaming**: Memgraph has native Redis Streams support via transformations.
 
-**Reality**: No official Redis ↔ Neo4j connector. Must build custom integration.
+```cypher
+-- Create Memgraph stream transformation
+CREATE STREAM code_graph_events
+TOPICS graph:cdc
+TRANSFORM memgraph_stream.parse_json
+BATCH_SIZE 100;
+
+-- Process events with Cypher
+CREATE TRIGGER on_node_added
+ON CREATE BEFORE COMMIT
+EXECUTE
+MATCH (n:TempNode)
+MERGE (m:Function {id: n.id})
+SET m = properties(n);
+```
+
+**Benefits**:
+- No separate sync worker needed (Memgraph reads Redis directly)
+- Lower latency (near real-time sync)
+- Simpler architecture
 
 ---
 
@@ -445,44 +535,66 @@ graphql_app = GraphQL(schema)
 
 ---
 
-## Recommendation: Hybrid Architecture
+## Recommended Architecture: Memgraph + Event-Driven Pipeline
 
-### Phase 1 (Current - Session 13): Redis + Rustworkx + Enhancements
-**Keep current architecture**, add Redis advanced features:
+### Phase 1 (Session 13-14): Redis Enhancements + CDC Foundation
+**Enhance Redis with streaming capabilities**:
 
-1. **Redis Streams** for live graph updates (WebSocket to frontend)
-2. **Redis Pub/Sub** for analysis completion notifications
+1. **Redis Streams** for Change Data Capture (CDC)
+   - Every graph mutation published as event (node_added, edge_added, etc)
+   - Event log enables replay, undo, and downstream sync
+2. **Redis Pub/Sub** for real-time notifications
+   - Analysis completion, progress updates, LLM summaries
 3. **Redis JSON** for storing analysis metadata
-4. **Redis Search** for full-text node search (replace basic substring search)
+4. **Redis Search** for full-text node search
 
 **Benefits**:
-- No new infrastructure
-- Leverages Redis capabilities beyond caching
-- Gradual improvement path
+- Event-driven foundation for Memgraph sync
+- No new infrastructure yet (stay fast)
+- Real-time frontend updates via WebSocket
 
-### Phase 2 (Session 15+): Neo4j Read Replica
-**Add Neo4j as read-only query layer**:
+### Phase 2 (Session 15-16): Memgraph Integration
+**Add Memgraph as queryable graph database**:
 
 ```
-Parse Code → Rustworkx (in-memory, fast) → Redis (cache)
-                         ↓
-                    Neo4j (read-only, complex queries)
+Parse Code → Rustworkx (in-memory, fast) → Redis Streams (CDC log)
+                                                  ↓
+                                            Memgraph Sync Worker
+                                                  ↓
+                                            Memgraph (Cypher queries)
 ```
 
-**ETL Pipeline**:
+**Event-Driven Sync Pipeline**:
 ```python
-# Background job: Sync graph to Neo4j every 5 minutes or on-demand
-async def sync_to_neo4j():
-    nodes = rustworkx_graph.nodes.values()
-    edges = rustworkx_graph.relationships.values()
+# Publisher: Emit CDC events on every graph mutation
+async def add_node_to_graph(node):
+    rustworkx_graph.add_node(node)
+    await redis.set_file_nodes(...)  # Cache
     
-    # Batch upsert to Neo4j
-    await neo4j.run_batch_cypher(nodes, edges)
+    # Publish CDC event
+    await redis.xadd('graph:cdc', {
+        'event': 'node_added',
+        'node_id': node.id,
+        'data': json.dumps(asdict(node))
+    })
 
-# Use Neo4j for complex queries only
+# Consumer: Background worker syncs to Memgraph
+async def memgraph_sync_worker():
+    while True:
+        messages = await redis.xread({'graph:cdc': last_id}, block=1000)
+        for msg in messages:
+            if msg['event'] == 'node_added':
+                await memgraph.create_node(msg['data'])
+            elif msg['event'] == 'edge_added':
+                await memgraph.create_relationship(msg['data'])
+
+# Simple queries use rustworkx (fast)
+async def find_callers(symbol):
+    return rustworkx_graph.find_callers(symbol)  # <1ms
+
+# Complex queries use Memgraph Cypher (powerful)
 async def find_business_logic_paths():
-    # This is hard in rustworkx, easy in Cypher
-    return await neo4j.query("""
+    return await memgraph.query("""
         MATCH path = (http:Function {type: 'endpoint'})
                     -[:CALLS*1..10]->
                     (db:Function)
@@ -498,12 +610,38 @@ async def find_business_logic_paths():
 - Neo4j for knowledge mining
 - Can deprecate Neo4j if not needed (no vendor lock-in)
 
-### Phase 3 (Future): Evaluate Memgraph
-**If Neo4j too heavy**, try Memgraph:
-- Cypher-compatible (easy migration from Neo4j)
-- Faster for real-time queries
-- Streaming support for event-driven analysis
-- Lower resource usage
+### Phase 3 (Future): MCP Prompts & Resources Library
+**Add MCP resources for common code navigation patterns**:
+```python
+# MCP Resources - Pre-built Cypher queries
+resources = [
+    {
+        "uri": "cypher://find-entry-to-db-paths",
+        "name": "Find Entry Point → DB Paths",
+        "query": """
+            MATCH path = (entry:Function {is_entry_point: true})
+                        -[:CALLS*1..15]->
+                        (db:Function)
+            WHERE db.name =~ '.*(insert|update|delete|save).*'
+            RETURN path
+        """
+    },
+    {
+        "uri": "cypher://impact-analysis",
+        "name": "Impact Analysis for Function",
+        "query": """
+            MATCH (changed:Function {name: $symbol})
+            MATCH (impacted)-[:CALLS*1..10]->(changed)
+            RETURN impacted.name, length(path) as distance
+        """
+    }
+]
+```
+
+**MCP Prompts** - Common developer workflows:
+- "Show me authentication flow" → Entry point → auth boundary → session management
+- "What breaks if I change X?" → Impact analysis with test coverage
+- "Find architectural seams" → High coupling between modules
 
 ---
 
@@ -639,33 +777,46 @@ await redis.json().set(f'summary:{node_id}', Path.root_path(), {
 
 ---
 
-## Final Recommendation
+## Final Architecture Decision
 
-### Short-Term (Sessions 13-14)
-✅ **Keep current architecture** (rustworkx + Redis cache)  
-✅ **Add Redis Streams** for live graph updates  
-✅ **Add Redis Pub/Sub** for analysis notifications  
-✅ **Add Redis Search** for better node search  
+### Phase 1: Redis Enhancements (Session 13-14) ✅
+**Implement event-driven foundation**:
+1. ✅ Redis Streams for CDC (every graph mutation logged)
+2. ✅ Redis Pub/Sub for real-time notifications
+3. ✅ Redis Search for full-text node search
+4. ✅ Redis JSON for analysis metadata
 
-**Why**: No new infrastructure, leverages Redis capabilities, fast to implement.
+**Deliverables**:
+- CDC event publisher in UniversalParser
+- WebSocket endpoint for live frontend updates
+- Search API endpoint with Redis Search
 
-### Medium-Term (Sessions 15-16)
-🔬 **Prototype Neo4j read replica** (ETL pipeline from Redis → Neo4j)  
-🔬 **Test complex queries** (find business logic paths, impact analysis)  
-🔬 **Evaluate Memgraph** as alternative (if Neo4j too heavy)  
+### Phase 2: Memgraph Integration (Session 15-16) 🎯
+**Add Memgraph with event-driven sync**:
+1. 🎯 Memgraph container in docker-compose
+2. 🎯 Stream transformation or sync worker consuming Redis Streams
+3. 🎯 Dual query strategy (simple → rustworkx, complex → Cypher)
+4. 🎯 MCP Resources library with pre-built Cypher queries
 
-**Why**: Proof of concept before committing to infrastructure change.
+**Deliverables**:
+- Memgraph sync worker or native stream transformation
+- GraphQueryRouter class (routes queries to optimal backend)
+- 10+ MCP Resources for common navigation patterns
+- Playwright tests for complex query features
 
-### Long-Term (Post-MVP)
-🎯 **Choose based on data**:
-- If complex queries used heavily → Migrate to Neo4j/Memgraph
-- If simple queries sufficient → Stay with rustworkx + enhanced Redis
-- If streaming needed → Consider Memgraph over Neo4j
+### Phase 3: MCP Prompts & Workflow Patterns (Session 17+) 🔮
+**Codebases-as-knowledge-graphs UX**:
+1. 🔮 MCP Prompts library ("Show auth flow", "Impact analysis", etc)
+2. 🔮 Natural language → Cypher query generation (LLM-assisted)
+3. 🔮 Visual query builder in frontend
+4. 🔮 Saved queries and bookmarks
 
-**Decision Factors**:
-1. Do users actually run complex multi-hop queries?
-2. Is real-time streaming valuable for the workflow?
-3. Can we justify additional infrastructure cost?
+**Why This Architecture**:
+- ✅ Event-driven enables real-time updates and replay
+- ✅ Memgraph provides Cypher power with low latency
+- ✅ Hybrid approach keeps parsing fast (rustworkx)
+- ✅ MCP integration makes complex queries accessible
+- ✅ Can still migrate to Neo4j later (Cypher compatible)
 
 ---
 
@@ -693,4 +844,11 @@ await redis.json().set(f'summary:{node_id}', Path.root_path(), {
 
 ---
 
-**Next Steps**: Focus on Session 13 P0 fixes + desktop panels. Evaluate graph DB after user feedback on query needs.
+**Next Steps**: 
+1. Session 13 P0 fixes (pagination, layout, stdlib filtering)
+2. Session 13 P1: Implement Redis Streams CDC
+3. Session 14: Add Redis Pub/Sub + Search
+4. Session 15: Integrate Memgraph with event-driven sync
+5. Session 16: Build MCP Resources library for Cypher patterns
+
+**Testing Strategy**: Continue Playwright-first development for all UI features.

@@ -2,6 +2,8 @@
 
 **Strategy**: Test-driven development with Playwright as the foundation for all frontend work.
 
+**Commitment**: Write Playwright tests BEFORE implementing features throughout all UI development sessions.
+
 ---
 
 ## Why Playwright-First Development?
@@ -698,4 +700,179 @@ def page(browser_context):
 
 ---
 
-**Next**: Implement Session 13 P0 features using TDD approach - write these tests first, then make them pass!
+## Integration with Architecture Decisions
+
+### Event-Driven Graph Updates
+**Testing Real-Time Updates** (Phase 1: Redis Streams):
+```python
+# tests/e2e/test_real_time_updates.py
+import asyncio
+import pytest
+from playwright.sync_api import expect
+
+def test_graph_updates_on_file_change(app_page):
+    """When file changes, graph updates in real-time via WebSocket."""
+    # Arrange - Open graph view with specific file
+    app_page.click('[data-test="nav-browse-tab"]')
+    app_page.click('[data-test="category-entry-points"]')
+    initial_node_count = app_page.locator('[data-test="node-tile"]').count()
+    
+    # Act - Trigger file change (via test fixture that modifies watched directory)
+    # Backend detects change → re-parses → publishes to Redis Stream → WebSocket pushes to frontend
+    app_page.evaluate('window.testTriggerFileChange("src/new_function.py")')
+    
+    # Assert - New node appears without page reload
+    app_page.wait_for_selector('[data-test="node-tile"]:nth-child(' + str(initial_node_count + 1) + ')')
+    new_node_count = app_page.locator('[data-test="node-tile"]').count()
+    assert new_node_count == initial_node_count + 1
+    
+    # Verify notification appears
+    expect(app_page.locator('[data-test="toast-notification"]')).to_contain_text('Graph updated')
+
+def test_analysis_progress_updates(app_page):
+    """Analysis progress shows real-time updates via Pub/Sub."""
+    # Arrange
+    app_page.click('[data-test="admin-panel"]')
+    
+    # Act - Trigger re-analysis
+    app_page.click('[data-test="reanalyze-btn"]')
+    
+    # Assert - Progress bar updates in real-time
+    expect(app_page.locator('[data-test="progress-bar"]')).to_be_visible()
+    
+    # Wait for incremental updates (backend publishes progress events)
+    app_page.wait_for_function('''
+        () => {
+            const progress = document.querySelector('[data-test="progress-percent"]').textContent;
+            return parseInt(progress) > 50;  // Wait until >50%
+        }
+    ''')
+    
+    # Final completion notification
+    app_page.wait_for_selector('[data-test="analysis-complete"]', timeout=30000)
+```
+
+### Memgraph Integration Testing (Phase 2)
+**Testing Complex Cypher Queries**:
+```python
+# tests/e2e/test_memgraph_queries.py
+import pytest
+from playwright.sync_api import expect
+
+def test_find_business_logic_paths(app_page):
+    """MCP Resource: Entry Point → DB Paths query works."""
+    # Arrange - Navigate to MCP Resources panel
+    app_page.click('[data-test="nav-tools-tab"]')
+    app_page.click('[data-test="mcp-resources-section"]')
+    
+    # Act - Select pre-built Cypher query
+    app_page.click('[data-test="resource-entry-to-db-paths"]')
+    
+    # Assert - Results show call paths from HTTP endpoints to DB operations
+    expect(app_page.locator('[data-test="query-results"]')).to_be_visible()
+    
+    # Verify path structure (entry → ... → db operation)
+    paths = app_page.locator('[data-test="result-path"]').all()
+    assert len(paths) > 0
+    
+    first_path = paths[0]
+    expect(first_path.locator('[data-test="path-start"]')).to_have_attribute('data-is-entry', 'true')
+    expect(first_path.locator('[data-test="path-end"]')).to_contain_text('insert|update|delete|save', use_regex=True)
+
+def test_impact_analysis_query(app_page):
+    """MCP Prompt: 'What breaks if I change X?' works."""
+    # Arrange
+    app_page.click('[data-test="nav-tools-tab"]')
+    app_page.click('[data-test="mcp-prompts-section"]')
+    
+    # Act - Select impact analysis prompt
+    app_page.click('[data-test="prompt-impact-analysis"]')
+    app_page.fill('[data-test="symbol-input"]', 'authenticate_user')
+    app_page.click('[data-test="execute-prompt-btn"]')
+    
+    # Assert - Shows impacted functions with distance
+    expect(app_page.locator('[data-test="impact-results"]')).to_be_visible()
+    
+    # Verify results sorted by distance (closest first)
+    distances = app_page.locator('[data-test="impact-distance"]').all_text_contents()
+    distances_int = [int(d) for d in distances]
+    assert distances_int == sorted(distances_int)  # Ascending order
+    
+    # Verify test coverage indicator
+    first_result = app_page.locator('[data-test="impact-result"]:first-child')
+    test_coverage = first_result.locator('[data-test="test-coverage"]').text_content()
+    assert 'tests' in test_coverage.lower()  # Shows test count or "No tests"
+```
+
+### MCP Resources Library Testing
+**Testing Pre-Built Navigation Patterns**:
+```python
+# tests/e2e/test_mcp_resources.py
+import pytest
+from playwright.sync_api import expect
+
+def test_mcp_resources_library_loads(app_page):
+    """MCP Resources panel shows all pre-built Cypher queries."""
+    # Arrange
+    app_page.click('[data-test="nav-tools-tab"]')
+    
+    # Assert - Resource categories visible
+    expect(app_page.locator('[data-test="resource-category-navigation"]')).to_be_visible()
+    expect(app_page.locator('[data-test="resource-category-analysis"]')).to_be_visible()
+    expect(app_page.locator('[data-test="resource-category-quality"]')).to_be_visible()
+    
+    # Verify resource count
+    resources = app_page.locator('[data-test^="resource-"]').count()
+    assert resources >= 10  # At least 10 pre-built queries
+
+def test_resource_shows_cypher_query(app_page):
+    """Clicking resource shows underlying Cypher query for learning."""
+    # Arrange
+    app_page.click('[data-test="nav-tools-tab"]')
+    
+    # Act - Click "Show Query" for a resource
+    app_page.click('[data-test="resource-entry-to-db-paths"]')
+    app_page.click('[data-test="show-query-btn"]')
+    
+    # Assert - Cypher query visible with syntax highlighting
+    expect(app_page.locator('[data-test="cypher-query-display"]')).to_be_visible()
+    cypher_text = app_page.locator('[data-test="cypher-query-display"]').text_content()
+    assert 'MATCH' in cypher_text
+    assert '-[:CALLS*' in cypher_text  # Multi-hop relationship
+    
+    # Verify syntax highlighting applied
+    expect(app_page.locator('[data-test="cypher-query-display"] .hljs-keyword')).to_be_visible()
+```
+
+---
+
+## Session-by-Session Testing Plan
+
+### Session 13: P0 Performance + Redis Streams CDC
+**Write These Tests First**:
+1. `test_pagination.py` - Backend pagination, Load More button
+2. `test_layout.py` - No horizontal scroll, responsive panels
+3. `test_stdlib_filtering.py` - Entry points exclude stdlib modules
+4. `test_redis_streams_cdc.py` - CDC events published on mutations
+
+### Session 14: Redis Pub/Sub + Search
+**Write These Tests First**:
+1. `test_real_time_notifications.py` - Analysis complete, progress updates
+2. `test_redis_search.py` - Full-text search with ranking
+3. `test_websocket_updates.py` - Frontend receives live events
+
+### Session 15: Memgraph Integration
+**Write These Tests First**:
+1. `test_memgraph_sync.py` - Events flow Redis → Memgraph
+2. `test_cypher_queries.py` - Complex queries execute correctly
+3. `test_query_routing.py` - Simple → rustworkx, complex → Memgraph
+
+### Session 16: MCP Resources Library
+**Write These Tests First**:
+1. `test_mcp_resources.py` - 10+ pre-built queries available
+2. `test_mcp_prompts.py` - Natural language workflows work
+3. `test_query_builder.py` - Visual query composition
+
+---
+
+**Commitment**: Every session starts with writing Playwright tests for planned features. Implementation follows to make tests pass (TDD red-green-refactor cycle).

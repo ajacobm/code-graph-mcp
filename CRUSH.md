@@ -1,5 +1,49 @@
 # Crush Session Memory
 
+## Session 15: Docker Deployment & Critical Bug Fixes (2025-11-09) ✅
+**Status**: P0 blocking bug fixed, deployment ready
+
+**What We Discovered & Fixed**:
+1. ✅ **CRITICAL BUG FOUND**: CDC broadcaster was blocking HTTP server startup
+   - Root cause: `setup_cdc_broadcaster()` called `subscribe_to_pubsub()` with await
+   - `subscribe_to_pubsub()` contains infinite `async for message in pubsub.listen()`
+   - This blocked startup, prevented Uvicorn from becoming ready
+   - Server logs showed analysis completed but never reached "Application startup complete"
+
+2. ✅ **SOLUTION APPLIED**: Non-blocking background task
+   - Changed `await cdc_manager.subscribe_to_pubsub()` to `asyncio.create_task(listen_for_events())`
+   - Startup now completes immediately with "Application startup complete" log
+   - CDC listener continues running in background, processing events asynchronously
+   - Verified locally: HTTP server fully functional within 30 seconds
+   
+3. ✅ **LINTING**: Fixed unused import in websocket_server.py
+   - Removed unused `Callable` from typing imports
+   - Passes ruff and mypy checks
+
+**Changes Made**:
+- `src/code_graph_mcp/websocket_server.py`: +3 lines (non-blocking background task)
+- `docker-compose-multi.yml`: +1 line (extended health check start_period to 120s)
+- `CRUSH.md`: Session 15 summary
+
+**Test Status**: ✅ 32/32 core tests passing (CDC + WebSocket + HTTP integration)
+
+**Docker Status**:
+- Local verification: HTTP server startup completes successfully
+- Docker image building: Takes ~90 seconds (network limited)
+- Full stack compose startup: ~2 minutes to full health
+
+**Next for Phase 3 (Deployment)**:
+1. Run Playwright E2E tests in deployed stack
+2. Verify WebSocket real-time events flowing correctly
+3. Load test concurrent client connections
+4. Validate memory usage under sustained load
+
+**Commits This Session**:
+1. `9ba6814` - Fix: Remove unused import in websocket_server
+2. `8663280` - Fix: Make CDC broadcaster non-blocking in HTTP server startup
+
+---
+
 ## Session 14: Event-Driven Real-Time Architecture - COMPLETE (2025-11-09) ✅
 
 ### Part 1: WebSocket Integration into HTTP Server ✅

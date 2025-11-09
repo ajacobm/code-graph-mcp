@@ -725,11 +725,20 @@ class UniversalParser:
     
     def _dict_to_relationship(self, rel_dict: Dict) -> UniversalRelationship:
         """Convert dictionary back to UniversalRelationship."""
+        # Convert string to RelationshipType enum
+        rel_type_str = rel_dict['relationship_type']
+        try:
+            relationship_type = RelationshipType(rel_type_str)
+        except ValueError:
+            # Fallback for malformed data
+            logger.warning(f"Unknown relationship type: {rel_type_str}, using RelationshipType.CALLS")
+            relationship_type = RelationshipType.CALLS
+        
         return UniversalRelationship(
             id=rel_dict['id'],
             source_id=rel_dict['source_id'],
             target_id=rel_dict['target_id'],
-            relationship_type=RelationshipType(rel_dict['relationship_type']),
+            relationship_type=relationship_type,
             metadata=rel_dict.get('metadata', {})
         )
     

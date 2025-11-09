@@ -91,18 +91,13 @@
                 </div>
               </div>
 
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-2">
-                <div
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto pr-2">
+                <NodeTile
                   v-for="node in categoryNodes"
                   :key="node.id"
+                  :node="node"
                   @click="selectNodeForConnections(node)"
-                  class="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded p-3 cursor-pointer transition-colors"
-                >
-                  <div class="font-semibold text-slate-100">{{ node.name }}</div>
-                  <div class="text-xs text-slate-400 mt-1">
-                    {{ node.node_type }} · {{ node.language }}
-                  </div>
-                </div>
+                />
               </div>
             </div>
           </div>
@@ -123,50 +118,58 @@
 
         <!-- Right Panel (1 col on desktop) - Node Details -->
         <div class="lg:col-span-1 order-1 lg:order-2">
-          <div v-if="graphStore.selectedNode" class="bg-slate-800 rounded-lg p-4 border border-slate-700 space-y-4 sticky top-24">
-            <div>
-              <h3 class="font-bold text-indigo-400 mb-4">📍 Selected Node</h3>
+          <div v-if="graphStore.selectedNode" class="card bg-gradient-to-br from-slate-800 to-slate-700 shadow-xl border border-slate-600 sticky top-24">
+            <div class="card-body p-4">
+              <h3 class="card-title text-indigo-400 mb-4">
+                <span class="text-xl mr-2">📍</span>
+                Selected Node
+              </h3>
               
-              <div class="space-y-3 text-sm">
+              <div class="space-y-3">
                 <div>
-                  <div class="text-slate-500 text-xs">Name</div>
-                  <div class="text-slate-100 font-mono break-words">{{ graphStore.selectedNode.name }}</div>
+                  <div class="text-slate-400 text-xs font-semibold">NAME</div>
+                  <div class="text-slate-100 font-mono text-sm break-words">{{ graphStore.selectedNode.name }}</div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <div class="text-slate-400 text-xs font-semibold">TYPE</div>
+                    <div class="text-slate-100 text-sm">{{ graphStore.selectedNode.node_type }}</div>
+                  </div>
+                  <div>
+                    <div class="text-slate-400 text-xs font-semibold">LANGUAGE</div>
+                    <div class="text-slate-100 text-sm">{{ graphStore.selectedNode.language }}</div>
+                  </div>
                 </div>
                 
                 <div>
-                  <div class="text-slate-500 text-xs">Type</div>
-                  <div class="text-slate-100">{{ graphStore.selectedNode.node_type }}</div>
+                  <div class="text-slate-400 text-xs font-semibold">COMPLEXITY</div>
+                  <div class="badge badge-primary badge-outline text-sm">{{ graphStore.selectedNode.complexity }}</div>
                 </div>
                 
-                <div>
-                  <div class="text-slate-500 text-xs">Language</div>
-                  <div class="text-slate-100">{{ graphStore.selectedNode.language }}</div>
-                </div>
-                
-                <div>
-                  <div class="text-slate-500 text-xs">Complexity</div>
-                  <div class="text-slate-100">{{ graphStore.selectedNode.complexity }}</div>
-                </div>
-                
-                <div v-if="graphStore.selectedNode.location">
-                  <div class="text-slate-500 text-xs">Location</div>
-                  <div class="text-slate-100 text-xs font-mono break-words">
+                <div v-if="graphStore.selectedNode.location" class="space-y-2">
+                  <div class="text-slate-400 text-xs font-semibold">LOCATION</div>
+                  <div class="text-slate-100 text-xs font-mono break-words bg-slate-900/50 p-2 rounded">
                     {{ graphStore.selectedNode.location.file_path }}<br/>
-                    Line {{ graphStore.selectedNode.location.start_line }}
+                    <span class="text-slate-300">Line {{ graphStore.selectedNode.location.start_line }}</span>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <button
-              @click="graphStore.selectNode(null)"
-              class="w-full px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded transition-colors text-sm"
-            >
-              Clear Selection
-            </button>
+              <div class="card-actions justify-end mt-4">
+                <button
+                  @click="graphStore.selectNode(null)"
+                  class="btn btn-outline btn-error btn-sm"
+                >
+                  Clear Selection
+                </button>
+              </div>
+            </div>
           </div>
-          <div v-else class="bg-slate-800 rounded-lg p-4 border border-slate-700 text-center text-slate-400 text-sm sticky top-24">
-            <p>No node selected</p>
+          <div v-else class="card bg-slate-800 border border-slate-700 text-center p-4 sticky top-24">
+            <div class="text-4xl mb-2">🎯</div>
+            <p class="text-slate-400 text-sm">No node selected</p>
+            <p class="text-slate-500 text-xs mt-1">Select a node to see details</p>
           </div>
         </div>
       </div>

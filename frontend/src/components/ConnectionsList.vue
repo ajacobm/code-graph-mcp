@@ -69,10 +69,7 @@ async function loadConnections() {
 }
 
 function navigateTo(node: any) {
-  // Emit event to parent to handle navigation
-  // For now, just log
-  console.log('Navigate to:', node)
-  // TODO: Update graphStore.selectedNode or emit to parent
+  graphStore.selectNode(node.id)
 }
 
 watch(() => props.nodeId, loadConnections, { immediate: true })

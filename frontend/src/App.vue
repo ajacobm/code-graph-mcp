@@ -116,8 +116,20 @@
           </div>
         </div>
 
-        <!-- Right Panel (1 col on desktop) - Node Details -->
-        <div class="lg:col-span-1 order-1 lg:order-2">
+        <!-- Right Panel (1 col on desktop) - Live Stats & Node Details -->
+        <div class="lg:col-span-1 order-1 lg:order-2 space-y-4">
+          <!-- Live Stats -->
+          <LiveStats />
+
+          <!-- Analysis Progress -->
+          <AnalysisProgress />
+
+          <!-- Event Log (collapsible) -->
+          <div class="hidden lg:block">
+            <EventLog />
+          </div>
+
+          <!-- Node Details -->
           <div v-if="graphStore.selectedNode" class="card bg-gradient-to-br from-slate-800 to-slate-700 shadow-xl border border-slate-600 sticky top-24">
             <div class="card-body p-4">
               <h3 class="card-title text-indigo-400 mb-4">
@@ -183,6 +195,9 @@ import { useGraphStore } from './stores/graphStore'
 import NodeTile from './components/NodeTile.vue'
 import ConnectionsList from './components/ConnectionsList.vue'
 import CategoryCard from './components/CategoryCard.vue'
+import LiveStats from './components/LiveStats.vue'
+import AnalysisProgress from './components/AnalysisProgress.vue'
+import EventLog from './components/EventLog.vue'
 import type { NodeResponse, Node } from './types/graph'
 
 const graphStore = useGraphStore()

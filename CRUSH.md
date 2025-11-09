@@ -1,5 +1,39 @@
 # Crush Session Memory
 
+## Session 18: WebSocket Integration & Docker Caching Fix (2025-11-09) ✅
+**Status**: COMPLETE - Critical blocker fixed, WebSocket production-ready
+
+**Achievement**:
+- ✅ Fixed "No supported WebSocket library detected" error
+- ✅ WebSocket connections working: 10/10 concurrent, 100% success
+- ✅ Connection times: 1.91-84.29ms (excellent)
+- ✅ All 23 tests passing (HTTP + WebSocket)
+
+**Critical Discovery - Docker Layer Caching Issue**:
+Problem: `pyproject.toml` changes don't appear in built containers despite build logs showing install
+Root Cause: `uv sync --frozen` reads old `uv.lock` file, not pyproject.toml
+Solution: THREE REQUIRED STEPS (documented in section below)
+1. Update source file (pyproject.toml)
+2. Run `uv lock --upgrade` (CRITICAL - syncs lock file)
+3. Build with `--no-cache` (forces fresh layers)
+Verified with: `/app/.venv/bin/python -c "import websockets"`
+
+**Changes Made**:
+- pyproject.toml: `uvicorn>=0.24.0` → `uvicorn[standard]>=0.24.0`
+- uv.lock: Regenerated (+websockets, +uvloop, +watchfiles)
+- CRUSH.md: Added Docker caching troubleshooting section
+- docs/sessions/current/SESSION_18_COMPLETION.md: Full results + learnings
+
+**Performance Results**:
+- HTTP: 361 req/s, p95=27ms ✅ (from Session 17)
+- WebSocket: 100% success, 10.42ms avg connection ✅
+- Overall system: PRODUCTION READY for Phase 2
+
+**See**: [SESSION_18_COMPLETION.md](docs/sessions/current/SESSION_18_COMPLETION.md)  
+**Commit**: 8a2b71e
+
+---
+
 ## Session 17: Load Testing & Performance Validation (2025-11-09) ✅
 **Status**: COMPLETE - Infrastructure & baseline metrics established
 

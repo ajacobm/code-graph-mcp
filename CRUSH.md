@@ -1,5 +1,63 @@
 # Crush Session Memory
 
+## Session 13 Part 2: WebSocket Real-Time Streaming (2025-11-08) ✅
+**Outcome**: Complete WebSocket infrastructure for frontend real-time updates
+
+**Deliverables**:
+1. ✅ `src/code_graph_mcp/websocket_server.py` (230 lines)
+   - WebSocketConnectionManager: Manages client connections and broadcasts
+   - create_websocket_router(): FastAPI router with two WebSocket endpoints
+   - /ws/events: Basic event streaming
+   - /ws/events/filtered: Event filtering per client
+   - /ws/status: HTTP endpoint for connection count
+   - setup_cdc_broadcaster(): Connects CDC events to WebSocket broadcasts
+
+2. ✅ `tests/test_websocket_server.py` (420 lines, 15/15 tests passing)
+   - Connection lifecycle management
+   - Multi-client broadcast scenarios
+   - Message delivery to specific clients
+   - Dead connection cleanup
+   - Ping/pong keep-alive
+   - Event filtering
+   - Concurrent connect/disconnect
+   - Real-world event flow scenarios
+
+3. ✅ Type safety & linting
+   - All mypy type checks passing
+   - All ruff checks passing
+
+**Key Features**:
+- WebSocketConnectionManager: Thread-safe connection tracking with asyncio locks
+- Broadcast to all connected clients
+- Send to specific client
+- Automatic dead connection cleanup
+- Event filtering per WebSocket
+- Keep-alive ping/pong support
+
+**Message Formats**:
+```json
+{
+  "type": "cdc_event",
+  "event_type": "node_added",
+  "entity_id": "node_001",
+  "entity_type": "node",
+  "timestamp": "2025-11-08T12:00:00Z",
+  "data": {...}
+}
+```
+
+**Integration Flow**:
+1. UniversalGraph mutation → CDCManager
+2. CDCManager publishes to Redis Pub/Sub
+3. setup_cdc_broadcaster() subscribes to Redis Pub/Sub
+4. Broadcasts to all connected WebSocket clients
+5. Frontend receives live updates in real-time
+
+**Tests Summary** (32 total, all passing):
+- CDC Manager: 17 tests
+- WebSocket Server: 15 tests
+- Coverage: Event serialization, stream operations, connection management, concurrent ops
+
 ## Session 13 Part 1: CDC (Change Data Capture) Infrastructure (2025-11-08) ✅
 **Outcome**: Complete Redis Streams event-driven pipeline implemented and tested
 
@@ -24,11 +82,6 @@
    - add_relationship() now publishes RELATIONSHIP_ADDED events
    - Properly handles both sync and async contexts (get_running_loop/asyncio.run fallback)
 
-4. ✅ Type safety & linting
-   - All ruff checks passing
-   - All mypy type checks passing
-   - Proper async context handling
-
 **Architecture Overview**:
 ```
 UniversalGraph mutations → CDCManager → Redis Streams (persistent)
@@ -38,23 +91,12 @@ UniversalGraph mutations → CDCManager → Redis Streams (persistent)
                             WebSocket → Frontend (live updates)
 ```
 
-**Key Classes**:
-- `CDCEventType`: Enum of mutation types (NODE_ADDED, RELATIONSHIP_ADDED, etc.)
-- `CDCEvent`: Immutable event with automatic ID generation and serialization
-- `CDCManager`: Manages stream publishing, Pub/Sub subscriptions, and event handlers
-
 **Event Flow**:
 1. Parser creates nodes/relationships
 2. UniversalGraph.add_node/add_relationship() triggers CDC events
 3. CDCManager publishes to Redis Streams (xadd) and Pub/Sub (publish)
 4. Subscribers receive real-time notifications via Pub/Sub
 5. Stream can be replayed for Memgraph sync (Phase 2)
-
-**Next Session TODO**:
-- Integrate CDCManager into UniversalAnalysisEngine startup
-- Add WebSocket endpoint for frontend Pub/Sub subscriptions
-- Write Playwright tests for real-time UI updates
-- Implement Redis Pub/Sub frontend client library
 
 ## Session 13 Architecture Decision: Memgraph + Event-Driven (2025-11-08) 🎯
 

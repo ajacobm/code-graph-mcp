@@ -180,7 +180,7 @@ import { useGraphStore } from './stores/graphStore'
 import NodeTile from './components/NodeTile.vue'
 import ConnectionsList from './components/ConnectionsList.vue'
 import CategoryCard from './components/CategoryCard.vue'
-import type { NodeResponse } from './types/graph'
+import type { NodeResponse, Node } from './types/graph'
 
 const graphStore = useGraphStore()
 const activeTab = ref('browse')
@@ -200,6 +200,22 @@ async function loadCategory(category: 'entry_points' | 'hubs' | 'leaves') {
     const result = await graphStore.getNodesByCategory(category, 20, 0)
     categoryNodes.value = result.nodes
     categoryTotal.value = result.total
+    
+    // Also add these nodes to the store so selectNode can find them
+    result.nodes.forEach((n: NodeResponse) => {
+      if (!graphStore.nodes.find(existing => existing.id === n.id)) {
+        graphStore.nodes.push({
+          id: n.id,
+          name: n.name,
+          node_type: n.node_type,
+          language: n.language || 'unknown',
+          complexity: n.complexity || 0,
+          location: n.location,
+          metadata: n.metadata || {}
+        })
+      }
+    })
+    
     const titles: Record<string, string> = {
       'entry_points': '🚀 Entry Points',
       'hubs': '🔀 Hubs',

@@ -131,7 +131,7 @@ class UniversalRelationship:
 class UniversalGraph:
     """Universal code graph supporting multiple programming languages."""
 
-    def __init__(self):
+    def __init__(self, cdc_manager=None):
         self.nodes: Dict[str, UniversalNode] = {}
         self.relationships: Dict[str, UniversalRelationship] = {}
 
@@ -143,6 +143,9 @@ class UniversalGraph:
 
         # Graph metadata
         self.metadata: Dict[str, Any] = {}
+        
+        # CDC Manager for event-driven notifications
+        self.cdc_manager = cdc_manager
 
     def add_node(self, node: UniversalNode) -> None:
         """Add a node to the graph with indexing."""
@@ -157,6 +160,17 @@ class UniversalGraph:
             if node.language not in self._nodes_by_language:
                 self._nodes_by_language[node.language] = set()
             self._nodes_by_language[node.language].add(node.id)
+        
+        # Publish CDC event for real-time updates
+        if self.cdc_manager:
+            import asyncio
+            if asyncio.iscoroutinerunning():
+                asyncio.create_task(self.cdc_manager.publish_node_added(node))
+            else:
+                try:
+                    asyncio.run(self.cdc_manager.publish_node_added(node))
+                except RuntimeError:
+                    pass
 
     def add_relationship(self, relationship: UniversalRelationship) -> None:
         """Add a relationship to the graph with indexing."""
@@ -170,6 +184,18 @@ class UniversalGraph:
         if relationship.target_id not in self._relationships_to:
             self._relationships_to[relationship.target_id] = set()
         self._relationships_to[relationship.target_id].add(relationship.id)
+        
+        # Publish CDC event for real-time updates
+        if self.cdc_manager:
+            import asyncio
+            try:
+                loop = asyncio.get_running_loop()
+                asyncio.create_task(self.cdc_manager.publish_relationship_added(relationship))
+            except RuntimeError:
+                try:
+                    asyncio.run(self.cdc_manager.publish_relationship_added(relationship))
+                except RuntimeError:
+                    pass
 
     def get_node(self, node_id: str) -> Optional[UniversalNode]:
         """Get a node by ID."""

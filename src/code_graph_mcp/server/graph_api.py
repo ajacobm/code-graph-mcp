@@ -447,7 +447,7 @@ def create_graph_api_router(engine: UniversalAnalysisEngine) -> APIRouter:
             raise HTTPException(status_code=500, detail=str(e))
 
     @router.get("/query/callees", response_model=Dict[str, Any])
-    async def find_callees(symbol: str = Query(..., description="Function name to find callees for")):
+    async def find_callees(symbol: str = Query(..., description="Function name to find callees for"), limit: int = Query(50, ge=1, le=1000), offset: int = Query(0, ge=0)):
         """Find all functions called by the specified function."""
         try:
             if not engine:
@@ -456,8 +456,12 @@ def create_graph_api_router(engine: UniversalAnalysisEngine) -> APIRouter:
             start_time = time.time()
             callees = await engine.find_function_callees(symbol)
             
+            # Apply pagination
+            total_callees = len(callees)
+            paginated_callees = callees[offset:offset + limit]
+            
             results = []
-            for callee in callees:
+            for callee in paginated_callees:
                 results.append({
                     "callee_id": f"{callee['file']}:{callee['callee']}",
                     "callee": callee['callee'],
@@ -469,8 +473,10 @@ def create_graph_api_router(engine: UniversalAnalysisEngine) -> APIRouter:
             
             return {
                 "symbol": symbol,
-                "total_callees": len(results),
+                "total_callees": total_callees,
                 "callees": results,
+                "limit": limit,
+                "offset": offset,
                 "execution_time_ms": (time.time() - start_time) * 1000
             }
         

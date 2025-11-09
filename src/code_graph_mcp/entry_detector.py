@@ -50,6 +50,30 @@ class EntryPointCandidate:
 class EntryDetector:
     """Service for detecting entry points in codebases."""
     
+    # Stdlib modules to filter out
+    STDLIB_MODULES = {
+        # Python
+        're', 'sys', 'os', 'io', 'time', 'datetime', 'json', 'pickle', 'csv',
+        'logging', 'asyncio', 'threading', 'subprocess', 'socket', 'http',
+        'urllib', 'requests', 'pathlib', 'collections', 'itertools', 'functools',
+        'math', 'random', 'statistics', 'decimal', 'fractions', 'cmath',
+        'typing', 'abc', 'contextlib', 'weakref', 'types', 'copy', 'pprint',
+        'enum', 'graphlib', 'dataclasses', 'inspect', 'traceback', 'gc', 'sys',
+        'builtins', 'warnings', 'contextlib', 'atexit', 'signal', 'mmap',
+        'select', 'fcntl', 'termios', 'tty', 'pty', 'stat', 'crypt', 'grp',
+        'pwd', 'spwd', 'getopt', 'argparse', 'shlex', 'cmd', 'shutil', 'tempfile',
+        'glob', 'fnmatch', 'linecache', 'fileinput', 'difflib', 'textwrap',
+        'string', 'stringprep', 'readline', 'rlcompleter', 'gzip', 'bz2',
+        'lzma', 'zlib', 'tarfile', 'zipfile', 'configparser', 'tomllib',
+        'netrc', 'xdrlib', 'plistlib', 'html', 'xml', 'ftplib', 'poplib',
+        'imaplib', 'smtplib', 'smtpd', 'telnetlib', 'uuid', 'socketserver',
+        'email', 'mailbox', 'mimetypes', 'base64', 'binhex', 'binascii', 'quopri',
+        'uu', 'hashlib', 'hmac', 'secrets', 'ssl', 'sqlite3', 'dbm', 'shelve',
+        'marshal', 'sqlite', 'multiprocessing', 'concurrent', 'unittest', 'doctest',
+        'pdb', 'cProfile', 'profile', 'pstats', 'trace', 'timeit', 'distutils',
+        'setuptools', 'pip', 'venv', 'zipapp', 'abc', '__main__',
+    }
+    
     def __init__(self):
         self.patterns = self._initialize_patterns()
         self.language_extensions = self._initialize_extensions()
@@ -409,6 +433,9 @@ class EntryDetector:
                                     )
                                     candidates.append(candidate)
         
+        # Filter out stdlib modules
+        candidates = [c for c in candidates if not self._is_stdlib_module(c.name)]
+        
         # Sort by confidence score (descending)
         candidates.sort(key=lambda c: c.confidence_score, reverse=True)
         return candidates
@@ -420,6 +447,11 @@ class EntryDetector:
                 if file_path.endswith(ext):
                     return language
         return None
+    
+    def _is_stdlib_module(self, node_name: str) -> bool:
+        """Check if a node is a stdlib module that should be filtered."""
+        base_name = node_name.split('.')[0] if '.' in node_name else node_name
+        return base_name.lower() in self.STDLIB_MODULES
     
     def _calculate_confidence_score(self, pattern: EntryPointPattern, complexity: int) -> float:
         """Calculate confidence score for an entry point candidate."""

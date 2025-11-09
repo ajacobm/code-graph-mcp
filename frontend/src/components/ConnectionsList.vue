@@ -41,13 +41,28 @@ async function loadConnections() {
       graphClient.findCallees(symbol)
     ])
     
-    callers.value = (callersResult.results || []).map((r: any, idx: number) => ({
-      ...r,
+    // Handle both response formats (backend returns 'callers'/'callees', not 'results')
+    callers.value = (callersResult.callers || callersResult.results || []).map((r: any, idx: number) => ({
+      // Map backend field names to node-like object
+      id: r.caller_id || r.id,
+      name: r.caller || r.name,
+      node_type: r.caller_type || r.type,
+      file: r.file,
+      location: r.location || { file_path: r.file, start_line: r.line },
+      language: 'unknown',
+      complexity: 0,
       distance: idx + 1 // Simple distance based on result order
     }))
     
-    callees.value = (calleesResult.results || []).map((r: any, idx: number) => ({
-      ...r,
+    callees.value = (calleesResult.callees || calleesResult.results || []).map((r: any, idx: number) => ({
+      // Map backend field names to node-like object
+      id: r.callee_id || r.id,
+      name: r.callee || r.name,
+      node_type: r.callee_type || r.type,
+      file: r.file,
+      location: r.location || { file_path: r.file, start_line: r.line },
+      language: 'unknown',
+      complexity: 0,
       distance: idx + 1
     }))
     

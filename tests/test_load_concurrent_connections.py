@@ -453,7 +453,7 @@ class TestLoadTestMetricsReport:
         # Generate report
         report = metrics_collector.report_summary()
         
-        assert report["total_tests"] == 3
+        assert report["total_tests"] == 4
         assert report["total_clients"] > 0
         assert "avg_connection_time_ms" in report
         assert "avg_broadcast_time_ms" in report

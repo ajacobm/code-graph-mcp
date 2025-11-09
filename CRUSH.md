@@ -1,5 +1,37 @@
 # Crush Session Memory
 
+## Session 12: P0 Performance Fixes (2025-11-08) ✅
+**Outcome**: All blocking performance issues resolved
+
+**Completed Tasks**:
+1. ✅ Added pagination to all query endpoints (callers, callees, references)
+   - limit/offset parameters (max 1000 results per page)
+   - Returns total_count, limit, offset in all responses
+   
+2. ✅ Implemented progressive disclosure in ConnectionsList.vue
+   - Shows 20 results initially, "Load More" button loads 10 at a time
+   - Prevents rendering 300+ DOM nodes for high-degree nodes
+   
+3. ✅ Filter stdlib modules from entry points
+   - 100+ Python stdlib modules filtered (re, asyncio, logging, json, etc.)
+   - Reduces noise in entry point detection
+   
+4. ✅ Fixed horizontal scroll layout bug
+   - Changed main container to `w-full overflow-hidden`
+   - Responsive padding applied correctly across viewport sizes
+
+**Backend Changes**:
+- graph_api.py: +34 lines (pagination to 3 endpoints)
+- entry_detector.py: +32 lines (stdlib filtering)
+
+**Frontend Changes**:
+- ConnectionsList.vue: +35 lines (progressive disclosure)
+- App.vue: +4 lines (layout fix)
+
+**Status**: P0 COMPLETE - Ready to start P1 (Desktop Panel System)
+**Branch**: feature/sigma-graph-spike @ 10f9385
+**Commits**: 5 (clean, logical)
+
 ## Session 11: Frontend Networking & Vite Caching Issues (2025-11-08) ⚠️
 **Problem**: Frontend stuck showing "AxiosError" on category clicks despite working API
 

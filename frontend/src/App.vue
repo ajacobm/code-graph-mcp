@@ -111,7 +111,7 @@
           <div v-else-if="activeTab === 'connections'">
             <ConnectionsList 
               v-if="graphStore.selectedNode"
-              :node="graphStore.selectedNode"
+              :node-id="graphStore.selectedNodeId"
               @select-node="selectNodeForConnections"
             />
             <div v-else class="text-center py-12 text-slate-400">

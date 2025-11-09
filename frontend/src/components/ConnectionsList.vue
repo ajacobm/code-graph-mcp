@@ -16,6 +16,12 @@ const callers = ref<any[]>([])
 const callees = ref<any[]>([])
 const siblings = ref<any[]>([])
 
+// Pagination state
+const callersLimit = ref(20)
+const calleesLimit = ref(20)
+const callersTotal = ref(0)
+const calleesTotal = ref(0)
+
 const currentNode = computed(() => {
   if (!props.nodeId) return null
   return graphStore.nodes.find(n => n.id === props.nodeId) || null
@@ -42,7 +48,14 @@ async function loadConnections() {
     ])
     
     // Handle both response formats (backend returns 'callers'/'callees', not 'results')
-    callers.value = (callersResult.callers || callersResult.results || []).map((r: any, idx: number) => ({
+    const callersData = callersResult.callers || callersResult.results || []
+    const calleesData = calleesResult.callees || calleesResult.results || []
+    
+    // Store total counts for pagination
+    callersTotal.value = callersResult.total_callers || callersData.length
+    calleesTotal.value = calleesResult.total_callees || calleesData.length
+    
+    callers.value = callersData.map((r: any, idx: number) => ({
       // Map backend field names to node-like object
       id: r.caller_id || r.id,
       name: r.caller || r.name,
@@ -54,7 +67,7 @@ async function loadConnections() {
       distance: idx + 1 // Simple distance based on result order
     }))
     
-    callees.value = (calleesResult.callees || calleesResult.results || []).map((r: any, idx: number) => ({
+    callees.value = calleesData.map((r: any, idx: number) => ({
       // Map backend field names to node-like object
       id: r.callee_id || r.id,
       name: r.callee || r.name,
@@ -151,11 +164,11 @@ watch(() => props.nodeId, loadConnections, { immediate: true })
       <section v-if="callers.length > 0">
         <h3 class="text-lg font-bold mb-3 flex items-center gap-2">
           <span class="text-blue-500">↑</span>
-          CALLED BY ({{ callers.length }})
+          CALLED BY ({{ callers.length }} / {{ callersTotal }})
         </h3>
         <div class="space-y-2">
           <NodeTile 
-            v-for="caller in callers" 
+            v-for="caller in callers.slice(0, callersLimit)" 
             :key="caller.id"
             :node="caller"
             :distance="caller.distance"
@@ -164,17 +177,25 @@ watch(() => props.nodeId, loadConnections, { immediate: true })
             @click="navigateTo(caller)"
           />
         </div>
+        <div v-if="callersLimit < callers.length" class="text-center pt-3">
+          <button 
+            @click="callersLimit += 10"
+            class="btn btn-ghost btn-sm"
+          >
+            Load {{ Math.min(10, callers.length - callersLimit) }} more
+          </button>
+        </div>
       </section>
 
       <!-- Callees Section -->
       <section v-if="callees.length > 0">
         <h3 class="text-lg font-bold mb-3 flex items-center gap-2">
           <span class="text-green-500">↓</span>
-          CALLS ({{ callees.length }})
+          CALLS ({{ callees.length }} / {{ calleesTotal }})
         </h3>
         <div class="space-y-2">
           <NodeTile 
-            v-for="callee in callees" 
+            v-for="callee in callees.slice(0, calleesLimit)" 
             :key="callee.id"
             :node="callee"
             :distance="callee.distance"
@@ -182,6 +203,14 @@ watch(() => props.nodeId, loadConnections, { immediate: true })
             :show-distance="true"
             @click="navigateTo(callee)"
           />
+        </div>
+        <div v-if="calleesLimit < callees.length" class="text-center pt-3">
+          <button 
+            @click="calleesLimit += 10"
+            class="btn btn-ghost btn-sm"
+          >
+            Load {{ Math.min(10, callees.length - calleesLimit) }} more
+          </button>
         </div>
       </section>
 

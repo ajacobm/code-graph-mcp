@@ -14,7 +14,7 @@ Usage:
 import asyncio
 import json
 import logging
-from typing import Any, Callable, Dict, Optional, Set
+from typing import Any, Dict, Optional, Set
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse

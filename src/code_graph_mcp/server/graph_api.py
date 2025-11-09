@@ -409,7 +409,7 @@ def create_graph_api_router(engine: UniversalAnalysisEngine) -> APIRouter:
             raise HTTPException(status_code=500, detail=str(e))
 
     @router.get("/query/callers", response_model=Dict[str, Any])
-    async def find_callers(symbol: str = Query(..., description="Function name to find callers for")):
+    async def find_callers(symbol: str = Query(..., description="Function name to find callers for"), limit: int = Query(50, ge=1, le=1000), offset: int = Query(0, ge=0)):
         """Find all functions that call the specified function."""
         try:
             if not engine:
@@ -418,8 +418,12 @@ def create_graph_api_router(engine: UniversalAnalysisEngine) -> APIRouter:
             start_time = time.time()
             callers = await engine.find_function_callers(symbol)
             
+            # Apply pagination
+            total_callers = len(callers)
+            paginated_callers = callers[offset:offset + limit]
+            
             results = []
-            for caller in callers:
+            for caller in paginated_callers:
                 results.append({
                     "caller_id": f"{caller['file']}:{caller['caller']}",
                     "caller": caller['caller'],
@@ -431,8 +435,10 @@ def create_graph_api_router(engine: UniversalAnalysisEngine) -> APIRouter:
             
             return {
                 "symbol": symbol,
-                "total_callers": len(results),
+                "total_callers": total_callers,
                 "callers": results,
+                "limit": limit,
+                "offset": offset,
                 "execution_time_ms": (time.time() - start_time) * 1000
             }
         
@@ -473,7 +479,7 @@ def create_graph_api_router(engine: UniversalAnalysisEngine) -> APIRouter:
             raise HTTPException(status_code=500, detail=str(e))
 
     @router.get("/query/references", response_model=Dict[str, Any])
-    async def find_references(symbol: str = Query(..., description="Symbol name to find references for")):
+    async def find_references(symbol: str = Query(..., description="Symbol name to find references for"), limit: int = Query(50, ge=1, le=1000), offset: int = Query(0, ge=0)):
         """Find all references to a symbol."""
         try:
             if not engine:
@@ -482,8 +488,12 @@ def create_graph_api_router(engine: UniversalAnalysisEngine) -> APIRouter:
             start_time = time.time()
             references = await engine.find_symbol_references(symbol)
             
+            # Apply pagination
+            total_references = len(references)
+            paginated_references = references[offset:offset + limit]
+            
             results = []
-            for ref in references:
+            for ref in paginated_references:
                 results.append({
                     "reference_id": f"{ref['file']}:{ref['line']}",
                     "referencing_symbol": ref['referencing_symbol'],
@@ -494,8 +504,10 @@ def create_graph_api_router(engine: UniversalAnalysisEngine) -> APIRouter:
             
             return {
                 "symbol": symbol,
-                "total_references": len(results),
+                "total_references": total_references,
                 "references": results,
+                "limit": limit,
+                "offset": offset,
                 "execution_time_ms": (time.time() - start_time) * 1000
             }
         

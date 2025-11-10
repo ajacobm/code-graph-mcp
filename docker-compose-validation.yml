@@ -17,6 +17,36 @@ services:
       timeout: 10s
       retries: 3
 
+  code-graph-sse:
+    image: ajacobm/code-graph-mcp:sse
+    build:
+      context: .
+      target: sse
+    ports:
+      - "10101:8000"
+    volumes:
+      - /home/adam/GitHub/.private/uts/g4/g4-framework/src/EnterpriseStudio:/app/workspace
+    environment:
+      - CODEGRAPHMCP_LOG_LEVEL=${CODEGRAPHMCP_LOG_LEVEL:-INFO}
+      - CODEGRAPHMCP_FILE_WATCHER=${CODEGRAPHMCP_FILE_WATCHER:-true}
+      - REDIS_URL=${CODEGRAPHMCP_REDIS_URL:-redis://redis:6379}
+    depends_on:
+      - redis
+    command: >
+      uv run code-graph-mcp
+      --mode sse
+      --redis-url redis://redis:6379
+      --project-root ${CODEGRAPHMCP_PROJECT_ROOT:-/app/workspace}
+      --host 0.0.0.0
+      --port 8000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
   # G4 Framework Validation - HTTP Server
   code-graph-http:
     image: ajacobm/code-graph-mcp:http

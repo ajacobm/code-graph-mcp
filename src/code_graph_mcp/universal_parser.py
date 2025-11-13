@@ -1315,7 +1315,7 @@ class UniversalParser:
         
         # Get supported extensions
         supported_extensions = await self.registry.get_supported_extensions()
-        logger.info(f"Supported extensions: {list(supported_extensions)[:10]}...")
+        logger.info(f"Supported extensions: {list(supported_extensions)}")
         
         # Use optimized traversal with directory pruning instead of rglob()
         if recursive:

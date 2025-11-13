@@ -25,7 +25,7 @@ services:
     ports:
       - "10101:8000"
     volumes:
-      - /home/adam/GitHub/.private/uts/g4/g4-framework/src/EnterpriseStudio:/app/workspace
+      - /home/adam/GitHub/code-graph-mcp:/app/workspace
     environment:
       - CODEGRAPHMCP_LOG_LEVEL=${CODEGRAPHMCP_LOG_LEVEL:-INFO}
       - CODEGRAPHMCP_FILE_WATCHER=${CODEGRAPHMCP_FILE_WATCHER:-true}
@@ -56,7 +56,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - /home/adam/GitHub/.private/uts/g4/g4-framework/src/EnterpriseStudio:/app/workspace
+      - /home/adam/GitHub/code-graph-mcp:/app/workspace
     environment:
       - REDIS_URL=redis://redis:6379
       - PROJECT_ROOT=/app/workspace

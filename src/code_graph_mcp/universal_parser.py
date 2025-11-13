@@ -300,17 +300,6 @@ class LanguageRegistry:
             variable_patterns=("$", "@", "%"),
             import_patterns=("use", "require")
         ),
-        "sql": LanguageConfig(
-            name="SQL",
-            extensions=(".sql",),
-            ast_grep_id="sql",
-            comment_patterns=("--", "/*", "*/"),
-            string_patterns=('"', "'"),
-            function_patterns=("CREATE FUNCTION", "CREATE PROCEDURE"),
-            class_patterns=("CREATE TABLE", "CREATE VIEW"),
-            variable_patterns=("DECLARE",),
-            import_patterns=("USE", "IMPORT")
-        ),
         "html": LanguageConfig(
             name="HTML",
             extensions=(".html", ".htm"),
@@ -526,13 +515,6 @@ class ASTGrepPatterns:
             "class": "package_declaration",
             "import": "use_statement",
             "variable": "assignment",
-            "call": "function_call",
-        },
-        "sql": {
-            "function": "create_function_statement",
-            "class": "create_table_statement",
-            "import": "use_statement",
-            "variable": "declare_statement",
             "call": "function_call",
         },
         "html": {

@@ -6,6 +6,7 @@ dist/
 wheels/
 *.egg-info
 .hook/
+.crush
 
 # Virtual environments
 .venv

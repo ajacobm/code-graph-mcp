@@ -13,13 +13,13 @@ if docker ps | grep -q codegraph-redis; then
 fi
 
 # Create data directory
-mkdir -p /workspace/.redis-data
+mkdir -p /workspaces/.redis-data
 
 # Start Redis
 docker run -d \
     --name codegraph-redis \
     -p 6379:6379 \
-    -v /workspace/.redis-data:/data \
+    -v /workspaces/.redis-data:/data \
     redis:alpine \
     redis-server --appendonly yes
 

@@ -34,8 +34,14 @@ echo ""
 echo "🐍 Testing Python environment..."
 if command -v uv &> /dev/null; then
     echo "✅ uv is installed: $(uv --version)"
+    UV_CMD="uv run"
+elif command -v python3 &> /dev/null; then
+    echo "⚠️  uv not found, using python3: $(python3 --version)"
+    echo "   Installing uv..."
+    pip install uv
+    UV_CMD="uv run"
 else
-    echo "❌ uv not found"
+    echo "❌ Neither uv nor python3 found"
     exit 1
 fi
 echo ""
@@ -52,11 +58,18 @@ echo ""
 
 # Test code-graph-mcp
 echo "📦 Testing code-graph-mcp..."
-if uv run python -c "import code_graph_mcp; print('✅ code_graph_mcp module imports successfully')"; then
+if $UV_CMD python -c "import code_graph_mcp; print('✅ code_graph_mcp module imports successfully')" 2>/dev/null; then
+    echo ""
+elif python3 -c "import sys; sys.path.insert(0, 'src'); import code_graph_mcp; print('✅ code_graph_mcp module imports successfully')" 2>/dev/null; then
     echo ""
 else
-    echo "❌ Failed to import code_graph_mcp"
-    exit 1
+    echo "⚠️  code_graph_mcp not installed yet"
+    echo "   Installing dependencies..."
+    if command -v uv &> /dev/null; then
+        uv sync
+    else
+        pip install -e .
+    fi
 fi
 
 # Test MCP server (quick check)

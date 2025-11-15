@@ -1,5 +1,19 @@
 # Frontend UX Redesign Proposal
 
+⚠️ **STATUS: NEEDS REVIEW & UPDATE**
+
+**Issues to address**:
+- ❌ Remove mobile-first responsive design emphasis (not applicable to code graph navigation)
+- ⚠️ Clarify WebSocket usage (currently emitting events but not used in UI)
+- ✅ Confirm Cytoscape.js graph visualization approach
+- ✅ Verify Vue 3 + Vite toolchain expectations
+- 📋 Define how real-time node highlighting integrates with traversal events
+
+**Last Updated**: Session 19 (November 15, 2025)  
+**Next Review**: Before feature/ui-redesign branch creation
+
+---
+
 ## Philosophy: "Code Geography" Navigation
 
 Instead of forcing users to understand graph theory, we'll use a **geographical metaphor**:

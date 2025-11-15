@@ -68,7 +68,7 @@
       "args": [
         "-y",
         "mcp-obsidian",
-        "/home/adam/ObsidianVaults"
+        "$HOME/ObsidianVaults"
       ]
     }
   ]

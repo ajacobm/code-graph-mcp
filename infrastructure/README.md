@@ -98,7 +98,99 @@ dctest up -d
 dcback up -d
 ```
 
-## Service Details
+## Environment Configuration
+
+### Default Behavior (Codespaces)
+
+By default, all services use Docker volumes (not bind mounts):
+
+- `redis-data` - Redis persistence
+- `memgraph-data` - Memgraph persistence
+- `repo-mount` - Project repository mount
+
+This is optimal for Codespaces and CI/CD environments.
+
+### Local Development Overrides
+
+For local development with persistent storage, create `docker-compose.override.yml`:
+
+```bash
+# Copy the example
+cp docker-compose.override.yml.example docker-compose.override.yml
+
+# Edit and add your bind mounts
+nano docker-compose.override.yml
+```
+
+Example for local Linux development:
+
+```yaml
+services:
+  redis:
+    volumes:
+      - ~/redis-data:/data
+
+  code-graph-sse:
+    volumes:
+      - ~/code/code-graph-mcp:/app
+      - ~/code/code-graph-mcp:/app/workspace
+
+  memgraph:
+    volumes:
+      - ~/memgraph-data:/var/lib/memgraph
+```
+
+Example for Windows (WSL2):
+
+```yaml
+services:
+  redis:
+    volumes:
+      - /mnt/c/Users/ADAM/.redis-docker/codegraphmcp:/data
+
+  code-graph-sse:
+    volumes:
+      - /mnt/c/Users/ADAM/GitHub/code-graph-mcp:/app
+      - /mnt/c/Users/ADAM/GitHub/code-graph-mcp:/app/workspace
+
+  memgraph:
+    volumes:
+      - /mnt/c/Users/ADAM/.memgraph-docker/codegraphmcp:/var/lib/memgraph
+```
+
+**Note**: Docker Compose automatically loads `docker-compose.override.yml` if it exists in the same directory as `docker-compose.yml`. This allows you to customize settings without modifying the base configuration.
+
+### Service Configuration Variables
+
+Configure services via environment variables in `.env`:
+
+```bash
+# Copy the example
+cp .env.example .env
+
+# Edit as needed
+nano .env
+```
+
+Available variables (see `.env.example` for complete list):
+
+```bash
+# Volume paths (for bind mounts)
+REPO_MOUNT_PATH=
+REDIS_DATA_PATH=
+MEMGRAPH_DATA_PATH=
+
+# Service ports
+REDIS_PORT=6379
+MEMGRAPH_PORT=7687
+API_SSE_PORT=10101
+API_HTTP_PORT=10102
+
+# Service configuration
+API_LOG_LEVEL=DEBUG
+REDIS_PERSISTENCE=yes
+MEMGRAPH_MEMORY_LIMIT=1g
+```## Service Details
 
 ### Base Services (Always Available)
 
@@ -122,7 +214,8 @@ docker-compose -f docker-compose.yml ps
 ```
 
 Expected output:
-```
+
+```text
 NAME                  STATE              HEALTH
 redis                 Up 2 minutes       (healthy)
 memgraph              Up 2 minutes       (healthy)

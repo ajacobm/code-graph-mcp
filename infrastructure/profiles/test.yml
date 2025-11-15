@@ -1,5 +1,4 @@
 services:
-  # Redis cache service
   redis:
     image: redis:alpine
     ports:
@@ -14,15 +13,15 @@ services:
       timeout: 10s
       retries: 3
 
-  code-graph-codegraph:
+  code-graph-sse:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: ./Dockerfile
       target: sse
     ports:
       - "10101:8000"
     volumes:
-      - ".:/app/workspace"  # Mount current directory as workspace
+      - "..:/app"  # Mount current directory as workspace
     environment:
       - CODEGRAPHMCP_LOG_LEVEL=DEBUG
       - CODEGRAPHMCP_FILE_WATCHER=true
@@ -30,18 +29,35 @@ services:
     depends_on:
       - redis
     command: >
-      /app/.venv/bin/python -m src.code_graph_mcp.sse_server
+      uv run code-graph-mcp
+      --mode sse
       --redis-url redis://redis:6379
       --project-root /app/workspace
       --host 0.0.0.0
       --port 8000
+      --verbose
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 5s
+
+  memgraph:
+    image: memgraph/memgraph:latest
+    ports:
+      - "7687:7687"
+    volumes:
+      - memgraph-data:/var/lib/memgraph
+    command: --save-on-exit=true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mg_client", "-host", "localhost", "--query", "RETURN 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   redis-data:
+  memgraph-data:

@@ -79,3 +79,16 @@ CMD ["python", "-m", "code_graph_mcp.http_server", "--host", "0.0.0.0", "--port"
 FROM production AS stdio
 
 CMD ["code-graph-mcp", "--mode", "stdio", "--enable-cache"]
+
+# Test stage - includes test dependencies and test runner
+FROM development AS test
+
+# Copy test files
+COPY tests/ ./tests/
+COPY pytest.ini ./
+
+# Install test dependencies
+RUN uv sync --all-extras --dev
+
+# Run tests by default
+CMD ["uv", "run", "pytest", "-v", "--tb=short", "--color=yes"]

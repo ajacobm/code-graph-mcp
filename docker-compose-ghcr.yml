@@ -1,0 +1,80 @@
+# Docker Compose using GHCR pre-built images
+# For testing production images in Codespaces
+
+services:
+  redis:
+    image: redis:alpine
+    container_name: codegraph-redis-ghcr
+    ports:
+      - "6379:6379"
+    volumes:
+      - /workspace/.redis-data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - codegraph
+
+  code-graph-sse:
+    image: ghcr.io/ajacobm/code-graph-mcp:sse-latest
+    container_name: codegraph-sse-ghcr
+    ports:
+      - "10101:8000"
+    volumes:
+      - /workspace:/workspace
+    environment:
+      - CODEGRAPHMCP_LOG_LEVEL=INFO
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: >
+      code-graph-mcp
+      --mode sse
+      --host 0.0.0.0
+      --port 8000
+      --enable-cache
+      --redis-url redis://redis:6379
+    restart: unless-stopped
+    networks:
+      - codegraph
+
+  code-graph-http:
+    image: ghcr.io/ajacobm/code-graph-mcp:http-latest
+    container_name: codegraph-http-ghcr
+    ports:
+      - "8000:8000"
+    volumes:
+      - /workspace:/workspace
+    environment:
+      - CODEGRAPHMCP_LOG_LEVEL=INFO
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - codegraph
+    profiles:
+      - full
+
+  frontend:
+    image: ghcr.io/ajacobm/code-graph-mcp-frontend:production-latest
+    container_name: codegraph-frontend-ghcr
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:10101
+    restart: unless-stopped
+    networks:
+      - codegraph
+    depends_on:
+      - code-graph-http
+
+networks:
+  codegraph:
+    driver: bridge

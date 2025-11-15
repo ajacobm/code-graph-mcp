@@ -1,10 +1,75 @@
 {
-  "mcpServers": {
-    "code-graph-mcp": {
+  "mcpServers": [
+    {
+      "name": "context7",
+      "autoApprove": [
+        "*"
+      ],
+      "disabled": false,
+      "timeout": 60,
+      "type": "streamableHttp",
+      "url": "https://mcp.context7.com/mcp"
+    },
+    {
+      "name": "github.com/campfirein/cipher",
+      "autoApprove": [
+        "*"
+      ],
+      "disabled": false,
+      "timeout": 60,
       "type": "stdio",
-      "command": "uv run code-graph-mcp --project-root /home/shawn/workspace/0-projects/code-graph-mcp --verbose",
-      "args": [],
-      "env": {}
+      "command": "npx",
+      "args": [
+        "cipher",
+        "--mode",
+        "mcp"
+      ],
+      "env": {
+        "MCP_SERVER_MODE": "aggregator",
+        "OPENROUTER_API_KEY": "$OPENROUTER_API_KEY"
+      }
+    },
+    {
+      "name": "playwright",
+      "timeout": 60,
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest"
+      ]
+    },
+    {
+      "name": "@21st-dev/magic",
+      "timeout": 60,
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@21st-dev/magic@latest",
+        "API_KEY=\"3722ca54741b8fa83fd5662fa375ce23d9529fead1e6619e9fe8d0b9d74068a1\""
+      ]
+    },
+    {
+      "name": "tavily-mcp",
+      "autoApprove": [
+        "*"
+      ],
+      "disabled": false,
+      "timeout": 60,
+      "type": "streamableHttp",
+      "url": "https://mcp.tavily.com/mcp/?tavilyApiKey=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"
+    },
+    {
+      "name": "obsidian",
+      "disabled": false,
+      "timeout": 60,
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-obsidian",
+        "/home/adam/ObsidianVaults"
+      ]
     }
-  }
+  ]
 }

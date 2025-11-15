@@ -232,7 +232,42 @@ For any MCP-compatible client, use these connection details:
 
 ### Docker Integration
 
-Run as a containerized MCP server:
+#### Using Pre-built Images from GHCR
+
+Pull and run from GitHub Container Registry:
+
+```bash
+# Pull latest SSE server
+docker pull ghcr.io/ajacobm/code-graph-mcp:sse-latest
+
+# Run SSE mode (HTTP streaming)
+docker run -p 8000:8000 -v $(pwd):/workspace \
+  ghcr.io/ajacobm/code-graph-mcp:sse-latest
+
+# Run stdio mode (MCP over stdio)
+docker pull ghcr.io/ajacobm/code-graph-mcp:stdio-latest
+docker run -v $(pwd):/workspace \
+  ghcr.io/ajacobm/code-graph-mcp:stdio-latest
+```
+
+Available image tags:
+- `ghcr.io/ajacobm/code-graph-mcp:sse-latest` - SSE HTTP streaming server
+- `ghcr.io/ajacobm/code-graph-mcp:stdio-latest` - stdio MCP server
+- `ghcr.io/ajacobm/code-graph-mcp:http-latest` - REST API server
+- `ghcr.io/ajacobm/code-graph-mcp:production-latest` - Production optimized
+- `ghcr.io/ajacobm/code-graph-mcp:development-latest` - Development with hot reload
+
+#### Using Docker Compose
+
+```bash
+# With Redis cache (recommended)
+docker compose -f docker-compose-ghcr.yml up -d
+
+# For Codespaces
+docker compose -f docker-compose-codespaces.yml up -d
+```
+
+#### Building Your Own Image
 
 ```dockerfile
 FROM python:3.12-slim
@@ -242,7 +277,24 @@ CMD ["code-graph-mcp"]
 ```
 
 ```bash
+docker build -t code-graph-mcp .
 docker run -v $(pwd):/workspace code-graph-mcp
+```
+
+#### GitHub Codespaces
+
+For development in Codespaces, see the [Codespaces Infrastructure Guide](docs/CODESPACES_INFRASTRUCTURE.md).
+
+Quick start in Codespaces:
+```bash
+# Start Redis
+./scripts/codespaces-redis.sh
+
+# Run development server
+./scripts/dev-server.sh sse 8000
+
+# Or use Docker Compose
+docker compose -f docker-compose-codespaces.yml up -d
 ```
 
 ### Development Installation

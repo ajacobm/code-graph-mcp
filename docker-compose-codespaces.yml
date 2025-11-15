@@ -1,0 +1,101 @@
+# Docker Compose for GitHub Codespaces
+# Uses local volumes and simplified networking
+
+services:
+  # Redis cache service
+  redis:
+    image: redis:alpine
+    container_name: codegraph-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - /workspace/.redis-data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - codegraph
+
+  # SSE mode - MCP server with HTTP streaming
+  code-graph-sse:
+    build:
+      context: .
+      target: development
+    container_name: codegraph-sse
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - /workspace:/workspace
+    environment:
+      - CODEGRAPHMCP_LOG_LEVEL=DEBUG
+      - CODEGRAPHMCP_FILE_WATCHER=true
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: >
+      uv run code-graph-mcp
+      --mode sse
+      --host 0.0.0.0
+      --port 8000
+      --enable-cache
+      --redis-url redis://redis:6379
+      --verbose
+    restart: unless-stopped
+    networks:
+      - codegraph
+
+  # HTTP API mode (optional)
+  code-graph-http:
+    build:
+      context: .
+      target: development
+    container_name: codegraph-http
+    ports:
+      - "10101:8000"
+    volumes:
+      - .:/app
+      - /workspace:/workspace
+    environment:
+      - CODEGRAPHMCP_LOG_LEVEL=DEBUG
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: >
+      python -m code_graph_mcp.http_server
+      --host 0.0.0.0
+      --port 8000
+    restart: unless-stopped
+    networks:
+      - codegraph
+    profiles:
+      - full
+
+  # Frontend Vue.js app
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: codegraph-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:10101
+    restart: unless-stopped
+    networks:
+      - codegraph
+    depends_on:
+      - code-graph-http
+
+networks:
+  codegraph:
+    driver: bridge

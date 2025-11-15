@@ -26,6 +26,7 @@ Core technical documentation for the project's design and architecture.
 | **[GHCR_QUICK_REF.md](specs/GHCR_QUICK_REF.md)** | Quick reference for GHCR commands and workflows | ✅ Complete |
 | **[MCP_AGENT_INTEGRATION.md](specs/MCP_AGENT_INTEGRATION.md)** | Model Context Protocol agent tool integration | ✅ Complete |
 | **[ENTRY_POINT_DISCOVERY.md](specs/ENTRY_POINT_DISCOVERY.md)** | Entry point detection algorithms and implementation | ✅ Complete |
+| **[OBSERVABILITY_STACK.md](specs/OBSERVABILITY_STACK.md)** | OpenTelemetry, Loki, Grafana monitoring and tracing | 📋 Proposed |
 
 ---
 

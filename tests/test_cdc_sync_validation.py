@@ -7,6 +7,7 @@ between Redis Streams and Memgraph.
 """
 
 import pytest
+import pytest_asyncio
 import redis.asyncio as redis
 from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable
@@ -18,7 +19,7 @@ from code_graph_mcp.memgraph_sync import (
 )
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def redis_client():
     """Fixture: Redis async client."""
     client = await redis.from_url("redis://localhost:6379", decode_responses=True)
@@ -28,7 +29,7 @@ async def redis_client():
     await client.close()
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def memgraph_driver():
     """Fixture: Memgraph driver."""
     try:
@@ -42,13 +43,14 @@ async def memgraph_driver():
         driver.close()
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def cdc_sync(redis_client, memgraph_driver):
     """Fixture: CDC Sync instance."""
     sync = MemgraphCDCSync(
         redis_url="redis://localhost:6379",
         memgraph_url="bolt://localhost:7687"
     )
+    await sync.connect()
     yield sync
     await sync.shutdown()
 

@@ -184,7 +184,7 @@ class CDCEventProcessor:
                     props.append(f'n.{key} = {value}')
 
         set_clause = ", ".join(props) if props else ""
-        cypher = f"MERGE (n:{node_type} {{id: '{node_id}'}}"
+        cypher = f"MERGE (n:{node_type} {{id: '{node_id}'}})"
         if set_clause:
             cypher += f"\nSET {set_clause}"
 

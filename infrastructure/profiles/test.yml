@@ -50,7 +50,6 @@ services:
       - "7687:7687"
     volumes:
       - memgraph-data:/var/lib/memgraph
-    command: --save-on-exit=true
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mg_client", "-host", "localhost", "--query", "RETURN 1"]

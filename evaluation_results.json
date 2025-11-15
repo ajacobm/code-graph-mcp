@@ -1,0 +1,98 @@
+{
+  "timestamp": 1763185114.7998652,
+  "metrics": {
+    "data_consistency": {
+      "metric": "data_consistency",
+      "total_checks": 3,
+      "passed": 0,
+      "consistency_score": 0.0,
+      "details": {
+        "node_consistency": {
+          "check_id": "consistency_001",
+          "status": "\u274c error",
+          "error": "Error -2 connecting to redis:6379. Name or service not known."
+        },
+        "relationship_consistency": {
+          "check_id": "consistency_002",
+          "status": "\u274c error",
+          "error": "'DataConsistencyEvaluator' object has no attribute 'memgraph_driver'"
+        },
+        "attribute_integrity": {
+          "check_id": "consistency_003",
+          "status": "\u274c error",
+          "error": "'DataConsistencyEvaluator' object has no attribute 'memgraph_driver'"
+        }
+      }
+    },
+    "query_performance": {
+      "metric": "query_performance",
+      "total_queries": 3,
+      "passed": 3,
+      "avg_execution_time_ms": 0.0,
+      "details": {
+        "entry_points": {
+          "query_id": "perf_001",
+          "query_name": "Entry Points (Simple)",
+          "query_type": "simple",
+          "result_count": 0,
+          "execution_time_ms": 0.0,
+          "status": "\u2705 passed"
+        },
+        "hubs": {
+          "query_id": "perf_002",
+          "query_name": "Function Hubs (Complex)",
+          "query_type": "complex",
+          "result_count": 0,
+          "execution_time_ms": 0.0,
+          "status": "\u2705 passed"
+        },
+        "call_paths": {
+          "query_id": "perf_003",
+          "query_name": "Call Paths (Complex)",
+          "query_type": "complex",
+          "result_count": 0,
+          "execution_time_ms": 0.0,
+          "status": "\u2705 passed"
+        }
+      }
+    },
+    "notebook_usability": {
+      "metric": "notebook_usability",
+      "total_operations": 4,
+      "passed": 0,
+      "success_rate": 0.0,
+      "details": {
+        "stats": {
+          "operation_id": "nb_op_001",
+          "operation": "get_graph_stats",
+          "status": "\u274c error",
+          "error": "[Errno -2] Name or service not known"
+        },
+        "nodes": {
+          "operation_id": "nb_op_002",
+          "operation": "get_all_nodes",
+          "status": "\u274c error",
+          "error": "[Errno -2] Name or service not known"
+        },
+        "networkx_graph": {
+          "operation_id": "nb_op_003",
+          "operation": "build_networkx_graph",
+          "status": "\u274c error",
+          "error": "[Errno -2] Name or service not known"
+        },
+        "centrality": {
+          "operation_id": "nb_op_004",
+          "operation": "calculate_centrality",
+          "status": "\u274c error",
+          "error": "[Errno -2] Name or service not known"
+        }
+      }
+    }
+  },
+  "overall_evaluation_score": 0.3333333333333333,
+  "summary": {
+    "total_metrics": 3,
+    "passed_metrics": 3,
+    "overall_status": "\u274c FAILED"
+  }
+}

@@ -1,0 +1,237 @@
+{
+  "cdc_events": [
+    {
+      "id": "evt_001",
+      "event_type": "NODE_ADDED",
+      "timestamp": "2025-11-15T10:00:00Z",
+      "data": {
+        "node_id": "func_123",
+        "name": "analyze_codebase",
+        "type": "Function",
+        "file": "src/code_graph_mcp/universal_parser.py",
+        "language": "Python",
+        "complexity": 8,
+        "is_entry_point": true
+      }
+    },
+    {
+      "id": "evt_002",
+      "event_type": "NODE_ADDED",
+      "timestamp": "2025-11-15T10:00:01Z",
+      "data": {
+        "node_id": "func_124",
+        "name": "parse_file",
+        "type": "Function",
+        "file": "src/code_graph_mcp/universal_parser.py",
+        "language": "Python",
+        "complexity": 5,
+        "is_entry_point": false
+      }
+    },
+    {
+      "id": "evt_003",
+      "event_type": "NODE_ADDED",
+      "timestamp": "2025-11-15T10:00:02Z",
+      "data": {
+        "node_id": "func_125",
+        "name": "extract_function_calls",
+        "type": "Function",
+        "file": "src/code_graph_mcp/universal_parser.py",
+        "language": "Python",
+        "complexity": 6,
+        "is_entry_point": false
+      }
+    },
+    {
+      "id": "evt_004",
+      "event_type": "RELATIONSHIP_ADDED",
+      "timestamp": "2025-11-15T10:00:03Z",
+      "data": {
+        "source_id": "func_123",
+        "target_id": "func_124",
+        "relationship_type": "CALLS",
+        "metadata": {
+          "line_number": 42,
+          "context": "direct_call"
+        }
+      }
+    },
+    {
+      "id": "evt_005",
+      "event_type": "RELATIONSHIP_ADDED",
+      "timestamp": "2025-11-15T10:00:04Z",
+      "data": {
+        "source_id": "func_124",
+        "target_id": "func_125",
+        "relationship_type": "CALLS",
+        "metadata": {
+          "line_number": 67,
+          "context": "direct_call"
+        }
+      }
+    },
+    {
+      "id": "evt_006",
+      "event_type": "NODE_ADDED",
+      "timestamp": "2025-11-15T10:00:05Z",
+      "data": {
+        "node_id": "func_126",
+        "name": "add_relationship",
+        "type": "Function",
+        "file": "src/code_graph_mcp/universal_graph.py",
+        "language": "Python",
+        "complexity": 3,
+        "is_entry_point": false
+      }
+    },
+    {
+      "id": "evt_007",
+      "event_type": "RELATIONSHIP_ADDED",
+      "timestamp": "2025-11-15T10:00:06Z",
+      "data": {
+        "source_id": "func_123",
+        "target_id": "func_126",
+        "relationship_type": "CALLS",
+        "metadata": {
+          "line_number": 89,
+          "context": "direct_call"
+        }
+      }
+    },
+    {
+      "id": "evt_008",
+      "event_type": "NODE_ADDED",
+      "timestamp": "2025-11-15T10:00:07Z",
+      "data": {
+        "node_id": "func_127",
+        "name": "query_graph",
+        "type": "Function",
+        "file": "src/code_graph_mcp/graph_query_router.py",
+        "language": "Python",
+        "complexity": 7,
+        "is_entry_point": true
+      }
+    },
+    {
+      "id": "evt_009",
+      "event_type": "RELATIONSHIP_ADDED",
+      "timestamp": "2025-11-15T10:00:08Z",
+      "data": {
+        "source_id": "func_127",
+        "target_id": "func_126",
+        "relationship_type": "CALLS",
+        "metadata": {
+          "line_number": 45,
+          "context": "cross_module_call"
+        }
+      }
+    }
+  ],
+  "cypher_queries": [
+    {
+      "id": "query_001",
+      "name": "Find Entry Points",
+      "query": "MATCH (f:Function {is_entry_point: true}) RETURN f.name, f.file, f.complexity LIMIT 20",
+      "query_type": "simple",
+      "expected_result_count": "2-10",
+      "description": "Retrieve all entry point functions"
+    },
+    {
+      "id": "query_002",
+      "name": "Find Most Called Functions",
+      "query": "MATCH (f:Function)<-[:CALLS]-(callers) WITH f, count(callers) as caller_count WHERE caller_count > 1 RETURN f.name, caller_count ORDER BY caller_count DESC LIMIT 20",
+      "query_type": "complex",
+      "expected_result_count": "1-5",
+      "description": "Identify function hubs (most called)"
+    },
+    {
+      "id": "query_003",
+      "name": "Find Call Paths",
+      "query": "MATCH path = (entry:Function {is_entry_point: true})-[:CALLS*1..3]->(:Function) RETURN [node in nodes(path) | node.name] as call_path, length(path) as hops LIMIT 20",
+      "query_type": "complex",
+      "expected_result_count": "3-15",
+      "description": "Trace call chains from entry points"
+    },
+    {
+      "id": "query_004",
+      "name": "Find Cross-Module Calls",
+      "query": "MATCH (f1:Function)-[r:CALLS {context: 'cross_module_call'}]->(f2:Function) RETURN f1.file, f2.file, count(r) as cross_module_calls ORDER BY cross_module_calls DESC",
+      "query_type": "complex",
+      "expected_result_count": "1-3",
+      "description": "Detect architectural seams"
+    },
+    {
+      "id": "query_005",
+      "name": "Find Circular Dependencies",
+      "query": "MATCH (f:Function)-[:CALLS*2..5]->(f) RETURN f.name, f.file LIMIT 10",
+      "query_type": "complex",
+      "expected_result_count": "0-5",
+      "description": "Detect cycles in call graph"
+    },
+    {
+      "id": "query_006",
+      "name": "Calculate In-Degree",
+      "query": "MATCH (f:Function)<-[:CALLS]-(callers) RETURN f.name, count(callers) as in_degree ORDER BY in_degree DESC LIMIT 15",
+      "query_type": "simple",
+      "expected_result_count": "5-20",
+      "description": "Rank functions by number of callers"
+    },
+    {
+      "id": "query_007",
+      "name": "Find God Functions",
+      "query": "MATCH (god:Function) WHERE god.complexity > 5 WITH god, size((god)<-[:CALLS]-()) as caller_count, size((god)-[:CALLS]->()) as callee_count WHERE caller_count + callee_count > 3 RETURN god.name, god.complexity, caller_count, callee_count ORDER BY god.complexity DESC",
+      "query_type": "complex",
+      "expected_result_count": "0-3",
+      "description": "Identify refactoring candidates"
+    },
+    {
+      "id": "query_008",
+      "name": "Find Orphan Code",
+      "query": "MATCH (f:Function) WHERE size((f)<-[:CALLS]-()) = 0 AND size((f)-[:CALLS]->()) = 0 RETURN f.name, f.file LIMIT 10",
+      "query_type": "simple",
+      "expected_result_count": "0-5",
+      "description": "Identify unused functions"
+    }
+  ],
+  "notebook_operations": [
+    {
+      "id": "nb_op_001",
+      "operation": "get_graph_stats",
+      "expected_fields": ["total_nodes", "total_relationships", "languages", "entry_points", "nodes_by_language"],
+      "description": "Fetch graph statistics from backend"
+    },
+    {
+      "id": "nb_op_002",
+      "operation": "get_all_nodes",
+      "expected_fields": ["name", "type", "file", "language", "complexity"],
+      "limit": 1000,
+      "description": "Load all nodes into DataFrame"
+    },
+    {
+      "id": "nb_op_003",
+      "operation": "run_cypher_query",
+      "sample_query": "MATCH (f:Function {is_entry_point: true}) RETURN f.name LIMIT 5",
+      "description": "Execute Cypher query via Memgraph"
+    },
+    {
+      "id": "nb_op_004",
+      "operation": "build_networkx_graph",
+      "expected_graph_types": ["DiGraph"],
+      "expected_attributes": ["nodes", "edges", "in_degree", "out_degree"],
+      "description": "Create NetworkX graph from nodes/relationships"
+    },
+    {
+      "id": "nb_op_005",
+      "operation": "calculate_centrality",
+      "centrality_measures": ["degree", "betweenness", "closeness", "pagerank"],
+      "description": "Compute multiple centrality metrics"
+    },
+    {
+      "id": "nb_op_006",
+      "operation": "detect_communities",
+      "algorithm": "louvain",
+      "expected_output": ["modularity_score", "num_communities", "community_assignments"],
+      "description": "Apply community detection"
+    }
+  ]
+}

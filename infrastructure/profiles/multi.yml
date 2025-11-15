@@ -1,5 +1,6 @@
 volumes:
   redis-data:
+  memgraph-data:
 
 services:
   # Redis cache service
@@ -81,6 +82,44 @@ services:
       - "5540:5540"
     depends_on:
       - redis
+
+  # Memgraph - Graph database for complex Cypher queries
+  memgraph:
+    image: memgraph/memgraph-platform:latest
+    ports:
+      - "7687:7687"  # Bolt protocol
+      - "3000:3000"  # Lab UI
+    volumes:
+      - memgraph-data:/var/lib/memgraph
+    environment:
+      - MEMGRAPH_LOG_LEVEL=WARNING
+    command: ["--stream-enabled=true"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c", "from neo4j import GraphDatabase; driver = GraphDatabase.driver('bolt://localhost:7687'); driver.verify_connectivity(); driver.close()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # Jupyter Data Science Notebook
+  jupyter:
+    image: jupyter/datascience-notebook:latest
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./notebooks:/home/jovyan/work
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - MEMGRAPH_URL=bolt://memgraph:7687
+      - BACKEND_API_URL=http://code-graph-http:8000
+      - JUPYTER_ENABLE_LAB=yes
+    depends_on:
+      - redis
+      - memgraph
+      - code-graph-http
+    restart: unless-stopped
+    command: start-notebook.sh --ip=0.0.0.0 --NotebookApp.token='' --NotebookApp.password=''
 
   # Frontend UI (Vue 3 + Vite)
   frontend:

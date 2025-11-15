@@ -1,0 +1,260 @@
+{
+  "expected_responses": {
+    "cdc_sync": [
+      {
+        "event_id": "evt_001",
+        "event_type": "NODE_ADDED",
+        "memgraph_status": "✅ synced",
+        "sync_time_ms": 15,
+        "data_integrity": "✅ verified",
+        "checksum_match": true,
+        "errors": []
+      },
+      {
+        "event_id": "evt_004",
+        "event_type": "RELATIONSHIP_ADDED",
+        "memgraph_status": "✅ synced",
+        "sync_time_ms": 8,
+        "data_integrity": "✅ verified",
+        "checksum_match": true,
+        "errors": []
+      },
+      {
+        "event_id": "evt_009",
+        "event_type": "RELATIONSHIP_ADDED",
+        "memgraph_status": "✅ synced",
+        "sync_time_ms": 12,
+        "data_integrity": "✅ verified",
+        "checksum_match": true,
+        "errors": []
+      }
+    ],
+    "query_performance": [
+      {
+        "query_id": "query_001",
+        "query_type": "simple",
+        "backend": "rustworkx",
+        "execution_time_ms": 2.5,
+        "result_count": 2,
+        "status": "✅ completed"
+      },
+      {
+        "query_id": "query_001",
+        "query_type": "simple",
+        "backend": "memgraph",
+        "execution_time_ms": 18.3,
+        "result_count": 2,
+        "status": "✅ completed"
+      },
+      {
+        "query_id": "query_002",
+        "query_type": "complex",
+        "backend": "rustworkx",
+        "execution_time_ms": 45.2,
+        "result_count": 3,
+        "status": "✅ completed"
+      },
+      {
+        "query_id": "query_002",
+        "query_type": "complex",
+        "backend": "memgraph",
+        "execution_time_ms": 22.1,
+        "result_count": 3,
+        "status": "✅ completed"
+      },
+      {
+        "query_id": "query_003",
+        "query_type": "complex",
+        "backend": "memgraph",
+        "execution_time_ms": 31.5,
+        "result_count": 8,
+        "status": "✅ completed"
+      },
+      {
+        "query_id": "query_004",
+        "query_type": "complex",
+        "backend": "memgraph",
+        "execution_time_ms": 25.7,
+        "result_count": 2,
+        "status": "✅ completed"
+      },
+      {
+        "query_id": "query_005",
+        "query_type": "complex",
+        "backend": "memgraph",
+        "execution_time_ms": 19.2,
+        "result_count": 0,
+        "status": "✅ completed"
+      },
+      {
+        "query_id": "query_006",
+        "query_type": "simple",
+        "backend": "rustworkx",
+        "execution_time_ms": 3.1,
+        "result_count": 5,
+        "status": "✅ completed"
+      },
+      {
+        "query_id": "query_007",
+        "query_type": "complex",
+        "backend": "memgraph",
+        "execution_time_ms": 28.9,
+        "result_count": 1,
+        "status": "✅ completed"
+      }
+    ],
+    "notebook_operations": [
+      {
+        "operation_id": "nb_op_001",
+        "operation": "get_graph_stats",
+        "status": "✅ success",
+        "execution_time_ms": 125,
+        "result": {
+          "total_nodes": 489,
+          "total_relationships": 4475,
+          "languages": ["Python", "TypeScript", "JavaScript"],
+          "entry_points": 42,
+          "nodes_by_language": {
+            "Python": 312,
+            "TypeScript": 120,
+            "JavaScript": 57
+          }
+        }
+      },
+      {
+        "operation_id": "nb_op_002",
+        "operation": "get_all_nodes",
+        "status": "✅ success",
+        "execution_time_ms": 245,
+        "result_count": 489,
+        "sample_fields": ["name", "type", "file", "language", "complexity"]
+      },
+      {
+        "operation_id": "nb_op_003",
+        "operation": "run_cypher_query",
+        "status": "✅ success",
+        "execution_time_ms": 18,
+        "result_count": 5,
+        "results": [
+          {"name": "analyze_codebase"},
+          {"name": "query_graph"},
+          {"name": "main"},
+          {"name": "http_handler"},
+          {"name": "process_request"}
+        ]
+      },
+      {
+        "operation_id": "nb_op_004",
+        "operation": "build_networkx_graph",
+        "status": "✅ success",
+        "execution_time_ms": 1250,
+        "graph_stats": {
+          "nodes": 489,
+          "edges": 4475,
+          "density": 0.0187,
+          "is_dag": false
+        }
+      },
+      {
+        "operation_id": "nb_op_005",
+        "operation": "calculate_centrality",
+        "status": "✅ success",
+        "execution_time_ms": 8450,
+        "centrality_measures": {
+          "degree": "✅ computed",
+          "betweenness": "✅ computed",
+          "closeness": "✅ computed",
+          "pagerank": "✅ computed"
+        },
+        "top_3_by_pagerank": [
+          {"name": "analyze_codebase", "score": 0.0125},
+          {"name": "query_graph", "score": 0.0098},
+          {"name": "add_relationship", "score": 0.0087}
+        ]
+      },
+      {
+        "operation_id": "nb_op_006",
+        "operation": "detect_communities",
+        "status": "✅ success",
+        "execution_time_ms": 3200,
+        "results": {
+          "algorithm": "louvain",
+          "modularity_score": 0.612,
+          "num_communities": 8,
+          "community_assignments": 489,
+          "avg_community_size": 61.1
+        }
+      }
+    ],
+    "data_consistency_checks": [
+      {
+        "check_id": "consistency_001",
+        "check_name": "Node Count Consistency",
+        "status": "✅ passed",
+        "description": "Redis Streams count matches Memgraph node count",
+        "redis_count": 9,
+        "memgraph_count": 9,
+        "match": true
+      },
+      {
+        "check_id": "consistency_002",
+        "check_name": "Relationship Count Consistency",
+        "status": "✅ passed",
+        "description": "Redis Streams count matches Memgraph edge count",
+        "redis_count": 5,
+        "memgraph_count": 5,
+        "match": true
+      },
+      {
+        "check_id": "consistency_003",
+        "check_name": "Node Data Integrity",
+        "status": "✅ passed",
+        "description": "All node attributes present and valid",
+        "nodes_checked": 9,
+        "nodes_valid": 9,
+        "missing_fields": 0
+      },
+      {
+        "check_id": "consistency_004",
+        "check_name": "Relationship Data Integrity",
+        "status": "✅ passed",
+        "description": "All relationship properties present and valid",
+        "relationships_checked": 5,
+        "relationships_valid": 5,
+        "missing_fields": 0
+      },
+      {
+        "check_id": "consistency_005",
+        "check_name": "No Data Loss in Sync",
+        "status": "✅ passed",
+        "description": "All CDC events successfully synced to Memgraph",
+        "events_published": 9,
+        "events_synced": 9,
+        "events_lost": 0
+      },
+      {
+        "check_id": "consistency_006",
+        "check_name": "Graph Connectivity",
+        "status": "✅ passed",
+        "description": "Graph structure valid (no orphaned nodes)",
+        "total_nodes": 9,
+        "connected_nodes": 7,
+        "orphaned_nodes": 2
+      }
+    ]
+  },
+  "evaluation_summary": {
+    "total_tests": 26,
+    "cdc_sync_tests": 3,
+    "query_performance_tests": 9,
+    "notebook_operation_tests": 6,
+    "data_consistency_tests": 6,
+    "expected_pass_rate": 1.0,
+    "critical_metrics": {
+      "sync_latency_p95_ms": 15,
+      "query_routing_accuracy": 1.0,
+      "notebook_success_rate": 1.0,
+      "data_consistency_score": 1.0
+    }
+  }
+}

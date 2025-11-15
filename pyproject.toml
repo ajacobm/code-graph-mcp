@@ -23,6 +23,13 @@ dependencies = [
     "redis>=5.0.0",
     "msgpack>=1.0.0",
     "pathspec>=0.12.1",
+    # Graph & data analysis dependencies
+    "neo4j>=5.0.0",
+    "httpx>=0.24.0",
+    "networkx>=3.0",
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "matplotlib>=3.7.0",
 ]
 keywords = [
     "mcp", "code-analysis", "ast", "claude-code", "graph", "intelligence", 

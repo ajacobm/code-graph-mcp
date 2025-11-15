@@ -1,6 +1,36 @@
 # Crush Session Memory
 
+## Session 19: Memgraph Integration + Jupyter Data Science (2025-11-15) 🚧
+
+**Status**: IN PROGRESS - Planning complete, ready for implementation  
+**Goal**: Phase 2 Memgraph integration with event-driven CDC sync + Jupyter notebooks for graph analytics
+
+**See**: [SESSION_19_MEMGRAPH_INTEGRATION.md](docs/sessions/current/SESSION_19_MEMGRAPH_INTEGRATION.md)
+
+**Architecture Decisions**:
+
+- Native Memgraph stream transformations (primary) + Python worker (fallback)
+- Query routing: rustworkx for simple (hops ≤3), Memgraph for complex (hops >3, patterns, algorithms)
+- 10+ MCP Cypher Resources for pre-built patterns (entry-to-db, impact analysis, god functions, etc.)
+- Jupyter notebooks: centrality analysis, community detection, ontology extraction, C4 diagram generation
+
+**Implementation Plan**:
+
+1. Add Memgraph + Jupyter services to docker-compose-multi.yml
+2. Implement Memgraph CDC sync worker (`src/code_graph_mcp/memgraph_sync.py`)
+3. Build query routing layer (`src/code_graph_mcp/graph_query_router.py`)
+4. Create MCP Cypher Resources library (`src/code_graph_mcp/mcp_cypher_resources.py`)
+5. Setup Jupyter notebooks (6 core notebooks + utilities)
+6. Playwright E2E tests for Memgraph integration
+
+**MCP Tools Available**: cipher (Cypher query validation), playwright, context7, magic, tavily, obsidian
+
+**Handoff**: Sonnet 4.5 → Haiku 4.5 (context prepared, ready to start Step 1)
+
+---
+
 ## Session 18: WebSocket Integration & Docker Caching Fix (2025-11-09) ✅
+
 **Status**: COMPLETE - Critical blocker fixed, WebSocket production-ready
 
 **Achievement**:

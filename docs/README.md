@@ -20,7 +20,10 @@ Core technical documentation for the project's design and architecture.
 | **[DOTNET_INTEGRATION.md](specs/DOTNET_INTEGRATION.md)** | OpenAPI 3.1 spec generation and NSwag C# client integration | ✅ Complete |
 | **[GRAPH_DATABASE_EVALUATION.md](specs/GRAPH_DATABASE_EVALUATION.md)** | Memgraph vs. Neo4j evaluation and selection rationale | ✅ Complete |
 | **[BACKEND_HOSTING_GUIDE.md](specs/BACKEND_HOSTING_GUIDE.md)** | HTTP API deployment and infrastructure specifications | ✅ Complete |
+| **[DEPLOYMENT_GUIDE.md](specs/DEPLOYMENT_GUIDE.md)** | Full deployment workflow and CI/CD integration | ✅ Complete |
 | **[FRONTEND_DEPLOYMENT.md](specs/FRONTEND_DEPLOYMENT.md)** | Frontend build, deployment, and CDN integration | ✅ Complete |
+| **[GHCR_INFRASTRUCTURE_OVERVIEW.md](specs/GHCR_INFRASTRUCTURE_OVERVIEW.md)** | GitHub Container Registry infrastructure and setup | ✅ Complete |
+| **[GHCR_QUICK_REF.md](specs/GHCR_QUICK_REF.md)** | Quick reference for GHCR commands and workflows | ✅ Complete |
 | **[MCP_AGENT_INTEGRATION.md](specs/MCP_AGENT_INTEGRATION.md)** | Model Context Protocol agent tool integration | ✅ Complete |
 | **[ENTRY_POINT_DISCOVERY.md](specs/ENTRY_POINT_DISCOVERY.md)** | Entry point detection algorithms and implementation | ✅ Complete |
 
@@ -32,6 +35,8 @@ Step-by-step guides and how-to documentation for common tasks.
 
 | Guide | Purpose | Audience |
 |-------|---------|----------|
+| **[GETTING_STARTED.md](guides/GETTING_STARTED.md)** | Quick start guide for new users | All Users |
+| **[SETUP_CHECKLIST.md](guides/SETUP_CHECKLIST.md)** | Environment setup verification checklist | Contributors |
 | **[CODESPACES_INFRASTRUCTURE.md](guides/CODESPACES_INFRASTRUCTURE.md)** | GitHub Codespaces setup and configuration | DevOps / Contributors |
 | **[CODESPACES_TROUBLESHOOTING.md](guides/CODESPACES_TROUBLESHOOTING.md)** | Debugging Codespaces issues | Contributors |
 | **[PLAYWRIGHT_TESTING_GUIDE.md](guides/PLAYWRIGHT_TESTING_GUIDE.md)** | E2E testing with Playwright | QA / Contributors |
@@ -45,18 +50,25 @@ Step-by-step guides and how-to documentation for common tasks.
 
 Development progress tracked by session. Sessions are listed chronologically from oldest to newest.
 
-### Active Development Sessions
-
-These sessions document the current feature implementation cycle:
+### Recent Sessions
 
 - **[SESSION_15_COMPLETION.md](sessions/SESSION_15_COMPLETION.md)** - Session 15 completion summary
 - **[SESSION_13_PLAN.md](sessions/SESSION_13_PLAN.md)** - Session 13 planning documentation
 
-### Infrastructure & Core Features
+### All Sessions
 
-Early sessions establishing the project foundation:
+Complete session documentation available in `/docs/sessions/` directory (16+ files).
 
-- Earlier session documentation available in `/docs/sessions/`
+---
+
+## 🛠️ Supporting Documentation
+
+Component-specific technical reference documentation.
+
+| Component | Documentation | Purpose |
+|-----------|---|---------|
+| **[REDIS.md](supporting/REDIS.md)** | Redis configuration and usage | Event streaming, CDC |
+| **[SSE.md](supporting/SSE.md)** | Server-Sent Events documentation | Real-time communication |
 
 ---
 
@@ -77,12 +89,15 @@ Older archived documentation available in `/docs/archive/`.
 ## 🎯 Key Project Components
 
 ### Infrastructure
+
 - **Docker Compose**: Multi-container setup (Redis, Memgraph, Backend API, Jupyter)
 - **CDC Sync Worker**: Real-time code graph synchronization
 - **Query Router**: Complexity-based query optimization
 
 ### Analysis (Jupyter Notebooks)
+
 The `/notebooks/` directory contains interactive analysis:
+
 1. **01_graph_basics.ipynb** - Graph fundamentals and connection setup
 2. **02_centrality_analysis.ipynb** - Critical function identification
 3. **03_community_detection.ipynb** - Module boundary detection
@@ -91,6 +106,7 @@ The `/notebooks/` directory contains interactive analysis:
 6. **06_c4_diagram_generation.ipynb** - Architecture visualization
 
 ### Testing
+
 - **Unit Tests**: `/tests/` directory
 - **E2E Tests**: `/tests/playwright/` (with Playwright framework)
 - **Integration Tests**: Service-level testing via HTTP API

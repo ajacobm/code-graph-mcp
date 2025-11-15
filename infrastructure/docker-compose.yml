@@ -1,16 +1,14 @@
 volumes:
-  repo-mount:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /mnt/c/Users/ADAM/GitHub/code-graph-mcp
   redis-data:
-      driver: local
-      driver_opts:
-        type: none
-        o: bind
-        device: /mnt/c/Users/ADAM/.redis-docker/codegraphmcp
+  memgraph-data:
+  repo-mount:
+
+# Environment defaults for local development
+# Override with .env file or environment variables for non-Codespaces setup
+# Example .env:
+#   REPO_MOUNT_PATH=/path/to/repo
+#   REDIS_DATA_PATH=/path/to/redis-data
+#   MEMGRAPH_DATA_PATH=/path/to/memgraph-data
 
 services:
   # Redis cache service
@@ -29,9 +27,9 @@ services:
       retries: 3
 
   code-graph-sse:
-    image: ajacobm/code-graph-mcp:sse
     build:
-      context: .
+      context: ..
+      dockerfile: ./Dockerfile
       target: sse
     ports:
       - "10101:8000"

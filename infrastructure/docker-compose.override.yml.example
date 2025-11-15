@@ -1,0 +1,47 @@
+# docker-compose.override.yml
+# Local development overrides for bind mounts
+# Copy to docker-compose.override.yml and adjust paths as needed
+# Docker Compose automatically loads this file if it exists
+
+# This example shows how to override volumes for local development
+# on a Windows/Mac machine with persistent storage paths
+
+version: "3.9"
+
+services:
+  redis:
+    # Uncomment and adjust path for local persistent Redis data
+    # volumes:
+    #   - /mnt/c/Users/ADAM/.redis-docker/codegraphmcp:/data
+
+  code-graph-sse:
+    # Uncomment and adjust paths for local development
+    # volumes:
+    #   - /mnt/c/Users/ADAM/GitHub/code-graph-mcp:/app
+    #   - /mnt/c/Users/ADAM/GitHub/code-graph-mcp:/app/workspace
+
+  memgraph:
+    # Uncomment and adjust path for local persistent Memgraph data
+    # volumes:
+    #   - /mnt/c/Users/ADAM/.memgraph-docker/codegraphmcp:/var/lib/memgraph
+
+# Note: Docker Compose loads docker-compose.override.yml automatically
+# if it exists in the same directory as docker-compose.yml.
+# This allows you to override settings without modifying the base file.
+# 
+# Examples for different environments:
+# 
+# Codespaces (default - no overrides needed):
+# - Uses Docker volumes (redis-data, memgraph-data, repo-mount)
+# - No bind mounts required
+# - Just run: make test-up
+#
+# Local Linux/Mac:
+# - Uncomment the volume overrides below
+# - Adjust paths to your local directories
+# - Run: make test-up
+#
+# Local Windows (WSL2):
+# - Use /mnt/c/Users/... paths for Windows directories
+# - Or better: place code in WSL filesystem at ~/code/code-graph-mcp
+# - Run: make test-up

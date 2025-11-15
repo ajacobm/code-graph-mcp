@@ -1,5 +1,4 @@
 services:
-  # Redis cache service
   redis:
     image: redis:alpine
     ports:
@@ -30,10 +29,16 @@ services:
     depends_on:
       - redis
     command: >
-      python -m pytest tests/test_cdc_sync_validation.py tests/test_query_router_validation.py -v
+      uv run code-graph-mcp
+      --mode sse
+      --redis-url redis://redis:6379
+      --project-root /app/workspace
+      --host 0.0.0.0
+      --port 8000
+      --verbose
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "print('ready')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -45,7 +50,7 @@ services:
       - "7687:7687"
     volumes:
       - memgraph-data:/var/lib/memgraph
-    command: --flag save-on-exit=true
+    command: --save-on-exit=true
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mg_client", "-host", "localhost", "--query", "RETURN 1"]

@@ -772,14 +772,332 @@ GRAFANA_ADMIN_PASSWORD=admin
 5. ✅ Phase 5 (Week 3): Grafana dashboards + alerting
 6. ✅ Phase 6 (Week 4): WebSocket event broadcasting for live UI
 
+## Graph Visualization Options
+
+### Question: Can Grafana Visualize Graph Networks?
+
+**Short Answer**: Grafana has **limited** native graph/network visualization. Better alternatives exist for real-time graph rendering.
+
+### Grafana's Graph Capabilities
+
+**What Grafana CAN do**:
+1. **Node Graph Panel** (built-in since v8.0)
+   - Basic directed graphs from trace data
+   - Primarily for service mesh visualization (distributed tracing)
+   - Limited to showing service-to-service relationships
+   - Example: Jaeger trace flows
+
+2. **Grafana Plugins**:
+   - `grafana-graph-panel` - Node-edge visualization from metrics
+   - `grafana-network-graph-panel` - Community plugin for networks
+   - `grafana-flowcharting` - Flowchart/diagram rendering
+   - **Limitation**: None are optimized for large dynamic code graphs
+
+**What Grafana CANNOT do well**:
+- Interactive force-directed graphs (like D3.js)
+- Large graphs (1000+ nodes) with smooth interactions
+- Real-time node highlighting during traversal
+- Advanced layouts (hierarchical, circular, community-based)
+- Node grouping/clustering by module
+
+### Recommended Approach: Hybrid Architecture
+
+**Use Grafana for**: Metrics, logs, traces, time-series (what it's built for)
+**Use Dedicated Graph UI for**: Interactive code graph visualization
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Monitoring Stack                          │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
+│  │   Grafana    │  │   Jaeger     │  │  Prometheus  │      │
+│  │  (Metrics)   │  │  (Traces)    │  │  (Metrics)   │      │
+│  └──────────────┘  └──────────────┘  └──────────────┘      │
+└─────────────────────────────────────────────────────────────┘
+                            ▲
+                            │ OTel Events
+                            │
+┌───────────────────────────┼─────────────────────────────────┐
+│                    Application Layer                         │
+│  ┌────────────────────────┴────────────────────────┐        │
+│  │         WebSocket Event Bus                      │        │
+│  │  (node_created, edge_created, traversal_event)  │        │
+│  └────────────┬───────────────────┬─────────────────┘       │
+│               │                   │                          │
+│     ┌─────────▼─────────┐  ┌─────▼──────────┐              │
+│     │  Graph UI (React) │  │ OTel Collector │              │
+│     │  (D3/Sigma/Cyto)  │  │  (Telemetry)   │              │
+│     └───────────────────┘  └────────────────┘              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Solution: Dual Event Emission
+
+Emit events to **both** the graph UI and OTel collector:
+
+```python
+# In graph construction
+async def create_node(node: Node):
+    """Create node and emit to both UI and telemetry."""
+    
+    # 1. Create in database
+    node_id = await graph_db.create_node(node)
+    
+    # 2. Emit to WebSocket (for graph UI)
+    event = {
+        "type": "node_created",
+        "data": {
+            "id": node_id,
+            "name": node.name,
+            "type": node.type,
+            "language": node.language,
+            "file": node.file,
+            "timestamp": datetime.now().isoformat()
+        }
+    }
+    await websocket_manager.broadcast(event)
+    
+    # 3. Emit to OpenTelemetry (for Grafana metrics)
+    from .metrics import NODES_CREATED
+    NODES_CREATED.labels(
+        language=node.language,
+        type=node.type
+    ).inc()
+    
+    # 4. Add to trace context (for Jaeger)
+    span = trace.get_current_span()
+    span.add_event(
+        "node_created",
+        attributes={
+            "node.id": node_id,
+            "node.name": node.name,
+            "node.type": node.type,
+            "node.language": node.language
+        }
+    )
+    
+    return node_id
+```
+
+### Alternative Graph Visualization Tools
+
+If you want **better** graph visualization than Grafana offers:
+
+#### 1. **Neo4j Browser / Bloom** (if using Neo4j)
+- **Pros**: Native graph visualization, powerful queries, commercial support
+- **Cons**: Requires Neo4j (we're using Memgraph)
+- **Integration**: Direct BOLT protocol connection
+
+#### 2. **Memgraph Lab** (native for Memgraph)
+- **Pros**: Built for Memgraph, Cypher query IDE, graph rendering
+- **Cons**: Less customizable than custom UI
+- **Integration**: Built-in with Memgraph
+- **Port**: 3000 (conflicts with Grafana by default)
+
+```yaml
+# Add to docker-compose
+memgraph-lab:
+  image: memgraph/lab:latest
+  ports:
+    - "3001:3000"  # Avoid Grafana conflict
+  depends_on:
+    - memgraph
+```
+
+#### 3. **Gephi** (Desktop app for graph analysis)
+- **Pros**: Powerful layouts, community detection, export to images
+- **Cons**: Desktop app, not real-time, manual data import
+- **Integration**: Export graph to GEXF/GraphML format
+
+#### 4. **Custom React UI** (Your Current Approach - BEST)
+- **Pros**: Full control, real-time WebSocket updates, tailored UX
+- **Cons**: Requires development
+- **Libraries**:
+  - **Sigma.js** - High-performance (10K+ nodes)
+  - **Cytoscape.js** - Feature-rich, biology/networks
+  - **D3.js Force Graph** - Maximum flexibility
+  - **React Flow** - Node-based UIs (flowcharts)
+  - **vis.js** - Easy to use, good docs
+
+**Recommendation**: Keep your current React UI for graph visualization, use Grafana for metrics/logs/traces.
+
+#### 5. **Apache Superset** (Alternative to Grafana)
+- **Pros**: Better for custom visualizations, Python-based
+- **Cons**: More complex setup, not as polished as Grafana
+- **Graph Support**: Better than Grafana but still limited
+
+#### 6. **Kibana** (If using Elasticsearch)
+- **Pros**: Good log search, some graph capabilities
+- **Cons**: Requires Elasticsearch (heavy), not specialized for graphs
+- **Graph Support**: Basic node-link diagrams
+
+### Recommended Architecture: Dual Display
+
+**Monitoring Dashboard** (Grafana):
+```
+http://localhost:3000/dashboards
+├── Graph Construction Metrics (line charts, stats)
+├── Query Performance (heatmaps, latencies)
+├── CDC Event Streaming (lag, throughput)
+└── System Health (CPU, memory, errors)
+```
+
+**Graph Visualization** (Your React UI):
+```
+http://localhost:5173/graph
+├── Interactive force-directed graph
+├── Real-time node highlighting (traversal)
+├── Click to view details
+└── WebSocket-powered live updates
+```
+
+**Cross-Linking**:
+- Grafana: Click slow query → open trace in Jaeger → see trace_id → link to graph node
+- Graph UI: Click node → show metrics in embedded Grafana panel
+- Both consume same event stream (different purposes)
+
+### Implementation: WebSocket → OTel Bridge
+
+Create a bridge to send WebSocket events to OpenTelemetry:
+
+```python
+# src/code_graph_mcp/telemetry_bridge.py
+import asyncio
+from opentelemetry import trace
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+
+class TelemetryBridge:
+    """Bridge WebSocket events to OpenTelemetry."""
+    
+    def __init__(self, websocket_manager, tracer):
+        self.ws_manager = websocket_manager
+        self.tracer = tracer
+        
+    async def emit_event(self, event_type: str, data: dict):
+        """Emit to both WebSocket and OTel."""
+        
+        # 1. WebSocket (for graph UI)
+        await self.ws_manager.broadcast({
+            "type": event_type,
+            "data": data,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+        # 2. OpenTelemetry event (for Jaeger visualization)
+        span = trace.get_current_span()
+        span.add_event(
+            event_type,
+            attributes={
+                f"{event_type}.{k}": str(v) 
+                for k, v in data.items()
+            }
+        )
+        
+        # 3. Prometheus metric (for Grafana charts)
+        if event_type == "node_created":
+            NODES_CREATED.labels(
+                language=data.get("language", "unknown"),
+                type=data.get("type", "unknown")
+            ).inc()
+        elif event_type == "edge_created":
+            EDGES_CREATED.labels(
+                relationship_type=data.get("relationship_type", "unknown")
+            ).inc()
+```
+
+Usage:
+```python
+bridge = TelemetryBridge(websocket_manager, tracer)
+
+# In analysis code
+await bridge.emit_event("node_created", {
+    "id": node.id,
+    "name": node.name,
+    "type": node.type,
+    "language": node.language
+})
+```
+
+### Grafana Integration Options
+
+If you **must** show graph in Grafana (not recommended for primary view):
+
+#### Option A: Embed Your Graph UI in Grafana
+```yaml
+# Grafana dashboard JSON
+{
+  "type": "text",
+  "options": {
+    "content": "<iframe src='http://localhost:5173/graph' width='100%' height='800px'></iframe>"
+  }
+}
+```
+
+#### Option B: Use Grafana's Node Graph Panel with Trace Data
+```promql
+# Query traces to show service dependencies
+traces{service.name="code-graph-mcp"}
+```
+Shows service-to-service calls, not code graph.
+
+#### Option C: Custom Grafana Plugin (Advanced)
+Build a Grafana plugin that:
+- Fetches graph data from your API
+- Renders with D3.js/Sigma.js in Grafana panel
+- **Effort**: ~2-3 weeks development
+
+### Final Recommendation
+
+**Best Architecture**:
+
+1. **Keep Graph Visualization in Your React UI**
+   - Use Sigma.js or Cytoscape.js (already referenced in REDESIGN_PROPOSAL)
+   - Real-time WebSocket updates
+   - Tailored for code graph use case
+
+2. **Use Grafana for Operations Monitoring**
+   - Metrics dashboards (nodes/sec, query latency)
+   - Log aggregation (search errors, debug issues)
+   - Alerting (CDC lag, high error rate)
+
+3. **Use Jaeger for Trace Visualization**
+   - Click node in graph UI → show trace in Jaeger
+   - Debug slow file parsing
+   - Understand query execution paths
+
+4. **Bridge Events to Both Systems**
+   ```python
+   # Single event emission point
+   await emit_event("node_created", data)
+   # → WebSocket (graph UI)
+   # → OTel (Grafana metrics + Jaeger traces)
+   ```
+
+5. **Cross-Link Between Systems**
+   - Grafana: "Slow query detected" → Link to Jaeger trace → Link to graph node
+   - Graph UI: Click node → Show metrics in sidebar (Grafana embed)
+
+### Summary Table
+
+| Tool | Graph Viz | Real-Time | Metrics | Logs | Traces | Best For |
+|------|-----------|-----------|---------|------|--------|----------|
+| **Grafana** | ⚠️ Limited | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No | Metrics/Logs |
+| **Jaeger** | ⚠️ Service mesh | ✅ Yes | ❌ No | ❌ No | ✅ Yes | Distributed traces |
+| **Memgraph Lab** | ✅ Good | ❌ No | ❌ No | ❌ No | ❌ No | Graph queries |
+| **Your React UI** | ✅ Excellent | ✅ Yes | ⚠️ Embed | ❌ No | ❌ No | Code graph |
+| **Neo4j Bloom** | ✅ Excellent | ❌ No | ❌ No | ❌ No | ❌ No | Graph exploration |
+
+**Verdict**: Use React UI for graph visualization, Grafana for operational monitoring. Bridge WebSocket events to OTel for metrics.
+
 ## Next Steps
 
 1. Create `infrastructure/profiles/observability.yml`
 2. Install Python dependencies (structlog, opentelemetry-*)
-3. Add `src/code_graph_mcp/telemetry.py` + `logging_config.py`
+3. Add `src/code_graph_mcp/telemetry.py` + `logging_config.py` + `telemetry_bridge.py`
 4. Instrument key code paths (file analysis, queries, CDC)
-5. Build Grafana dashboards
-6. Test with `make observability-up` and analyze live
+5. Build Grafana dashboards (metrics only, not graph viz)
+6. Keep graph visualization in React UI (Sigma.js/Cytoscape.js)
+7. Add cross-linking between Grafana metrics and graph UI
+8. Test with `make observability-up` and analyze live
 
 ---
 
@@ -788,6 +1106,7 @@ GRAFANA_ADMIN_PASSWORD=admin
 - [BACKEND_HOSTING_GUIDE.md](BACKEND_HOSTING_GUIDE.md) - API infrastructure
 - [SSE.md](../supporting/SSE.md) - WebSocket/SSE implementation
 - [REDIS.md](../supporting/REDIS.md) - CDC event streaming
+- [REDESIGN_PROPOSAL.md](../guides/REDESIGN_PROPOSAL.md) - Frontend graph UI design
 
 **Last Updated**: November 15, 2025  
 **Status**: Ready for implementation

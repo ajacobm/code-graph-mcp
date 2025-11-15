@@ -7,14 +7,30 @@ Supports both native stream transformations and Python-based worker.
 import asyncio
 import json
 import logging
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from enum import Enum
 
 import redis.asyncio as redis
 from neo4j import GraphDatabase, driver
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class SyncStatistics:
+    """Statistics for sync operations."""
+
+    total_processed: int = 0
+    nodes_synced: int = 0
+    edges_synced: int = 0
+    errors: int = 0
+    timestamp: str = ""
+
+    def __post_init__(self):
+        if not self.timestamp:
+            self.timestamp = datetime.now().isoformat()
 
 
 class SyncMode(str, Enum):
@@ -90,6 +106,213 @@ class MemgraphClient:
             return {"status": "healthy", "connected": True}
         except Exception as e:
             return {"status": "unhealthy", "error": str(e), "connected": False}
+
+
+class RedisStreamConsumer:
+    """Consumes events from Redis Streams."""
+
+    def __init__(self, redis_client: redis.Redis, stream_key: str = "code-graph:events"):
+        self.redis = redis_client
+        self.stream_key = stream_key
+        self.last_id = "0-0"
+
+    async def read_batch(self, count: int = 100, block_ms: int = 1000) -> List[Dict[str, Any]]:
+        """Read a batch of events from the stream."""
+        try:
+            messages = await self.redis.xread(
+                {self.stream_key: self.last_id},
+                count=count,
+                block=block_ms
+            )
+
+            events = []
+            if messages:
+                for stream_key, message_list in messages:
+                    for msg_id, msg_data in message_list:
+                        # Decode message data
+                        event = {}
+                        for key, value in msg_data.items():
+                            if isinstance(key, bytes):
+                                key = key.decode()
+                            if isinstance(value, bytes):
+                                value = value.decode()
+                            event[key] = value
+
+                        events.append(event)
+                        self.last_id = msg_id.decode() if isinstance(msg_id, bytes) else msg_id
+
+            return events
+
+        except Exception as e:
+            logger.error(f"Failed to read stream batch: {e}")
+            return []
+
+
+class CDCEventProcessor:
+    """Processes CDC events and generates Cypher queries."""
+
+    def process_event(self, event_type: str, event_data: Dict[str, Any]) -> Optional[str]:
+        """Transform event to Cypher query."""
+        try:
+            if event_type == "node_created":
+                return self._process_node_created(event_data)
+            elif event_type == "edge_created":
+                return self._process_edge_created(event_data)
+            elif event_type == "node_updated":
+                return self._process_node_updated(event_data)
+            else:
+                logger.warning(f"Unknown event type: {event_type}")
+                return None
+
+        except Exception as e:
+            logger.error(f"Error processing event: {e}")
+            return None
+
+    def _process_node_created(self, data: Dict[str, Any]) -> str:
+        """Generate MERGE query for node creation."""
+        node_id = data.get("id", "unknown")
+        node_type = data.get("node_type", "Unknown")
+        name = data.get("name", "")
+
+        # Build property assignments
+        props = []
+        for key, value in data.items():
+            if key not in ["id", "node_type"]:
+                if isinstance(value, str):
+                    props.append(f'n.{key} = "{value}"')
+                else:
+                    props.append(f'n.{key} = {value}')
+
+        set_clause = ", ".join(props) if props else ""
+        cypher = f"MERGE (n:{node_type} {{id: '{node_id}'}}"
+        if set_clause:
+            cypher += f"\nSET {set_clause}"
+
+        return cypher
+
+    def _process_edge_created(self, data: Dict[str, Any]) -> str:
+        """Generate MERGE query for relationship creation."""
+        source_id = data.get("source_id", "unknown")
+        target_id = data.get("target_id", "unknown")
+        rel_type = data.get("relationship_type", "CALLS")
+
+        cypher = (
+            f"MATCH (source {{id: '{source_id}'}})\n"
+            f"MATCH (target {{id: '{target_id}'}})\n"
+            f"MERGE (source)-[:{rel_type}]->(target)"
+        )
+
+        return cypher
+
+    def _process_node_updated(self, data: Dict[str, Any]) -> str:
+        """Generate SET query for node update."""
+        node_id = data.get("id", "unknown")
+
+        # Build property assignments
+        props = []
+        for key, value in data.items():
+            if key != "id":
+                if isinstance(value, str):
+                    props.append(f'n.{key} = "{value}"')
+                else:
+                    props.append(f'n.{key} = {value}')
+
+        set_clause = ", ".join(props) if props else ""
+        cypher = f"MATCH (n {{id: '{node_id}'}})"
+        if set_clause:
+            cypher += f"\nSET {set_clause}"
+
+        return cypher
+
+
+class MemgraphCDCSync:
+    """Main CDC synchronization worker."""
+
+    def __init__(
+        self,
+        redis_url: str = "redis://localhost:6379",
+        memgraph_url: str = "bolt://localhost:7687",
+    ):
+        self.redis_url = redis_url
+        self.memgraph_url = memgraph_url
+        self.redis: Optional[redis.Redis] = None
+        self.memgraph_driver: Optional[driver.Driver] = None
+        self.stream_consumer = None
+        self.event_processor = CDCEventProcessor()
+        self.stats = SyncStatistics()
+
+    async def connect(self) -> None:
+        """Initialize connections."""
+        try:
+            self.redis = await redis.from_url(self.redis_url, decode_responses=True)
+            await self.redis.ping()
+            logger.info("✓ Redis connected")
+        except Exception as e:
+            logger.error(f"Failed to connect to Redis: {e}")
+            raise
+
+        try:
+            self.memgraph_driver = GraphDatabase.driver(self.memgraph_url)
+            with self.memgraph_driver.session() as session:
+                session.run("RETURN 1")
+            logger.info("✓ Memgraph connected")
+        except Exception as e:
+            logger.error(f"Failed to connect to Memgraph: {e}")
+            raise
+
+    async def disconnect(self) -> None:
+        """Close connections."""
+        if self.redis:
+            await self.redis.close()
+        if self.memgraph_driver:
+            self.memgraph_driver.close()
+
+    async def process_batch(self, max_events: int = 100, max_retries: int = 3) -> SyncStatistics:
+        """Process a batch of events from Redis stream."""
+        if not self.stream_consumer:
+            self.stream_consumer = RedisStreamConsumer(self.redis)
+
+        retry_count = 0
+        while retry_count < max_retries:
+            try:
+                events = await self.stream_consumer.read_batch(count=max_events)
+
+                for event in events:
+                    try:
+                        event_type = event.get("type", "unknown")
+                        cypher = self.event_processor.process_event(event_type, event)
+
+                        if cypher:
+                            # Execute in Memgraph
+                            with self.memgraph_driver.session() as session:
+                                session.run(cypher)
+
+                            # Update statistics
+                            if "node" in event_type.lower():
+                                self.stats.nodes_synced += 1
+                            elif "edge" in event_type.lower():
+                                self.stats.edges_synced += 1
+
+                            self.stats.total_processed += 1
+
+                    except Exception as e:
+                        logger.error(f"Failed to process event: {e}")
+                        self.stats.errors += 1
+                        continue
+
+                return self.stats
+
+            except Exception as e:
+                retry_count += 1
+                logger.warning(f"Retry {retry_count}/{max_retries}: {e}")
+                await asyncio.sleep(0.5 * retry_count)
+
+        self.stats.errors += 1
+        return self.stats
+
+    async def shutdown(self) -> None:
+        """Shutdown the sync worker."""
+        await self.disconnect()
 
 
 class NativeStreamTransform:

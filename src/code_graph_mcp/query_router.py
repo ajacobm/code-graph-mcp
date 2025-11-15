@@ -90,49 +90,60 @@ class QueryComplexityAnalyzer:
 
         # Count MATCH clauses (each hop adds complexity)
         match_count = len(re.findall(r'\bMATCH\b', query_upper))
-        score += match_count * 10
+        score += match_count * 20
 
-        # Variable-length paths (traversal)
-        has_var_length = bool(re.search(r'\[\*\d+\.\.\d+\]', query))
+        # Variable-length paths (traversal) - handles [:TYPE*1..5] format
+        has_var_length = bool(re.search(r'\[[^\]]*\*\d+\.\.\d+[^\]]*\]', query))
         if has_var_length:
-            score += 50
+            score += 80
             operators.append("VARIABLE_LENGTH_PATH")
 
         # Get traversal depth
         depth = self._extract_depth(query)
         if depth > 0:
-            score += depth * 15
+            score += depth * 30
 
-        # Aggregation functions
-        agg_funcs = ["COUNT", "SUM", "AVG", "MIN", "MAX", "COLLECT", "GROUP BY"]
-        has_aggregation = any(func in query_upper for func in agg_funcs)
+        # Edge traversal (any arrow or bracket relationship) adds base score
+        has_any_traversal = bool(re.search(r'-\[.*?\]-', query))
+        if has_any_traversal:
+            # Single or multi-hop edges always add traversal complexity
+            score += 40
+            operators.append("EDGE_TRAVERSAL")
+
+        # Aggregation functions and GROUP BY
+        has_group_by = "GROUP BY" in query_upper
+        agg_funcs = ["COUNT", "SUM", "AVG", "MIN", "MAX", "COLLECT"]
+        has_aggregation = has_group_by or any(func in query_upper for func in agg_funcs)
         if has_aggregation:
-            score += 30
-            operators.append("AGGREGATION")
+            score += 50
+            if has_group_by:
+                operators.append("GROUP BY")
+            else:
+                operators.append("AGGREGATION")
 
         # UNION queries
         has_union = "UNION" in query_upper
         if has_union:
-            score += 25
+            score += 40
             operators.append("UNION")
 
         # WHERE clause complexity
         where_conditions = len(re.findall(r'\bAND\b|\bOR\b', query_upper))
-        score += where_conditions * 5
+        score += where_conditions * 8
 
         # ORDER BY, SKIP, LIMIT
         if "ORDER BY" in query_upper:
-            score += 10
+            score += 15
             operators.append("ORDER_BY")
         if "SKIP" in query_upper or "LIMIT" in query_upper:
-            score += 5
+            score += 10
             operators.append("LIMIT")
 
         # RETURN complexity
         return_clause = self._extract_return_clause(query)
         if return_clause:
             if "DISTINCT" in return_clause.upper():
-                score += 10
+                score += 20
                 operators.append("DISTINCT")
 
         is_simple = score < self.SIMPLE_THRESHOLD
@@ -142,7 +153,7 @@ class QueryComplexityAnalyzer:
             score=score,
             is_simple=is_simple,
             is_complex=is_complex,
-            requires_traversal=has_var_length or depth > 1,
+            requires_traversal=has_var_length or has_any_traversal,
             requires_aggregation=has_aggregation,
             has_union=has_union,
             depth=depth,
@@ -151,14 +162,19 @@ class QueryComplexityAnalyzer:
 
     def _extract_depth(self, query: str) -> int:
         """Extract traversal depth from query."""
-        # Look for variable-length paths like [*1..5]
-        match = re.search(r'\[\*\d+\.\.(\d+)\]', query)
+        # Look for variable-length paths like [:CALLS*1..5]
+        match = re.search(r'\[[^\]]*\*\d+\.\.(\d+)[^\]]*\]', query)
         if match:
             return int(match.group(1))
 
         # Count arrows in path as proxy for depth
-        arrows = len(re.findall(r'-\[.*?\]->', query)) + len(re.findall(r'-\[.*?\]-', query))
-        return arrows
+        # Each arrow represents one hop in the path
+        arrows = len(re.findall(r'-\[.*?\]->', query))
+        if arrows > 0:
+            return arrows
+        # Also check for undirected edges
+        undirected = len(re.findall(r'-\[.*?\]-', query))
+        return undirected
 
     def _extract_return_clause(self, query: str) -> Optional[str]:
         """Extract RETURN clause from query."""

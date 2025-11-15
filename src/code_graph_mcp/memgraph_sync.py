@@ -13,7 +13,7 @@ from typing import Dict, Any, Optional, List
 from enum import Enum
 
 import redis.asyncio as redis
-from neo4j import GraphDatabase, driver
+from neo4j import GraphDatabase, Driver
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ class MemgraphClient:
     def __init__(self, url: str = "bolt://memgraph:7687"):
         """Initialize Memgraph connection."""
         self.url = url
-        self.driver: Optional[driver.Driver] = None
+        self.driver: Optional[Driver] = None
 
     async def connect(self) -> None:
         """Establish connection to Memgraph."""
@@ -236,7 +236,7 @@ class MemgraphCDCSync:
         self.redis_url = redis_url
         self.memgraph_url = memgraph_url
         self.redis: Optional[redis.Redis] = None
-        self.memgraph_driver: Optional[driver.Driver] = None
+        self.memgraph_driver: Optional[Driver] = None
         self.stream_consumer = None
         self.event_processor = CDCEventProcessor()
         self.stats = SyncStatistics()

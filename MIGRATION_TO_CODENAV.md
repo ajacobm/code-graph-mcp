@@ -15,7 +15,9 @@ This document outlines the comprehensive migration plan for renaming the **code-
 
 ### Command Line Tools
 - Current: `code-graph-mcp`, `code-graph-sse`
-- New: `codenav`, `codenav-sse`
+- New: `codenav`, `codenav-mcp`
+
+**Note**: References to `sse` are outdated and should be updated to `streamableHttp` in a separate task.
 
 ### Docker Images
 - Current: `ghcr.io/ajacobm/code-graph-mcp`
@@ -23,7 +25,7 @@ This document outlines the comprehensive migration plan for renaming the **code-
 
 ### Repository
 - Current: `ajacobm/code-graph-mcp`
-- New: Keep as `ajacobm/code-graph-mcp` OR rename to `ajacobm/codenav`
+- New: Rename to `ajacobm/codenav`
 
 **Note**: GitHub repository renames preserve git history and automatically redirect old URLs to new ones.
 
@@ -73,7 +75,7 @@ Update:
 - `[project]` → `name = "codenav"`
 - Package path in `[tool.hatch.build.targets.wheel]`
 - Entry points: `code-graph-mcp` → `codenav`
-- Entry points: `code-graph-sse` → `codenav-sse`
+- Entry points: `code-graph-sse` → `codenav-mcp`
 - URLs (if repository is renamed)
 - Description text
 
@@ -178,12 +180,11 @@ Update:
 - Push to GHCR with new names
 - Optionally maintain old names as aliases temporarily
 
-#### 7.3 PyPI Package
-When ready to publish:
-1. Register new package name on PyPI: `codenav`
-2. Update version to indicate major change (e.g., 2.0.0)
-3. Publish to PyPI
-4. Consider deprecation notice on old package
+#### 7.3 Package Distribution
+**Note**: PyPI publishing will be deferred until the project is ready for public release. For now:
+1. Package can be installed locally or from git
+2. Docker images will be the primary distribution method
+3. Future PyPI publication will happen when project reaches 1.0.0
 
 ### Phase 8: Testing and Validation
 
@@ -195,7 +196,7 @@ When ready to publish:
 
 #### 8.2 Integration Tests
 - Test CLI commands: `codenav --help`
-- Test SSE server: `codenav-sse`
+- Test MCP server: `codenav-mcp`
 - Test Docker images
 - Test MCP client integration
 
@@ -217,9 +218,8 @@ Update to major version (2.0.0) to indicate breaking change:
 1. Create release branch
 2. Merge to main
 3. Create GitHub release
-4. Publish to PyPI
-5. Publish Docker images
-6. Update documentation site
+4. Publish Docker images to GHCR
+5. Update documentation site
 
 #### 9.3 Communication
 - Update project description on GitHub
@@ -267,10 +267,10 @@ git log --follow src/code_graph_mcp/__init__.py
 
 Since the project has completely diverged from the upstream fork:
 
-1. **No action needed** - Just continue development on current repository
+1. **Remove upstream remote** - Can be done directly: `git remote remove upstream` (if it exists)
 2. **Optional**: Remove fork relationship in GitHub UI:
    - Settings → General → "This is a fork" section
-   - Contact GitHub support to detach fork if needed
+   - Note: For public repositories, you can manage the fork relationship yourself through Settings
 3. The git history is independent and will be preserved
 
 ## File-by-File Checklist
@@ -334,11 +334,9 @@ Since the project has completely diverged from the upstream fork:
 
 If issues arise during migration:
 
-1. **Before PyPI publish**: Simply revert commits
-2. **After PyPI publish**: 
-   - Cannot unpublish from PyPI
-   - Publish fix version immediately
-   - Document issues in CHANGELOG
+1. Simply revert commits using git
+2. Rebuild and republish Docker images if needed
+3. Document issues in CHANGELOG
 
 ## Timeline Estimate
 
@@ -358,7 +356,6 @@ If issues arise during migration:
 
 ### Medium Risk
 - Docker image publishing - Can be tested before production
-- PyPI publishing - Cannot be undone, but can publish fixes
 
 ### High Risk
 - None identified - This is a straightforward rename operation
@@ -367,7 +364,7 @@ If issues arise during migration:
 
 ✅ All tests pass with new package name
 ✅ CLI commands work: `codenav --help`
-✅ Package installs correctly: `pip install codenav`
+✅ Package installs correctly from source
 ✅ Docker images build and run
 ✅ Git history is preserved and followable
 ✅ Documentation is complete and accurate
@@ -375,31 +372,28 @@ If issues arise during migration:
 
 ## Post-Migration Tasks
 
-1. Update package on PyPI
-2. Update Docker images on GHCR
-3. Announce migration
-4. Monitor for issues
-5. Update any external references
-6. Archive old package (with redirect/deprecation)
+1. Update Docker images on GHCR with new names
+2. Announce migration
+3. Monitor for issues
+4. Update any external references
+
+**Note**: PyPI publishing will be deferred until the project is ready for public release.
 
 ## Questions for Consideration
 
-1. **Package Name**: Prefer `codenav` or `code_navigator`?
-   - Recommendation: `codenav` (shorter, Pythonic)
+1. **Package Name**: `codenav` (confirmed - shorter, Pythonic)
 
-2. **Repository Rename**: Rename GitHub repo from `code-graph-mcp` to `codenav`?
-   - Pros: Consistency across all assets
-   - Cons: Breaks some external links (though GitHub redirects)
-   - Recommendation: Yes, rename for consistency
+2. **Repository Rename**: Rename GitHub repo to `ajacobm/codenav` (confirmed)
+   - GitHub will automatically redirect old URLs
+   - Maintains full consistency across all assets
 
-3. **Docker Naming**: Keep `code-graph-mcp` images as aliases?
-   - Recommendation: Publish both for transition period
+3. **Docker Naming**: Rename to `codenav` images, remove old `code-graph-mcp` images
+   - No transition period needed as images are not yet in active use
 
-4. **Version Bump**: Use 2.0.0 to indicate breaking change?
-   - Recommendation: Yes, follows semver
-
-5. **Deprecation Period**: How long to maintain old package on PyPI?
-   - Recommendation: 6-12 months with deprecation warnings
+4. **Version**: Reset to `0.5.0` or similar pre-1.0 version
+   - Project is still in alpha/preview stage
+   - Semver can reset with the rename
+   - Will reach 1.0.0 when ready for public release
 
 ## Notes
 

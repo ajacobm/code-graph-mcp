@@ -18,8 +18,8 @@ import pytest
 import pytest_asyncio
 from redis.asyncio import Redis, from_url
 
-from src.code_graph_mcp.cdc_manager import CDCEvent, CDCEventType, CDCManager
-from src.code_graph_mcp.universal_graph import (
+from src.codenav.cdc_manager import CDCEvent, CDCEventType, CDCManager
+from src.codenav.universal_graph import (
     NodeType,
     RelationshipType,
     UniversalGraph,

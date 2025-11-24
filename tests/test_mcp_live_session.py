@@ -10,8 +10,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from code_graph_mcp.server.analysis_engine import UniversalAnalysisEngine
-from code_graph_mcp.server.mcp_server import (
+from codenav.server.analysis_engine import UniversalAnalysisEngine
+from codenav.server.mcp_server import (
     handle_analyze_codebase,
     handle_find_definition,
     handle_find_references,
@@ -26,7 +26,7 @@ from code_graph_mcp.server.mcp_server import (
 async def run_mcp_tools():
     """Run MCP tools and show their output."""
     
-    project_root = Path("/app/src/code_graph_mcp")
+    project_root = Path("/app/src/codenav")
     
     print("="*80)
     print("LIVE MCP TOOL SESSION")

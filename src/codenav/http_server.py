@@ -64,7 +64,7 @@ class GraphAPIServer:
             """Initialize analysis engine and CDC on startup."""
             try:
                 logger.info(f"Initializing analysis engine for {self.project_root}")
-                from code_graph_mcp.redis_cache import RedisConfig
+                from codenav.redis_cache import RedisConfig
                 from redis.asyncio import from_url
                 
                 redis_config = None
@@ -169,7 +169,7 @@ class GraphAPIServer:
         """Initialize the server."""
         try:
             logger.info(f"Initializing HTTP server on {self.host}:{self.port}")
-            from code_graph_mcp.redis_cache import RedisConfig
+            from codenav.redis_cache import RedisConfig
             
             redis_config = None
             if self.enable_redis_cache:

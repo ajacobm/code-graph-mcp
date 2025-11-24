@@ -38,16 +38,16 @@ class MockCodeGraph:
 
 # Mock the imports
 sys.modules['redis'] = type('MockModule', (), {})()
-sys.modules['code_graph_mcp.redis_cache'] = MockRedisConfig()
-sys.modules['code_graph_mcp.cache_manager'] = type('MockModule', (), {
+sys.modules['codenav.redis_cache'] = MockRedisConfig()
+sys.modules['codenav.cache_manager'] = type('MockModule', (), {
     'HybridCacheManager': MockCacheManager,
     'cached_method': cached_method
 })()
-sys.modules['code_graph_mcp.universal_graph'] = type('MockModule', (), {
+sys.modules['codenav.universal_graph'] = type('MockModule', (), {
     'GraphStats': type('MockGraphStats', (), {})(),
     'MetricsConfig': type('MockMetricsConfig', (), {})()
 })()
-sys.modules['code_graph_mcp.graph'] = type('MockModule', (), {
+sys.modules['codenav.graph'] = type('MockModule', (), {
     'RustworkxCodeGraph': MockCodeGraph
 })()
 
@@ -76,7 +76,7 @@ print("✅ Mocked external dependencies")
 
 # Now try the actual import
 try:
-    from code_graph_mcp.universal_parser import LanguageRegistry, LanguageConfig, UniversalParser
+    from codenav.universal_parser import LanguageRegistry, LanguageConfig, UniversalParser
     print("✅ Successfully imported LanguageRegistry, LanguageConfig, UniversalParser")
 except Exception as e:
     print(f"❌ Import failed: {e}")

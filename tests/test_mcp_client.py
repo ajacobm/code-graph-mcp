@@ -27,7 +27,7 @@ async def test_mcp_tools():
     
     server_params = StdioServerParameters(
         command="uv",
-        args=["run", "code-graph-mcp", "--project-root", "/app/src/code_graph_mcp", "--verbose"]
+        args=["run", "code-graph-mcp", "--project-root", "/app/src/codenav", "--verbose"]
     )
     
     try:

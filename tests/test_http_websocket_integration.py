@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from code_graph_mcp.cdc_manager import CDCEventType, CDCManager
-from code_graph_mcp.http_server import GraphAPIServer
+from codenav.cdc_manager import CDCEventType, CDCManager
+from codenav.http_server import GraphAPIServer
 
 
 @pytest.fixture
@@ -80,7 +80,7 @@ class TestWebSocketRouterIntegration:
 
     def test_websocket_router_can_be_created(self):
         """Verify WebSocket router can be created."""
-        from code_graph_mcp.websocket_server import create_websocket_router
+        from codenav.websocket_server import create_websocket_router
         
         router = create_websocket_router()
         assert router is not None
@@ -88,7 +88,7 @@ class TestWebSocketRouterIntegration:
 
     def test_websocket_router_has_ws_manager(self):
         """Verify WebSocket router has manager."""
-        from code_graph_mcp.websocket_server import create_websocket_router
+        from codenav.websocket_server import create_websocket_router
         
         router = create_websocket_router()
         assert hasattr(router, 'ws_manager')

@@ -26,7 +26,7 @@ services:
       timeout: 10s
       retries: 3
 
-  code-graph-sse:
+  codenav-mcp:
     build:
       context: ..
       dockerfile: ./Dockerfile
@@ -37,13 +37,13 @@ services:
       - ".:/app"  # Mount entire project for development
       - repo-mount:/app/workspace  # Mount workspace
     environment:
-      - CODEGRAPHMCP_LOG_LEVEL=DEBUG
-      - CODEGRAPHMCP_FILE_WATCHER=true
+      - CODENAV_LOG_LEVEL=DEBUG
+      - CODENAV_FILE_WATCHER=true
       - REDIS_URL=redis://redis:6379
     depends_on:
       - redis
     command: >
-      uv run code-graph-mcp
+      uv run codenav
       --mode sse
       --redis-url redis://redis:6379
       --project-root /app/workspace

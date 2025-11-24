@@ -16,8 +16,8 @@ from typing import Dict, List, Any
 import pytest
 import pytest_asyncio
 
-from code_graph_mcp.server.analysis_engine import UniversalAnalysisEngine
-from code_graph_mcp.universal_graph import RelationshipType, NodeType
+from codenav.server.analysis_engine import UniversalAnalysisEngine
+from codenav.universal_graph import RelationshipType, NodeType
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 async def analysis_engine():
     """Initialize analysis engine for testing."""
     
-    project_root = Path(__file__).parent.parent / "src" / "code_graph_mcp"
+    project_root = Path(__file__).parent.parent / "src" / "codenav"
     logger.info(f"Initializing analysis engine for project: {project_root}")
     if not project_root.exists():
         pytest.skip("Test project not available")
@@ -201,7 +201,7 @@ async def test_graph_relationship_type_mismatch():
     Diagnose potential issue: find_symbol_references looks for REFERENCES type,
     but the parser might be creating CALLS relationships instead.
     """
-    project_root = Path(__file__).parent.parent / "src" / "code_graph_mcp"
+    project_root = Path(__file__).parent.parent / "src" / "codenav"
     if not project_root.exists():
         pytest.skip("Test project not available")
     

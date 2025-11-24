@@ -182,7 +182,7 @@ class MCPServerTest:
                 
                 # Import and test SSE server creation
                 try:
-                    from code_graph_mcp.sse_server import create_sse_app
+                    from codenav.sse_server import create_sse_app
                     app = create_sse_app(project_path, enable_file_watcher=False)
                     
                     if app:

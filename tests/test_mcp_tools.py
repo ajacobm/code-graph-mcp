@@ -36,7 +36,7 @@ async def run_mcp_tool_test(session, tool_name, arguments=None):
 
 async def run_all_tests():
     """Run all MCP tool tests."""
-    project_root = '/home/adam/GitHub/code-graph-mcp/src/code_graph_mcp'
+    project_root = '/home/adam/GitHub/code-graph-mcp/src/codenav'
 
     server_params = StdioServerParameters(
         command='uv',

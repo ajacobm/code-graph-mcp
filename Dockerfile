@@ -1,5 +1,5 @@
-# Multi-stage Dockerfile for Code Graph MCP Server
-# Supports stdio (MCP), SSE (HTTP), and HTTP (REST API) modes
+# Multi-stage Dockerfile for CodeNavigator (codenav)
+# Supports stdio (MCP), HTTP (streamableHttp), and Web REST API modes
 # Use --target flag to select: development | production | sse | http | stdio
 
 FROM python:3.12-slim AS base
@@ -39,7 +39,7 @@ RUN mkdir -p /app/workspace /app/.cache
 
 EXPOSE 8000
 
-CMD ["uv", "run", "code-graph-mcp", "--mode", "sse", "--host", "0.0.0.0", "--port", "8000", "--enable-cache", "--verbose"]
+CMD ["uv", "run", "codenav", "--mode", "sse", "--host", "0.0.0.0", "--port", "8000", "--enable-cache", "--verbose"]
 
 # Production stage - minimal production dependencies
 FROM base AS production
@@ -63,22 +63,22 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD /app/.venv/bin/python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 
-CMD ["code-graph-mcp", "--help"]
+CMD ["codenav", "--help"]
 
-# SSE mode - MCP server with HTTP streaming
+# SSE mode - MCP server with HTTP streaming (streamableHttp transport)
 FROM production AS sse
 
-CMD ["code-graph-mcp", "--mode", "sse", "--host", "0.0.0.0", "--port", "8000", "--enable-cache"]
+CMD ["codenav", "--mode", "sse", "--host", "0.0.0.0", "--port", "8000", "--enable-cache"]
 
 # HTTP mode - FastAPI REST server for frontend
 FROM production AS http
 
-CMD ["python", "-m", "code_graph_mcp.http_server", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["codenav-web", "--host", "0.0.0.0", "--port", "8000"]
 
 # Stdio mode - MCP server with stdio transport
 FROM production AS stdio
 
-CMD ["code-graph-mcp", "--mode", "stdio", "--enable-cache"]
+CMD ["codenav", "--mode", "stdio", "--enable-cache"]
 
 # Test stage - includes test dependencies and test runner
 FROM development AS test

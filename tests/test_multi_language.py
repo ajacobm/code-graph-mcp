@@ -9,10 +9,10 @@ from pathlib import Path
 import tempfile
 import shutil
 
-from src.code_graph_mcp.universal_parser import UniversalParser, LanguageRegistry
-from src.code_graph_mcp.universal_graph import UniversalGraph, NodeType
-from src.code_graph_mcp.universal_ast import UniversalASTAnalyzer
-from src.code_graph_mcp.language_router import LanguageDetector, ProjectAnalyzer
+from src.codenav.universal_parser import UniversalParser, LanguageRegistry
+from src.codenav.universal_graph import UniversalGraph, NodeType
+from src.codenav.universal_ast import UniversalASTAnalyzer
+from src.codenav.language_router import LanguageDetector, ProjectAnalyzer
 
 
 class TestLanguageSupport:
@@ -245,7 +245,7 @@ class TestUniversalGraph:
 
     def test_node_creation(self):
         """Test creating universal nodes for different languages."""
-        from code_graph_mcp.universal_graph import UniversalNode, UniversalLocation
+        from codenav.universal_graph import UniversalNode, UniversalLocation
 
         # Create nodes for different languages
         python_node = UniversalNode(
@@ -270,7 +270,7 @@ class TestUniversalGraph:
 
     def test_graph_multi_language_operations(self):
         """Test graph operations work across multiple languages."""
-        from code_graph_mcp.universal_graph import UniversalNode, UniversalLocation
+        from codenav.universal_graph import UniversalNode, UniversalLocation
 
         graph = UniversalGraph()
 
@@ -299,7 +299,7 @@ class TestUniversalASTAnalyzer:
     @pytest.fixture
     def sample_graph(self):
         """Create a sample multi-language graph."""
-        from code_graph_mcp.universal_graph import UniversalNode, UniversalLocation
+        from codenav.universal_graph import UniversalNode, UniversalLocation
 
         graph = UniversalGraph()
 
@@ -320,7 +320,7 @@ class TestUniversalASTAnalyzer:
 
     def test_code_smell_detection(self, sample_graph):
         """Test cross-language code smell detection."""
-        from src.code_graph_mcp.universal_parser import UniversalParser
+        from src.codenav.universal_parser import UniversalParser
 
         parser = UniversalParser(Path("."))
         analyzer = UniversalASTAnalyzer(parser)
@@ -338,7 +338,7 @@ class TestUniversalASTAnalyzer:
 
     def test_maintainability_calculation(self, sample_graph):
         """Test maintainability index calculation."""
-        from src.code_graph_mcp.universal_parser import UniversalParser
+        from src.codenav.universal_parser import UniversalParser
 
         parser = UniversalParser(Path("."))
         analyzer = UniversalASTAnalyzer(parser)

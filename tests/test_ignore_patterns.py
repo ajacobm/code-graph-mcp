@@ -3,7 +3,7 @@
 import pytest
 import tempfile
 from pathlib import Path
-from code_graph_mcp.ignore_patterns import (
+from codenav.ignore_patterns import (
     IgnorePatternsManager,
     IgnoreConfig
 )

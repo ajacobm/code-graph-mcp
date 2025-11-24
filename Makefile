@@ -9,7 +9,7 @@ COMPOSE_MULTI := $(COMPOSE_BASE) -f infrastructure/profiles/multi.yml
 COMPOSE_VALIDATION := $(COMPOSE_BASE) -f infrastructure/profiles/validation.yml
 
 help:
-	@echo "Code Graph MCP - Make Targets"
+	@echo "CodeNavigator (codenav) - Make Targets"
 	@echo ""
 	@echo "Development:"
 	@echo "  make dev-up           - Start development stack (Redis, Memgraph, API, Jupyter)"
@@ -72,7 +72,7 @@ dev-status:
 	$(COMPOSE_BASE) ps
 
 dev-shell:
-	$(COMPOSE_BASE) exec code-graph-http bash
+	$(COMPOSE_BASE) exec codenav-web bash
 
 # Testing Targets
 test-up:
@@ -87,7 +87,7 @@ test-logs:
 	$(COMPOSE_TEST) logs -f
 
 test-shell:
-	$(COMPOSE_TEST) exec code-graph-http bash
+	$(COMPOSE_TEST) exec codenav-web bash
 
 # Backend Only (Frontend Dev) Targets
 backend-up:
@@ -102,7 +102,7 @@ backend-logs:
 	$(COMPOSE_BACKEND) logs -f
 
 backend-shell:
-	$(COMPOSE_BACKEND) exec code-graph-http bash
+	$(COMPOSE_BACKEND) exec codenav-web bash
 
 # GitHub Codespaces Targets
 codespaces-up:
@@ -163,7 +163,7 @@ ps:
 
 # Code Quality Targets
 lint:
-	python -m pylint src/code_graph_mcp --exit-zero
+	python -m pylint src/codenav --exit-zero
 	@echo "✅ Linting complete"
 
 format:

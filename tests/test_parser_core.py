@@ -18,7 +18,7 @@ class TestASTGrepPatterns:
     
     def test_all_languages_have_patterns(self):
         """Verify all 25 languages have AST patterns"""
-        with open(Path(__file__).parent.parent / "src/code_graph_mcp/universal_parser.py") as f:
+        with open(Path(__file__).parent.parent / "src/codenav/universal_parser.py") as f:
             content = f.read()
         
         # Extract PATTERNS dict
@@ -41,7 +41,7 @@ class TestASTGrepPatterns:
     
     def test_each_language_has_function_pattern(self):
         """Verify each language has a function pattern"""
-        with open(Path(__file__).parent.parent / "src/code_graph_mcp/universal_parser.py") as f:
+        with open(Path(__file__).parent.parent / "src/codenav/universal_parser.py") as f:
             content = f.read()
         
         pattern_match = re.search(r'PATTERNS = \{(.*?)\n    \}', content, re.DOTALL)
@@ -68,7 +68,7 @@ class TestASTGrepPatterns:
     
     def test_patterns_are_not_empty_strings(self):
         """Verify pattern values aren't empty"""
-        with open(Path(__file__).parent.parent / "src/code_graph_mcp/universal_parser.py") as f:
+        with open(Path(__file__).parent.parent / "src/codenav/universal_parser.py") as f:
             content = f.read()
         
         pattern_match = re.search(r'PATTERNS = \{(.*?)\n    \}', content, re.DOTALL)
@@ -89,7 +89,7 @@ class TestParsingLogic:
     
     def test_parse_functions_ast_pattern_check(self):
         """Verify _parse_functions_ast checks for pattern before processing"""
-        with open(Path(__file__).parent.parent / "src/code_graph_mcp/universal_parser.py") as f:
+        with open(Path(__file__).parent.parent / "src/codenav/universal_parser.py") as f:
             content = f.read()
         
         # Find _parse_functions_ast method
@@ -114,7 +114,7 @@ class TestParsingLogic:
     
     def test_parse_classes_ast_pattern_check(self):
         """Verify _parse_classes_ast checks for pattern before processing"""
-        with open(Path(__file__).parent.parent / "src/code_graph_mcp/universal_parser.py") as f:
+        with open(Path(__file__).parent.parent / "src/codenav/universal_parser.py") as f:
             content = f.read()
         
         func_match = re.search(
@@ -132,7 +132,7 @@ class TestParsingLogic:
     
     def test_parse_imports_ast_pattern_check(self):
         """Verify _parse_imports_ast checks for pattern before processing"""
-        with open(Path(__file__).parent.parent / "src/code_graph_mcp/universal_parser.py") as f:
+        with open(Path(__file__).parent.parent / "src/codenav/universal_parser.py") as f:
             content = f.read()
         
         func_match = re.search(
@@ -154,7 +154,7 @@ class TestGraphPopulation:
     
     def test_graph_add_node_called_in_parsing(self):
         """Verify parsing functions call self.graph.add_node()"""
-        with open(Path(__file__).parent.parent / "src/code_graph_mcp/universal_parser.py") as f:
+        with open(Path(__file__).parent.parent / "src/codenav/universal_parser.py") as f:
             content = f.read()
         
         for func_name in ["_parse_functions_ast", "_parse_classes_ast", "_parse_imports_ast"]:
@@ -173,7 +173,7 @@ class TestGraphPopulation:
     
     def test_file_node_creation(self):
         """Verify file nodes are created"""
-        with open(Path(__file__).parent.parent / "src/code_graph_mcp/universal_parser.py") as f:
+        with open(Path(__file__).parent.parent / "src/codenav/universal_parser.py") as f:
             content = f.read()
         
         # Find _create_file_node method
@@ -199,7 +199,7 @@ class TestNodeIdentifiers:
     
     def test_function_node_ids_unique(self):
         """Verify function node IDs are unique"""
-        with open(Path(__file__).parent.parent / "src/code_graph_mcp/universal_parser.py") as f:
+        with open(Path(__file__).parent.parent / "src/codenav/universal_parser.py") as f:
             content = f.read()
         
         # Find _parse_functions_ast

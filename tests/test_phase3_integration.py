@@ -44,7 +44,7 @@ print(f"Dependencies: Redis={REDIS_AVAILABLE}, Watchdog={WATCHDOG_AVAILABLE}, Pa
 def test_basic_import_without_deps():
     """Test that basic imports work even without optional dependencies."""
     try:
-        from code_graph_mcp.universal_parser import UniversalParser, LanguageRegistry, LanguageConfig
+        from codenav.universal_parser import UniversalParser, LanguageRegistry, LanguageConfig
         print("✅ Basic imports successful")
         
         # Test basic functionality without cache manager
@@ -66,7 +66,7 @@ def test_basic_import_without_deps():
 def test_performance_markers_integration():
     """Test that all performance optimization markers are properly integrated."""
     try:
-        from code_graph_mcp.universal_parser import UniversalParser
+        from codenav.universal_parser import UniversalParser
         
         parser = UniversalParser()
         
@@ -102,7 +102,7 @@ def test_no_lru_cache_conflicts():
     """Test that LRU caches have been properly removed."""
     try:
         import inspect
-        from code_graph_mcp.universal_parser import UniversalParser, LanguageRegistry
+        from codenav.universal_parser import UniversalParser, LanguageRegistry
         
         # Get all methods from both classes
         parser_methods = inspect.getmembers(UniversalParser, predicate=inspect.isfunction)
@@ -126,7 +126,7 @@ def test_no_lru_cache_conflicts():
 async def test_gitignore_optimization():
     """Test the optimized gitignore functionality."""
     try:
-        from code_graph_mcp.universal_parser import UniversalParser
+        from codenav.universal_parser import UniversalParser
         
         # Create temporary project with .gitignore
         temp_dir = Path(tempfile.mkdtemp())
@@ -215,7 +215,7 @@ build/
 @pytest.mark.asyncio
 async def test_cache_method_decorators():
     """Test that cached_method decorators work properly."""
-    from code_graph_mcp.universal_parser import UniversalParser, LanguageRegistry
+    from codenav.universal_parser import UniversalParser, LanguageRegistry
     
     # Create a mock cache manager since Redis might not be available
     mock_cache = Mock()
@@ -260,7 +260,7 @@ async def test_cache_method_decorators():
 @pytest.mark.asyncio
 async def test_parser_optimization_performance():
     """Test that parser optimizations don't break functionality."""
-    from code_graph_mcp.universal_parser import UniversalParser
+    from codenav.universal_parser import UniversalParser
     
     # Create temporary project 
     temp_dir = Path(tempfile.mkdtemp())
@@ -305,7 +305,7 @@ async def test_parser_optimization_performance():
 @pytest.mark.asyncio
 async def test_cache_state_persistence():
     """Test that cache state persists across operations."""
-    from code_graph_mcp.universal_parser import UniversalParser
+    from codenav.universal_parser import UniversalParser
     
     # Create temporary project
     temp_dir = Path(tempfile.mkdtemp())

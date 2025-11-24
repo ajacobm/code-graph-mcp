@@ -16,8 +16,8 @@ echo ""
 
 # Test Redis
 echo "📡 Testing Redis connection..."
-if docker ps | grep -q codegraph-redis; then
-    if docker exec codegraph-redis redis-cli ping | grep -q PONG; then
+if docker ps | grep -q codenav-redis; then
+    if docker exec codenav-redis redis-cli ping | grep -q PONG; then
         echo "✅ Redis is running and responsive"
     else
         echo "❌ Redis container exists but not responding"
@@ -56,14 +56,14 @@ else
 fi
 echo ""
 
-# Test code-graph-mcp
-echo "📦 Testing code-graph-mcp..."
-if $UV_CMD python -c "import code_graph_mcp; print('✅ code_graph_mcp module imports successfully')" 2>/dev/null; then
+# Test codenav
+echo "📦 Testing codenav..."
+if $UV_CMD python -c "import codenav; print('✅ codenav module imports successfully')" 2>/dev/null; then
     echo ""
-elif python3 -c "import sys; sys.path.insert(0, 'src'); import code_graph_mcp; print('✅ code_graph_mcp module imports successfully')" 2>/dev/null; then
+elif python3 -c "import sys; sys.path.insert(0, 'src'); import codenav; print('✅ codenav module imports successfully')" 2>/dev/null; then
     echo ""
 else
-    echo "⚠️  code_graph_mcp not installed yet"
+    echo "⚠️  codenav not installed yet"
     echo "   Installing dependencies..."
     if command -v uv &> /dev/null; then
         uv sync
@@ -74,7 +74,7 @@ fi
 
 # Test MCP server (quick check)
 echo "🔧 Testing MCP server..."
-timeout 5s uv run code-graph-mcp --mode stdio --help > /dev/null 2>&1
+timeout 5s uv run codenav --mode stdio --help > /dev/null 2>&1
 if [ $? -eq 0 ] || [ $? -eq 124 ]; then
     echo "✅ MCP server executable works"
 else
@@ -99,7 +99,7 @@ echo "✨ All tests passed!"
 echo ""
 echo "Next steps:"
 echo "  1. Start SSE server:"
-echo "     uv run code-graph-mcp --mode sse --port 8000 --redis-url redis://localhost:6379 --verbose"
+echo "     uv run codenav --mode sse --port 8000 --redis-url redis://localhost:6379 --verbose"
 echo ""
 echo "  2. Or use Docker Compose:"
 echo "     docker compose -f docker-compose-codespaces.yml up -d"

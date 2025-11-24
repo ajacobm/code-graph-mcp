@@ -8,16 +8,44 @@ This document outlines the comprehensive migration plan for renaming the **code-
 
 ### Project Names
 - **Display Name**: `CodeNavigator`
-- **Python Package**: `codenav` (Pythonic, concise)
-- **Alternative**: `code_navigator` (more explicit)
+- **Python Package**: `codenav` (Pythonic, concise, baseline name)
 
-**Recommendation**: Use `codenav` for brevity and Pythonic style, similar to popular packages like `pytest`, `numpy`, `pandas`.
+**Confirmed**: Use `codenav` for brevity and Pythonic style, similar to popular packages like `pytest`, `numpy`, `pandas`.
+
+### Package Architecture
+
+The project consists of multiple components that can be packaged as optional extras:
+
+1. **Core Analyzer** (`codenav`) - Base package with code analysis engine
+   - Universal AST parsing
+   - Graph construction
+   - Analysis algorithms
+   - Core utilities
+
+2. **MCP Runtime Options**:
+   - `codenav[mcp-stdio]` - MCP server with stdio transport
+   - `codenav[mcp-http]` - MCP server with streamableHttp transport
+   - `codenav[mcp]` - All MCP runtime options
+
+3. **Web Components**:
+   - `codenav[web]` - HTTP REST API server for frontend
+   - `codenav[notebooks]` - Jupyter notebook support and utilities
+
+4. **Development & Testing**:
+   - `codenav[dev]` - Development dependencies
+   - `codenav[test]` - Testing dependencies
+
+5. **Full Installation**:
+   - `codenav[all]` - All components and dependencies
 
 ### Command Line Tools
 - Current: `code-graph-mcp`, `code-graph-sse`
-- New: `codenav`, `codenav-mcp`
+- New: 
+  - `codenav` - Main MCP server entry point (replaces `code-graph-mcp`)
+  - `codenav-web` - HTTP REST API server (replaces http_server module)
+  - Runtime selection via CLI flags: `--runtime stdio` or `--runtime http`
 
-**Note**: References to `sse` are outdated and should be updated to `streamableHttp` in a separate task.
+**Note**: The term "SSE" is outdated. The MCP protocol supports `stdio` and `streamableHttp` transports.
 
 ### Docker Images
 - Current: `ghcr.io/ajacobm/code-graph-mcp`
@@ -28,6 +56,101 @@ This document outlines the comprehensive migration plan for renaming the **code-
 - New: Rename to `ajacobm/codenav`
 
 **Note**: GitHub repository renames preserve git history and automatically redirect old URLs to new ones.
+
+## Project Architecture
+
+### Current Structure
+
+The CodeNavigator project consists of multiple interconnected components:
+
+1. **Core Analyzer** (`src/code_graph_mcp/`)
+   - Universal AST parsing and analysis
+   - Graph construction algorithms
+   - Language detection and routing
+   - Code metrics and complexity analysis
+   - Reusable by all other components
+
+2. **MCP Server** (`server.py`, `sse_server.py`)
+   - Model Context Protocol implementation
+   - Two transport modes:
+     - `stdio` - Standard input/output (default for Claude Desktop, Cline, etc.)
+     - `streamableHttp` - HTTP streaming (for web-based clients)
+   - Currently accessed via `code-graph-mcp` and `code-graph-sse` commands
+
+3. **Web API** (`http_server.py`)
+   - REST API for frontend application
+   - Independent from MCP server
+   - Uses core analyzer engine
+   - Currently accessed as Python module
+
+4. **Frontend Application** (`frontend/`)
+   - Vue.js web interface
+   - Visualizes code graphs and analysis results
+   - Communicates with Web API
+   - Can be hosted alongside notebooks
+
+5. **Jupyter Notebooks** (`notebooks/`)
+   - Interactive analysis and exploration
+   - Graph visualization examples
+   - Architectural pattern detection
+   - May be hosted alongside frontend
+
+6. **Tests** (`tests/`)
+   - Unit and integration tests
+   - Test infrastructure for all components
+
+7. **Future Components**:
+   - Interactive CLI (planned)
+   - Additional visualization tools
+
+### Component Dependencies
+
+```
+Core Analyzer (codenav base)
+    ├── MCP Server (codenav[mcp])
+    │   ├── stdio transport (codenav[mcp-stdio])
+    │   └── streamableHttp transport (codenav[mcp-http])
+    ├── Web API (codenav[web])
+    ├── Notebooks (codenav[notebooks])
+    └── Future CLI (codenav[cli])
+
+Frontend (separate repo or subproject)
+    └── Connects to Web API
+
+All Components (codenav[all])
+```
+
+### Package Extras Implementation
+
+The Python package will support optional extras following standard conventions:
+
+```bash
+# Base analyzer only
+pip install codenav
+
+# MCP server with stdio (most common)
+pip install codenav[mcp-stdio]
+
+# MCP server with HTTP streaming
+pip install codenav[mcp-http]
+
+# All MCP options
+pip install codenav[mcp]
+
+# Web API server
+pip install codenav[web]
+
+# Jupyter notebooks
+pip install codenav[notebooks]
+
+# Development
+pip install codenav[dev]
+
+# Everything
+pip install codenav[all]
+```
+
+This architecture allows users to install only what they need, keeping dependencies minimal for specific use cases.
 
 ## Migration Phases
 
@@ -71,13 +194,89 @@ Files requiring import updates:
 ### Phase 3: Configuration Files
 
 #### 3.1 pyproject.toml
-Update:
+
+**Main Updates**:
 - `[project]` → `name = "codenav"`
-- Package path in `[tool.hatch.build.targets.wheel]`
-- Entry points: `code-graph-mcp` → `codenav`
-- Entry points: `code-graph-sse` → `codenav-mcp`
-- URLs (if repository is renamed)
+- Package path in `[tool.hatch.build.targets.wheel]` → `packages = ["src/codenav"]`
+- Entry points:
+  - `code-graph-mcp` → `codenav` (maps to `codenav:main`)
+  - `code-graph-sse` → remove (outdated, functionality merged into `codenav`)
+  - Add `codenav-web` for HTTP REST API (maps to `codenav.http_server:main`)
+- URLs (update to `ajacobm/codenav`)
 - Description text
+
+**Optional Dependencies Structure**:
+
+```toml
+[project.optional-dependencies]
+# MCP server with stdio transport (most common, minimal deps)
+mcp-stdio = [
+    "mcp>=1.12.2",
+    "anyio>=4.0.0",
+    "click>=8.0.0",
+]
+
+# MCP server with streamableHttp transport
+mcp-http = [
+    "mcp>=1.12.2",
+    "anyio>=4.0.0", 
+    "click>=8.0.0",
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "sse-starlette>=2.0.0",
+]
+
+# All MCP options
+mcp = [
+    "codenav[mcp-stdio]",
+    "codenav[mcp-http]",
+]
+
+# Web REST API server
+web = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "pydantic>=2.5.0",
+    "httpx>=0.24.0",
+]
+
+# Jupyter notebook support
+notebooks = [
+    "jupyter>=1.0.0",
+    "ipykernel>=6.0.0",
+    "matplotlib>=3.7.0",
+    "pandas>=2.0.0",
+]
+
+# Development dependencies
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.23.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+
+# Testing dependencies
+test = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.23.0",
+]
+
+# Everything
+all = [
+    "codenav[mcp]",
+    "codenav[web]",
+    "codenav[notebooks]",
+    "codenav[dev]",
+]
+```
+
+**Base Dependencies** (always installed):
+- Core analysis engine dependencies (ast-grep-py, rustworkx, networkx, etc.)
+- Redis cache support
+- Graph database support (neo4j)
+- File watching (watchdog)
+- Pattern matching (pathspec)
 
 #### 3.2 package.json (Frontend)
 Update:
@@ -196,9 +395,12 @@ Update:
 
 #### 8.2 Integration Tests
 - Test CLI commands: `codenav --help`
-- Test MCP server: `codenav-mcp`
+- Test MCP server with stdio: `codenav --runtime stdio`
+- Test MCP server with HTTP: `codenav --runtime http`
+- Test Web API: `codenav-web`
 - Test Docker images
-- Test MCP client integration
+- Test MCP client integration (Claude Desktop, Cline, etc.)
+- Test optional extras installation
 
 #### 8.3 Documentation Tests
 - Verify all documentation links work
@@ -363,37 +565,64 @@ If issues arise during migration:
 ## Success Criteria
 
 ✅ All tests pass with new package name
-✅ CLI commands work: `codenav --help`
-✅ Package installs correctly from source
+✅ CLI commands work:
+  - `codenav --help`
+  - `codenav --runtime stdio`
+  - `codenav --runtime http`
+  - `codenav-web`
+✅ Package installs correctly from source:
+  - Base: `pip install -e .`
+  - With extras: `pip install -e ".[mcp-stdio]"`, `pip install -e ".[all]"`, etc.
+✅ Optional dependencies properly separated
 ✅ Docker images build and run
 ✅ Git history is preserved and followable
 ✅ Documentation is complete and accurate
-✅ No references to old package name (except in deprecation notices)
+✅ No references to old package name
+✅ Frontend and notebooks still function with renamed package
 
 ## Post-Migration Tasks
 
 1. Update Docker images on GHCR with new names
-2. Announce migration
-3. Monitor for issues
-4. Update any external references
+2. Monitor for issues
+3. Update any external references (if needed)
 
-**Note**: PyPI publishing will be deferred until the project is ready for public release.
+**Note**: 
+- PyPI publishing will be deferred until the project is ready for public release.
+- No public migration announcement needed (private project).
 
-## Questions for Consideration
+## Confirmed Decisions
 
-1. **Package Name**: `codenav` (confirmed - shorter, Pythonic)
+All key decisions have been finalized:
 
-2. **Repository Rename**: Rename GitHub repo to `ajacobm/codenav` (confirmed)
+1. **Package Name**: `codenav` ✓
+   - Baseline name for all components
+   - Pythonic, concise, memorable
+
+2. **Package Architecture**: Optional extras pattern ✓
+   - `codenav` - Core analyzer (base)
+   - `codenav[mcp-stdio]` - MCP with stdio transport
+   - `codenav[mcp-http]` - MCP with streamableHttp transport  
+   - `codenav[mcp]` - All MCP options
+   - `codenav[web]` - HTTP REST API
+   - `codenav[notebooks]` - Jupyter support
+   - `codenav[all]` - Everything
+
+3. **Repository Rename**: `ajacobm/codenav` ✓
    - GitHub will automatically redirect old URLs
    - Maintains full consistency across all assets
 
-3. **Docker Naming**: Rename to `codenav` images, remove old `code-graph-mcp` images
-   - No transition period needed as images are not yet in active use
+4. **Docker Naming**: `ghcr.io/ajacobm/codenav` ✓
+   - Remove old `code-graph-mcp` images
+   - No transition period needed
 
-4. **Version**: Reset to `0.5.0` or similar pre-1.0 version
+5. **Version**: Reset to `0.5.0` ✓
    - Project is still in alpha/preview stage
    - Semver can reset with the rename
    - Will reach 1.0.0 when ready for public release
+
+6. **Distribution**: Docker images primary, no PyPI until 1.0 ✓
+
+7. **Visibility**: Private project, no public announcements ✓
 
 ## Notes
 

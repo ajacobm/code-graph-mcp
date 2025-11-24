@@ -58,7 +58,7 @@ class MCPServerTest:
         try:
             # Test direct command
             result = subprocess.run([
-                "code-graph-mcp", "--project-root", ".", "--help"
+                "codenav", "--project-root", ".", "--help"
             ], capture_output=True, text=True, timeout=10)
 
             if result.returncode == 0 and "Code Graph Intelligence MCP Server" in result.stdout:
@@ -73,7 +73,7 @@ class MCPServerTest:
         """Test MCP tool listing via stdio client"""
         print("\n📋 Test 2: Tool Listing")
         try:
-            command = ["code-graph-mcp", "--project-root", "."]
+            command = ["codenav", "--project-root", "."]
             async with stdio_client(command) as streams:
                 async with ClientSession(streams[0], streams[1]) as session:
                     tools = await session.list_tools()
@@ -141,7 +141,7 @@ class MCPServerTest:
         try:
             # Test with Redis cache enabled
             command = [
-                "code-graph-mcp", 
+                "codenav", 
                 "--project-root", ".",
                 "--redis-url", "redis://localhost:6379/0",
                 "--redis-prefix", "test_mcp"
@@ -216,7 +216,7 @@ class Class_{i}:
                     """)
                 
                 # Test without cache
-                command_no_cache = ["code-graph-mcp", "--project-root", str(project_path)]
+                command_no_cache = ["codenav", "--project-root", str(project_path)]
                 
                 async with stdio_client(command_no_cache) as streams:
                     async with ClientSession(streams[0], streams[1]) as session:
@@ -227,7 +227,7 @@ class Class_{i}:
                 # Test with cache (if available)
                 try:
                     command_with_cache = [
-                        "code-graph-mcp", 
+                        "codenav", 
                         "--project-root", str(project_path),
                         "--redis-url", "redis://localhost:6379/0",
                         "--redis-prefix", "test_perf"
@@ -261,7 +261,7 @@ class Class_{i}:
     async def test_tool(self, tool_name: str, arguments: Dict[str, Any]):
         """Generic tool test"""
         try:
-            command = ["code-graph-mcp", "--project-root", "."]
+            command = ["codenav", "--project-root", "."]
             async with stdio_client(command) as streams:
                 async with ClientSession(streams[0], streams[1]) as session:
                     result = await session.call_tool(tool_name, arguments)

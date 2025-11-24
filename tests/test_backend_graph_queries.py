@@ -18,7 +18,7 @@ from codenav.universal_graph import NodeType
 
 @pytest_asyncio.fixture(scope="module")
 async def graph_with_calls():
-    """Analyze code_graph_mcp to get real call relationships."""
+    """Analyze codenav to get real call relationships."""
     project_root = Path(__file__).parent.parent / "src" / "codenav"
     
     engine = UniversalAnalysisEngine(

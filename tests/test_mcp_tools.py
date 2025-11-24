@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Test script for code-graph-mcp MCP tools."""
+"""Test script for codenav MCP tools."""
 
 import asyncio
 import logging
@@ -36,11 +36,11 @@ async def run_mcp_tool_test(session, tool_name, arguments=None):
 
 async def run_all_tests():
     """Run all MCP tool tests."""
-    project_root = '/home/adam/GitHub/code-graph-mcp/src/codenav'
+    project_root = '/home/adam/GitHub/codenav/src/codenav'
 
     server_params = StdioServerParameters(
         command='uv',
-        args=['run', 'code-graph-mcp', '--project-root', project_root, '--verbose']
+        args=['run', 'codenav', '--project-root', project_root, '--verbose']
     )
 
     # Define test cases for each tool

@@ -45,7 +45,7 @@ class CodeGraphMCPServer:
         self.project_root = project_root
         self.redis_url = redis_url
         self.json_response = json_response
-        self.app = Server("code-graph-mcp")
+        self.app = Server("codenav")
         self.analysis_engine = None
         self._setup_handlers()
         

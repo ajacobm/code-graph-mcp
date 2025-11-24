@@ -1,6 +1,6 @@
 Original task query: 
 Improve the following code from [object Promise] (e.g., suggest refactorings, optimizations, or better practices):
-src/code_graph_mcp/universal_parser.py line 1069
+src/codenav/universal_parser.py line 1069
 def _should_ignore_path(self, file_path: Path, project_root: Path) -> bool:
 ... the .gitignore logic needs to happen once and stored in a data structure, not re-called per file path.. there are other optimizations, I'm sure.
 

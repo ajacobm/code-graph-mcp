@@ -5,7 +5,7 @@
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                     GitHub Repository                            │
-│                   ajacobm/code-graph-mcp                         │
+│                   ajacobm/codenav                         │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  📝 Push to main / PR / Tag                                     │
@@ -38,7 +38,7 @@
 │          ▼                                                       │
 │  ┌──────────────────────────────────────────────────────┐      │
 │  │    GitHub Container Registry (GHCR)                  │      │
-│  │    ghcr.io/ajacobm/code-graph-mcp                    │      │
+│  │    ghcr.io/ajacobm/codenav                    │      │
 │  │                                                      │      │
 │  │  Published Tags:                                     │      │
 │  │    • sse-latest                                      │      │
@@ -77,7 +77,7 @@
 │  │                                                    │    │
 │  │  Option 1: Direct Execution (Fastest)             │    │
 │  │  ┌──────────────────────────────────────┐         │    │
-│  │  │  uv run code-graph-mcp               │         │    │
+│  │  │  uv run codenav               │         │    │
 │  │  │  • No Docker overhead                │         │    │
 │  │  │  • Instant reload                    │         │    │
 │  │  │  • Direct debugging                  │         │    │
@@ -189,13 +189,13 @@
 ## Image Naming Convention
 
 ```
-ghcr.io/ajacobm/code-graph-mcp:<version>-<target>
+ghcr.io/ajacobm/codenav:<version>-<target>
 
 Examples:
-  ghcr.io/ajacobm/code-graph-mcp:latest-sse
-  ghcr.io/ajacobm/code-graph-mcp:v1.2.3-sse
-  ghcr.io/ajacobm/code-graph-mcp:main-stdio
-  ghcr.io/ajacobm/code-graph-mcp:sha-abc1234-production
+  ghcr.io/ajacobm/codenav:latest-sse
+  ghcr.io/ajacobm/codenav:v1.2.3-sse
+  ghcr.io/ajacobm/codenav:main-stdio
+  ghcr.io/ajacobm/codenav:sha-abc1234-production
 ```
 
 ## Performance Characteristics
@@ -262,7 +262,7 @@ GHCR_INFRASTRUCTURE_OVERVIEW.md           # This file
 2. **Test Locally**: Run `./scripts/test-codespaces.sh`
 3. **Push Code**: Trigger first build
 4. **Make Public**: Change package visibility
-5. **Pull & Test**: `docker pull ghcr.io/ajacobm/code-graph-mcp:sse-latest`
+5. **Pull & Test**: `docker pull ghcr.io/ajacobm/codenav:sse-latest`
 
 ## Monitoring & Debugging
 
@@ -280,8 +280,8 @@ gh run view 123456789 --log              # Specific run
 
 ### Test Images Locally
 ```bash
-docker pull ghcr.io/ajacobm/code-graph-mcp:sse-latest
-docker run -p 8000:8000 ghcr.io/ajacobm/code-graph-mcp:sse-latest
+docker pull ghcr.io/ajacobm/codenav:sse-latest
+docker run -p 8000:8000 ghcr.io/ajacobm/codenav:sse-latest
 curl http://localhost:8000/health
 ```
 

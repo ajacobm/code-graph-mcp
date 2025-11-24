@@ -6,7 +6,7 @@ Successfully implemented comprehensive Session 7 features with focus on entry po
 ## What Was Implemented
 
 ### 1. Backend Entry Point Detection Service
-**File**: `src/code_graph_mcp/entry_detector.py` (NEW)
+**File**: `src/codenav/entry_detector.py` (NEW)
 - **Cross-language entry point detection** for 11+ programming languages
 - **Language-specific patterns** with confidence scoring algorithms
 - **Intelligent pattern matching** for Python, JavaScript, TypeScript, Java, C#, Go, Rust, C++, PHP, Ruby, Kotlin, Swift
@@ -14,7 +14,7 @@ Successfully implemented comprehensive Session 7 features with focus on entry po
 - **8 comprehensive unit tests** covering all major languages and edge cases
 
 ### 2. Entry Points API Endpoint
-**File**: `src/code_graph_mcp/server/graph_api.py` (ENHANCED)
+**File**: `src/codenav/server/graph_api.py` (ENHANCED)
 - **New `/api/graph/entry-points` endpoint** with filtering and pagination
 - **Confidence-based filtering** with adjustable thresholds
 - **Comprehensive error handling** and performance metrics
@@ -65,7 +65,7 @@ Successfully implemented comprehensive Session 7 features with focus on entry po
 ## Files Created/Enhanced
 
 ### New Files (8):
-1. `src/code_graph_mcp/entry_detector.py` - Backend entry point detection service
+1. `src/codenav/entry_detector.py` - Backend entry point detection service
 2. `frontend/src/stores/entryPointStore.ts` - Frontend state management
 3. `frontend/src/components/EntryPointExplorer.vue` - Entry point UI component
 4. `tests/test_entry_detector.py` - 8 unit tests for detection logic
@@ -75,8 +75,8 @@ Successfully implemented comprehensive Session 7 features with focus on entry po
 8. `SESSION_7_PLAN.md` - Implementation plan documentation
 
 ### Enhanced Files (4):
-1. `src/code_graph_mcp/server/graph_api.py` - Added entry-points endpoint
-2. `src/code_graph_mcp/graph/query_response.py` - Added EntryPointResponse model
+1. `src/codenav/server/graph_api.py` - Added entry-points endpoint
+2. `src/codenav/graph/query_response.py` - Added EntryPointResponse model
 3. `frontend/src/components/GraphViewer.vue` - Enhanced with 5 layouts and entry points
 4. `frontend/src/api/graphClient.ts` - Added entry points methods
 

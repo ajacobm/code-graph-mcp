@@ -3,7 +3,7 @@
 ## Root Causes Identified
 
 ### Issue #1: File Watcher Watchdog API Incompatibility ✅
-**Location**: `src/code_graph_mcp/file_watcher.py:160`
+**Location**: `src/codenav/file_watcher.py:160`
 
 **Problem**: 
 ```python
@@ -24,7 +24,7 @@ The `ignore_patterns` parameter was removed in watchdog 6.0.0+. The modern watch
 ---
 
 ### Issue #2: Parsing Methods Are Text-Based Fallbacks ❌
-**Location**: `src/code_graph_mcp/universal_parser.py:555-700+`
+**Location**: `src/codenav/universal_parser.py:555-700+`
 
 **Problem**: 
 The `_parse_functions()`, `_parse_classes()`, `_parse_variables()`, etc. methods use:
@@ -113,7 +113,7 @@ Replace text-based fallback with proper ast-grep integration:
 
 ### Step 1: Fix File Watcher
 ```python
-# src/code_graph_mcp/file_watcher.py - Line 155-165
+# src/codenav/file_watcher.py - Line 155-165
 
 # Remove ignore_patterns parameter
 self._observer.schedule(
@@ -139,7 +139,7 @@ def on_modified(self, event: FileSystemEvent) -> None:
 
 ### Step 2: Fix Parsing - Use ast-grep Properly
 ```python
-# src/code_graph_mcp/universal_parser.py - Replace _parse_file_content method
+# src/codenav/universal_parser.py - Replace _parse_file_content method
 
 async def _parse_file_content(self, file_path: Path, language_config: LanguageConfig) -> bool:
     """Parse file content using proper AST-Grep integration."""
@@ -264,8 +264,8 @@ def _calculate_complexity(self, ast_node) -> int:
 
 The logs show:
 ```
-2025-10-25 22:11:33,690 - code_graph_mcp.universal_parser - INFO - Optimized parsing complete: 41/44 files parsed
-2025-10-25 22:11:33,703 - code_graph_mcp.graph.rustworkx_unified - DEBUG - get_statistics: 0 nodes, 0 relationships, 41 files
+2025-10-25 22:11:33,690 - codenav.universal_parser - INFO - Optimized parsing complete: 41/44 files parsed
+2025-10-25 22:11:33,703 - codenav.graph.rustworkx_unified - DEBUG - get_statistics: 0 nodes, 0 relationships, 41 files
 ```
 
 This happens because:
@@ -296,8 +296,8 @@ The text pattern matching is TOO STRICT (false negatives) or TOO LOOSE (false po
 uv build
 
 # Run container
-docker build -t code-graph-mcp .
-docker run code-graph-mcp
+docker build -t codenav .
+docker run codenav
 
 # Should see in logs:
 # - No file watcher error

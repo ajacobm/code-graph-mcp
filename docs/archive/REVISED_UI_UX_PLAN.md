@@ -1,4 +1,4 @@
-# Revised Code Graph MCP: LLM Agent Platform & Transactional Entry Navigation
+# Revised CodeNavigator: LLM Agent Platform & Transactional Entry Navigation
 
 ## **Revised Understanding** 🎯
 
@@ -104,4 +104,4 @@ May I review the Toolhive README to understand the session management architectu
 ---
 
 **Does this revised understanding align with your vision? The tool is becoming a sophisticated platform for both LLM agent coding assistants and transactional navigation through CQRS-style application doorways.**</content>
-<parameter name="file_path">/home/adam/GitHub/code-graph-mcp/REVISED_UI_UX_PLAN.md
+<parameter name="file_path">/home/adam/GitHub/codenav/REVISED_UI_UX_PLAN.md

@@ -1,4 +1,4 @@
-# 🔧 Code Graph MCP - AST-Grep API Fix Summary
+# 🔧 CodeNavigator - AST-Grep API Fix Summary
 
 ## ✅ COMPLETED FIXES
 
@@ -17,7 +17,7 @@ functions = root_node.find_all({"rule": {"kind": pattern}})
 ```
 
 **Files Changed**:
-- `src/code_graph_mcp/universal_parser.py`:
+- `src/codenav/universal_parser.py`:
   - Line 658-665: `_parse_functions_ast()` - Fixed
   - Line 722-729: `_parse_classes_ast()` - Fixed  
   - Line 786-793: `_parse_imports_ast()` - Fixed
@@ -25,7 +25,7 @@ functions = root_node.find_all({"rule": {"kind": pattern}})
 ### 2. **Watchdog Logger Suppression**
 **Problem**: Watchdog debug logs were flooding the output
 **Solution**: 
-- `src/code_graph_mcp/sse_server.py`: Added logger suppression in `main()` function
+- `src/codenav/sse_server.py`: Added logger suppression in `main()` function
 
 ```python
 logging.getLogger('watchdog.observers.inotify_buffer').setLevel(logging.WARNING)
@@ -38,12 +38,12 @@ logging.getLogger('sse_starlette').setLevel(logging.INFO)
 **Solution**: Updated `~/.local/bin/compose.sh` to use directory name as project name
 
 ```bash
-STACK_NAME="${STACK_NAME:-$(basename "$PWD")}"  # Uses "code-graph-mcp" instead of "docker-stack"
+STACK_NAME="${STACK_NAME:-$(basename "$PWD")}"  # Uses "codenav" instead of "docker-stack"
 ```
 
 ## 🐳 Docker Build Status
-✅ **Fresh image built with `--no-cache`**: `ajacobm/code-graph-mcp:sse`  
-✅ **Container running**: `code-graph-mcp-code-graph-sse-1`  
+✅ **Fresh image built with `--no-cache`**: `ajacobm/codenav:sse`  
+✅ **Container running**: `codenav-code-graph-sse-1`  
 ✅ **Health check**: PASSING - Server is responsive  
 ✅ **Watchdog logs**: SUPPRESSED - Clean output  
 
@@ -90,12 +90,12 @@ STACK_NAME="${STACK_NAME:-$(basename "$PWD")}"  # Uses "code-graph-mcp" instead 
 
 ```bash
 # Current environment
-Container: code-graph-mcp-code-graph-sse-1
+Container: codenav-code-graph-sse-1
 Health: http://localhost:10101/health ✅
-Logs: docker logs code-graph-mcp-code-graph-sse-1
+Logs: docker logs codenav-code-graph-sse-1
 
 # Test AST-Grep directly
-docker exec code-graph-mcp-code-graph-sse-1 /app/tests/test_ast_grep.py
+docker exec codenav-code-graph-sse-1 /app/tests/test_ast_grep.py
 
 # Verified API works, but results not in graph yet
 ```
@@ -112,10 +112,10 @@ docker exec code-graph-mcp-code-graph-sse-1 /app/tests/test_ast_grep.py
 
 ```bash
 # Fresh rebuild with no cache
-docker build --no-cache -t ajacobm/code-graph-mcp:sse --target sse .
+docker build --no-cache -t ajacobm/codenav:sse --target sse .
 
 # Deploy with proper project name
-cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp
+cd /mnt/c/Users/ADAM/GitHub/codenav
 ~/.local/bin/compose.sh up
 ```
 

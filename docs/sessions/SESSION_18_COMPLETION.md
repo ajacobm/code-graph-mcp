@@ -46,7 +46,7 @@ uv lock --upgrade
 
 **Step 3**: Rebuild with --no-cache
 ```bash
-docker build -t ajacobm/code-graph-mcp:http -f Dockerfile --target http --no-cache .
+docker build -t ajacobm/codenav:http -f Dockerfile --target http --no-cache .
 ```
 
 ### Why This Was Critical
@@ -297,7 +297,7 @@ Vue components (LiveStats, AnalysisProgress, EventLog)
 
 ```bash
 # Quick verification
-docker run --rm ajacobm/code-graph-mcp:http /app/.venv/bin/python -c "import websockets; print('✓')"
+docker run --rm ajacobm/codenav:http /app/.venv/bin/python -c "import websockets; print('✓')"
 
 # Full stack test
 compose.sh up
@@ -308,7 +308,7 @@ pytest tests/test_live_load_websocket.py::TestLiveWebSocketLoad::test_10_concurr
 compose.sh logs -f code-graph-http
 
 # Check WebSocket connections
-docker exec code-graph-mcp-code-graph-http-1 netstat -an | grep ESTABLISHED
+docker exec codenav-code-graph-http-1 netstat -an | grep ESTABLISHED
 ```
 
 ---

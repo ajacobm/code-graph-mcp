@@ -23,7 +23,7 @@ Session 14 completed the full integration of the event-driven real-time architec
 
 ### Part 1: HTTP Server Integration (Commit 6bd4e46)
 
-**File**: `src/code_graph_mcp/http_server.py`  
+**File**: `src/codenav/http_server.py`  
 **Changes**: 52 lines (imports + initialization + cleanup)
 
 ```python
@@ -357,7 +357,7 @@ Total: 42 tests PASSING
 ## Files Changed Summary
 
 **Backend**:
-- `src/code_graph_mcp/http_server.py` - WebSocket mount (+52 lines)
+- `src/codenav/http_server.py` - WebSocket mount (+52 lines)
 - `tests/test_http_websocket_integration.py` - Integration tests (NEW, 150 lines)
 
 **Frontend**:

@@ -94,7 +94,7 @@ Add two new services:
 
 ### Step 2: Memgraph CDC Sync Worker ✅ (Ready to implement)
 
-**File**: `src/code_graph_mcp/memgraph_sync.py` (NEW)
+**File**: `src/codenav/memgraph_sync.py` (NEW)
 
 **Classes**:
 - `MemgraphClient` - Bolt protocol connection wrapper
@@ -111,7 +111,7 @@ Add two new services:
 
 ### Step 3: Query Router ✅ (Ready to implement)
 
-**File**: `src/code_graph_mcp/graph_query_router.py` (NEW)
+**File**: `src/codenav/graph_query_router.py` (NEW)
 
 **Classes**:
 - `HybridGraphQueryEngine` - Route queries to optimal backend
@@ -125,7 +125,7 @@ Add two new services:
 
 ### Step 4: MCP Cypher Resources Library ✅ (Ready to implement)
 
-**File**: `src/code_graph_mcp/mcp_cypher_resources.py` (NEW)
+**File**: `src/codenav/mcp_cypher_resources.py` (NEW)
 
 **10+ Pre-built Cypher Patterns**:
 1. `cypher://entry-to-db-paths` - HTTP endpoint → database operations
@@ -140,7 +140,7 @@ Add two new services:
 10. `cypher://api-surface` - All public entry points
 
 **Integration**:
-- Register as MCP resources in `src/code_graph_mcp/server/mcp_handlers.py`
+- Register as MCP resources in `src/codenav/server/mcp_handlers.py`
 - Add Playwright E2E tests in `tests/playwright/test_cypher_resources.py`
 
 ### Step 5: Jupyter Notebooks ✅ (Ready to implement)
@@ -160,7 +160,7 @@ Add two new services:
 - `notebooks/utils/c4_builder.py` - Transform graph queries → C4 diagrams (PlantUML/Structurizr)
 
 **Examples**:
-- `notebooks/examples/code_graph_mcp/` - Analysis of this codebase (489 nodes, 4475 edges)
+- `notebooks/examples/codenav/` - Analysis of this codebase (489 nodes, 4475 edges)
 - `notebooks/examples/dotnet_framework/` - Pre-analyzed .NET Framework codebase (TBD)
 
 **Git Strategy**:
@@ -229,11 +229,11 @@ Support custom C4 views by filtering:
 - [ ] Test `docker compose up` brings up all services
 
 ### Backend (Steps 2-4)
-- [ ] `src/code_graph_mcp/memgraph_sync.py` - Sync worker implementation
-- [ ] `src/code_graph_mcp/graph_query_router.py` - Hybrid query engine
-- [ ] `src/code_graph_mcp/mcp_cypher_resources.py` - 10+ Cypher patterns
-- [ ] Update `src/code_graph_mcp/server/graph_api.py` - Integrate query router
-- [ ] Update `src/code_graph_mcp/server/mcp_handlers.py` - Register Cypher resources
+- [ ] `src/codenav/memgraph_sync.py` - Sync worker implementation
+- [ ] `src/codenav/graph_query_router.py` - Hybrid query engine
+- [ ] `src/codenav/mcp_cypher_resources.py` - 10+ Cypher patterns
+- [ ] Update `src/codenav/server/graph_api.py` - Integrate query router
+- [ ] Update `src/codenav/server/mcp_handlers.py` - Register Cypher resources
 - [ ] Add `/api/memgraph/status` health check endpoint
 
 ### Jupyter Notebooks (Step 5)
@@ -277,7 +277,7 @@ WebSocketConnectionManager.broadcast() [for frontend]
 Frontend Vue components (LiveStats, EventLog, AnalysisProgress)
 ```
 
-**CDCEvent Types** (from `src/code_graph_mcp/cdc_manager.py`):
+**CDCEvent Types** (from `src/codenav/cdc_manager.py`):
 - `NODE_ADDED` - Node created in graph
 - `RELATIONSHIP_ADDED` - Edge created in graph
 - `ANALYSIS_STARTED` - Project analysis begins

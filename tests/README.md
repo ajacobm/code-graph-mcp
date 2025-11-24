@@ -1,6 +1,6 @@
-# Code Graph MCP Test Suite
+# CodeNavigator Test Suite
 
-This directory contains comprehensive tests for the Code Graph MCP server, including tests for the new Redis cache integration and SSE server functionality.
+This directory contains comprehensive tests for the CodeNavigator server, including tests for the new Redis cache integration and SSE server functionality.
 
 ## Test Structure
 
@@ -152,7 +152,7 @@ export CODE_GRAPH_DEBUG="1"
 pytest tests/ -v --durations=10
 
 # With coverage
-pytest tests/ --cov=code_graph_mcp --cov-report=html
+pytest tests/ --cov=codenav --cov-report=html
 
 # Only fast tests
 pytest tests/ -m "not slow"
@@ -184,14 +184,14 @@ Manual tests provide detailed output for debugging:
 
 2. **Import Errors**
    ```
-   ImportError: No module named 'code_graph_mcp'
+   ImportError: No module named 'codenav'
    ```
    - Install the package in development mode: `pip install -e .`
    - Ensure you're in the project root directory
 
 3. **MCP Tools Not Found**
    ```
-   FileNotFoundError: code-graph-mcp command not found
+   FileNotFoundError: codenav command not found
    ```
    - Install the package: `pip install -e .`
    - Or run tests from project root with `python -m`
@@ -280,7 +280,7 @@ For CI/CD pipelines:
   run: python tests/run_tests.py
 
 - name: Upload coverage
-  run: pytest tests/ --cov=code_graph_mcp --cov-report=xml
+  run: pytest tests/ --cov=codenav --cov-report=xml
 ```
 
 Tests are designed to be resilient and will skip Redis-dependent functionality when Redis is unavailable, making them suitable for environments where Redis cannot be installed.

@@ -4,7 +4,7 @@
 Always initialize sessions with: `source ~/.bashrc`
 
 ## Docker Commands
-- View logs: `docker logs code-graph-mcp-code-graph-codegraphmcp-sse-1`
+- View logs: `docker logs codenav-code-graph-codegraphmcp-sse-1`
 - List running containers: `docker ps -a | grep code-graph`
 - Restart stack: `docker-compose -f docker-compose-multi.yml down && docker-compose -f docker-compose-multi.yml up -d`
 
@@ -12,7 +12,7 @@ Always initialize sessions with: `source ~/.bashrc`
 - Run tests: `pytest tests/`
 - Type check: `mypy src/`
 - Lint: `ruff check src/`
-- Build Docker: `docker build -t ajacobm/code-graph-mcp:sse -f Dockerfile .`
+- Build Docker: `docker build -t ajacobm/codenav:sse -f Dockerfile .`
 
 ## Workspace Setup
 The `/app/workspace` volume in Docker is mounted from `repo-mount` volume (empty by default).

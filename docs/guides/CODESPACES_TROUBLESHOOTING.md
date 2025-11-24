@@ -113,8 +113,8 @@ pip install uv
 
 **Symptoms**:
 ```bash
-$ python -c "import code_graph_mcp"
-ModuleNotFoundError: No module named 'code_graph_mcp'
+$ python -c "import codenav"
+ModuleNotFoundError: No module named 'codenav'
 ```
 
 **Fix**:
@@ -126,7 +126,7 @@ uv sync --all-extras --dev
 pip install -e .
 
 # Test
-python -c "import code_graph_mcp; print('✅ Works!')"
+python -c "import codenav; print('✅ Works!')"
 ```
 
 ### Issue 3: Redis Not Running
@@ -246,8 +246,8 @@ az acr create \
 az acr login --name codegraphmcp
 
 # Tag and push images
-docker tag code-graph-mcp:sse codegraphmcp.azurecr.io/code-graph-mcp:sse-latest
-docker push codegraphmcp.azurecr.io/code-graph-mcp:sse-latest
+docker tag codenav:sse codegraphmcp.azurecr.io/codenav:sse-latest
+docker push codegraphmcp.azurecr.io/codenav:sse-latest
 ```
 
 **Update workflows**:
@@ -255,7 +255,7 @@ docker push codegraphmcp.azurecr.io/code-graph-mcp:sse-latest
 # .github/workflows/docker-publish.yml
 env:
   REGISTRY: codegraphmcp.azurecr.io
-  IMAGE_NAME: code-graph-mcp
+  IMAGE_NAME: codenav
 ```
 
 ### Option 2: Azure Container Apps
@@ -268,7 +268,7 @@ az containerapp create \
   --name code-graph-sse \
   --resource-group YOUR_RG \
   --environment YOUR_ENV \
-  --image ghcr.io/ajacobm/code-graph-mcp:sse-latest \
+  --image ghcr.io/ajacobm/codenav:sse-latest \
   --target-port 8000 \
   --ingress external \
   --min-replicas 0 \
@@ -279,7 +279,7 @@ az containerapp create \
   --name code-graph-http \
   --resource-group YOUR_RG \
   --environment YOUR_ENV \
-  --image ghcr.io/ajacobm/code-graph-mcp:http-latest \
+  --image ghcr.io/ajacobm/codenav:http-latest \
   --target-port 8000 \
   --ingress external
 ```
@@ -306,7 +306,7 @@ az containerapp create \
 ```json
 {
   "mcpServers": {
-    "code-graph-mcp-azure": {
+    "codenav-azure": {
       "type": "streamableHttp",
       "url": "https://code-graph-sse.YOUR_REGION.azurecontainerapps.io/mcp"
     }
@@ -438,10 +438,10 @@ Complete example with Azure MCP:
 ```bash
 # 1. Deploy to Azure Container Apps
 az containerapp create \
-  --name code-graph-mcp \
+  --name codenav \
   --resource-group codegraph-rg \
   --environment codegraph-env \
-  --image ghcr.io/ajacobm/code-graph-mcp:sse-latest \
+  --image ghcr.io/ajacobm/codenav:sse-latest \
   --target-port 8000 \
   --ingress external \
   --registry-server ghcr.io \
@@ -450,7 +450,7 @@ az containerapp create \
 
 # 2. Get URL
 az containerapp show \
-  --name code-graph-mcp \
+  --name codenav \
   --resource-group codegraph-rg \
   --query properties.configuration.ingress.fqdn \
   --output tsv
@@ -459,9 +459,9 @@ az containerapp show \
 cat > .mcp.json << 'EOF'
 {
   "mcpServers": {
-    "code-graph-mcp-azure": {
+    "codenav-azure": {
       "type": "streamableHttp",
-      "url": "https://code-graph-mcp.YOUR_REGION.azurecontainerapps.io/mcp"
+      "url": "https://codenav.YOUR_REGION.azurecontainerapps.io/mcp"
     }
   }
 }

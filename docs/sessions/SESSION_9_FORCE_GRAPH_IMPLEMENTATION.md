@@ -361,5 +361,5 @@ Instead of graph theory concepts (nodes, edges, traversal), we use geographical 
 
 - force-graph: https://github.com/vasturiano/force-graph
 - 3d-force-graph: https://github.com/vasturiano/3d-force-graph
-- Design proposal: `/home/adam/GitHub/code-graph-mcp/docs/REDESIGN_PROPOSAL.md`
+- Design proposal: `/home/adam/GitHub/codenav/docs/REDESIGN_PROPOSAL.md`
 - Context7 docs: `/vasturiano/force-graph` and `/vasturiano/3d-force-graph`

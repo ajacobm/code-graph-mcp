@@ -18,7 +18,7 @@ language: typescript
 ```
 
 ```python
-from code_graph_mcp.ignore_patterns import IgnorePatternsManager
+from codenav.ignore_patterns import IgnorePatternsManager
 
 manager = IgnorePatternsManager("/repo")
 
@@ -37,7 +37,7 @@ manager.add_language_filter("python")
 ## Seam Detection
 
 ```python
-from code_graph_mcp.seam_detector import SeamDetector
+from codenav.seam_detector import SeamDetector
 
 detector = SeamDetector()
 
@@ -111,7 +111,7 @@ SEAM:   Node A → Node B  (different language)
 ## Query Seams
 
 ```python
-from code_graph_mcp.universal_graph import RelationshipType
+from codenav.universal_graph import RelationshipType
 
 # All cross-language edges
 seams = graph.get_relationships_by_type(RelationshipType.SEAM)
@@ -162,8 +162,8 @@ print(manager.language_filters)  # View active languages
 
 | File | Purpose |
 |------|---------|
-| `src/code_graph_mcp/ignore_patterns.py` | IgnorePatternsManager class |
-| `src/code_graph_mcp/seam_detector.py` | SeamDetector class |
+| `src/codenav/ignore_patterns.py` | IgnorePatternsManager class |
+| `src/codenav/seam_detector.py` | SeamDetector class |
 | `tests/test_ignore_patterns.py` | 11 pattern tests |
 | `tests/test_seam_detector.py` | 11 seam tests |
 | `IGNORE_PATTERNS_GUIDE.md` | Full usage docs |

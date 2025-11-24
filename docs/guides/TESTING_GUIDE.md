@@ -2,7 +2,7 @@
 
 ## Overview
 
-We have **4 testing layers** for code-graph-mcp:
+We have **4 testing layers** for codenav:
 
 1. **Unit Tests** - Fast, isolated, no external dependencies
 2. **Integration Tests** - With Redis, full MCP protocol
@@ -42,7 +42,7 @@ docker run -d --name redis -p 6379:6379 redis:alpine
 docker run --rm --network host -e REDIS_URL=redis://localhost:6379 codegraph-test
 ```
 
-**GHCR image**: `ghcr.io/ajacobm/code-graph-mcp:test-latest`
+**GHCR image**: `ghcr.io/ajacobm/codenav:test-latest`
 
 ### GitHub Actions Test Workflow
 
@@ -151,7 +151,7 @@ pytest tests/test_mcp_tools.py::test_analyze_codebase -v
 
 **With coverage**:
 ```bash
-pytest --cov=src/code_graph_mcp --cov-report=html
+pytest --cov=src/codenav --cov-report=html
 open htmlcov/index.html
 ```
 
@@ -204,7 +204,7 @@ docker compose -f docker-compose-test.yml up --abort-on-container-exit
 uv run pytest -v
 
 # Run with coverage
-uv run pytest --cov=src/code_graph_mcp --cov-report=term --cov-report=html
+uv run pytest --cov=src/codenav --cov-report=term --cov-report=html
 ```
 
 **Watch mode** (auto-rerun on file changes):
@@ -249,7 +249,7 @@ gh run download <run-id>
 
 **Coverage badge** (add to README.md):
 ```markdown
-[![codecov](https://codecov.io/gh/ajacobm/code-graph-mcp/branch/main/graph/badge.svg)](https://codecov.io/gh/ajacobm/code-graph-mcp)
+[![codecov](https://codecov.io/gh/ajacobm/codenav/branch/main/graph/badge.svg)](https://codecov.io/gh/ajacobm/codenav)
 ```
 
 ## Test Image vs Other Images
@@ -329,7 +329,7 @@ test('loads graph visualization', async ({ page }) => {
 
 **Coverage by module**:
 ```bash
-pytest --cov=src/code_graph_mcp --cov-report=term-missing
+pytest --cov=src/codenav --cov-report=term-missing
 ```
 
 ## Continuous Testing Workflow
@@ -344,7 +344,7 @@ vim tests/test_new_feature.py
 pytest tests/test_new_feature.py -v
 
 # 3. Implement feature
-vim src/code_graph_mcp/new_feature.py
+vim src/codenav/new_feature.py
 
 # 4. Run test again (should pass)
 pytest tests/test_new_feature.py -v
@@ -353,7 +353,7 @@ pytest tests/test_new_feature.py -v
 pytest -v
 
 # 6. Check coverage
-pytest --cov=src/code_graph_mcp --cov-report=term
+pytest --cov=src/codenav --cov-report=term
 ```
 
 ### Pre-commit Testing

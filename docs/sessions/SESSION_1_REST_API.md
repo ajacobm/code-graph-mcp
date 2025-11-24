@@ -9,7 +9,7 @@ Implemented complete FastAPI REST layer for code graph querying, enabling intera
 
 ## Deliverables
 
-### 1. Response DTOs (`src/code_graph_mcp/graph/query_response.py`)
+### 1. Response DTOs (`src/codenav/graph/query_response.py`)
 Standardized serializable response models:
 - `NodeResponse` - Node metadata + location + complexity
 - `RelationshipResponse` - Typed relationship between nodes
@@ -20,7 +20,7 @@ Standardized serializable response models:
 - `SeamResponse` - Cross-language relationship details
 - `ErrorResponse` - Standard error format
 
-### 2. REST API Endpoints (`src/code_graph_mcp/server/graph_api.py`)
+### 2. REST API Endpoints (`src/codenav/server/graph_api.py`)
 
 **Statistics & Inspection**:
 - GET /api/graph/stats
@@ -34,10 +34,10 @@ Standardized serializable response models:
 **Cross-Language Seams**:
 - GET /api/graph/seams
 
-### 3. HTTP Server (`src/code_graph_mcp/http_server.py`)
+### 3. HTTP Server (`src/codenav/http_server.py`)
 FastAPI + Uvicorn with CORS, health checks, auto-engine initialization
 
-### 4. Enhanced Traversal (`src/code_graph_mcp/graph/traversal.py`)
+### 4. Enhanced Traversal (`src/codenav/graph/traversal.py`)
 - `dfs_traversal_with_depth()` - Depth-organized DFS
 - `find_call_chain()` - Shortest path with SEAM control
 - `trace_cross_language_flow()` - Multi-language execution tracing

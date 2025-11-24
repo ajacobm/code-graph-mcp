@@ -2,7 +2,7 @@
 
 ## **Executive Summary**
 
-Transform the Code Graph MCP from a basic prototype into a professional platform for LLM agent development and transactional navigation. The tool combines real-time agent monitoring with intelligent code exploration capabilities.
+Transform the CodeNavigator from a basic prototype into a professional platform for LLM agent development and transactional navigation. The tool combines real-time agent monitoring with intelligent code exploration capabilities.
 
 ## **Current State Assessment**
 

@@ -48,10 +48,10 @@ compose.sh up
 sleep 30
 
 # Monitor Redis Streams
-docker exec code-graph-mcp-redis-1 redis-cli XREAD COUNT 10 STREAMS graph-events 0
+docker exec codenav-redis-1 redis-cli XREAD COUNT 10 STREAMS graph-events 0
 
 # Monitor Redis Pub/Sub
-docker exec code-graph-mcp-redis-1 redis-cli SUBSCRIBE graph-events
+docker exec codenav-redis-1 redis-cli SUBSCRIBE graph-events
 
 # Trigger re-analysis
 curl -X POST http://localhost:8000/api/graph/admin/reanalyze
@@ -105,8 +105,8 @@ curl -X POST http://localhost:8000/api/graph/admin/reanalyze
 - [ ] No console errors in browser
 
 ### Files to Check
-- `src/code_graph_mcp/cdc_manager.py` - Event publishing
-- `src/code_graph_mcp/websocket_server.py` - Broadcasting
+- `src/codenav/cdc_manager.py` - Event publishing
+- `src/codenav/websocket_server.py` - Broadcasting
 - `frontend/src/composables/useEvents.ts` - Subscription
 - `frontend/src/components/EventLog.vue` - Display
 
@@ -304,10 +304,10 @@ pytest tests/playwright/test_realtime_e2e.py -v -s
 compose.sh logs -f code-graph-http
 
 # Terminal 2: Redis monitoring
-docker exec code-graph-mcp-redis-1 redis-cli MONITOR
+docker exec codenav-redis-1 redis-cli MONITOR
 
 # Terminal 3: Resource usage
-watch 'docker stats code-graph-mcp-code-graph-http-1'
+watch 'docker stats codenav-code-graph-http-1'
 ```
 
 ---

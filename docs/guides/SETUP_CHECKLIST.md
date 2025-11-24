@@ -33,7 +33,7 @@
 ### Step 1: Enable GitHub Actions Permissions ⚙️
 ```bash
 # 1. Visit your repository settings
-https://github.com/ajacobm/code-graph-mcp/settings/actions
+https://github.com/ajacobm/codenav/settings/actions
 
 # 2. Under "Workflow permissions", select:
 ☑️ Read and write permissions
@@ -63,7 +63,7 @@ gh run watch
 # 1. Go to your packages
 https://github.com/ajacobm?tab=packages
 
-# 2. Click on "code-graph-mcp"
+# 2. Click on "codenav"
 
 # 3. Click "Package settings" (right sidebar)
 
@@ -92,10 +92,10 @@ curl http://localhost:8000/health
 ### Step 5: Pull and Test GHCR Image 📦
 ```bash
 # Pull latest SSE image
-docker pull ghcr.io/ajacobm/code-graph-mcp:sse-latest
+docker pull ghcr.io/ajacobm/codenav:sse-latest
 
 # Run it
-docker run -p 8000:8000 ghcr.io/ajacobm/code-graph-mcp:sse-latest
+docker run -p 8000:8000 ghcr.io/ajacobm/codenav:sse-latest
 
 # Test
 curl http://localhost:8000/health
@@ -141,7 +141,7 @@ git push origin main
 gh run watch
 
 # 4. Once complete, pull new image
-docker pull ghcr.io/ajacobm/code-graph-mcp:sse-latest
+docker pull ghcr.io/ajacobm/codenav:sse-latest
 ```
 
 ## 🎯 Common Tasks
@@ -167,19 +167,19 @@ docker compose -f docker-compose-codespaces.yml down
 ./scripts/codespaces-redis.sh
 
 # Run directly with uv
-uv run code-graph-mcp --mode sse --port 8000 --redis-url redis://localhost:6379 --verbose
+uv run codenav --mode sse --port 8000 --redis-url redis://localhost:6379 --verbose
 ```
 
 ### Test Production Image Locally
 ```bash
 # Pull production image
-docker pull ghcr.io/ajacobm/code-graph-mcp:production-latest
+docker pull ghcr.io/ajacobm/codenav:production-latest
 
 # Run with Redis
 docker run -d --name redis redis:alpine
 docker run -p 8000:8000 --link redis \
   -e REDIS_URL=redis://redis:6379 \
-  ghcr.io/ajacobm/code-graph-mcp:production-latest
+  ghcr.io/ajacobm/codenav:production-latest
 ```
 
 ### Debug Build Issues
@@ -214,13 +214,13 @@ gh run view --web
 ### Image Status
 ```bash
 # List all images
-gh api /users/ajacobm/packages/container/code-graph-mcp/versions
+gh api /users/ajacobm/packages/container/codenav/versions
 
 # View package page
-https://github.com/ajacobm/code-graph-mcp/pkgs/container/code-graph-mcp
+https://github.com/ajacobm/codenav/pkgs/container/codenav
 
 # Pull statistics (via GitHub UI)
-https://github.com/ajacobm/code-graph-mcp/pkgs/container/code-graph-mcp
+https://github.com/ajacobm/codenav/pkgs/container/codenav
 ```
 
 ### Runtime Status
@@ -245,7 +245,7 @@ docker logs codegraph-sse -f
 **"Permission denied to push to GHCR"**
 ```bash
 # Check Actions permissions
-https://github.com/ajacobm/code-graph-mcp/settings/actions
+https://github.com/ajacobm/codenav/settings/actions
 
 # Ensure "Read and write permissions" is enabled
 ```
@@ -285,10 +285,10 @@ lsof -ti:8000 | xargs kill -9
 **"Image pull fails"**
 ```bash
 # Check package is public
-https://github.com/ajacobm/code-graph-mcp/pkgs/container/code-graph-mcp
+https://github.com/ajacobm/codenav/pkgs/container/codenav
 
 # Try manual pull
-docker pull ghcr.io/ajacobm/code-graph-mcp:sse-latest
+docker pull ghcr.io/ajacobm/codenav:sse-latest
 
 # Check Docker login (if private)
 docker login ghcr.io -u ajacobm
@@ -323,9 +323,9 @@ docker login ghcr.io -u ajacobm
 
 ## 🔗 Quick Links
 
-- **Actions Dashboard**: https://github.com/ajacobm/code-graph-mcp/actions
-- **Packages**: https://github.com/ajacobm/code-graph-mcp/pkgs/container/code-graph-mcp
-- **Repository Settings**: https://github.com/ajacobm/code-graph-mcp/settings
+- **Actions Dashboard**: https://github.com/ajacobm/codenav/actions
+- **Packages**: https://github.com/ajacobm/codenav/pkgs/container/codenav
+- **Repository Settings**: https://github.com/ajacobm/codenav/settings
 - **Workflow File**: [.github/workflows/docker-publish.yml](.github/workflows/docker-publish.yml)
 
 ---

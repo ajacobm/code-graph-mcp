@@ -86,7 +86,7 @@ Backend (FastAPI)
 2. `frontend/src/components/NodeBrowser.vue` - NEW, 230 lines
 3. `frontend/src/components/GraphViewer.vue` - +347 lines interactive features
 4. `frontend/src/api/graphClient.ts` - +24 lines new methods
-5. `src/code_graph_mcp/server/graph_api.py` - +160 lines endpoints
+5. `src/codenav/server/graph_api.py` - +160 lines endpoints
 6. `tests/test_category_endpoints.py` - NEW, 140 lines
 7. `frontend/src/components/ToolPanel.vue` - DaisyUI restyled
 8. `frontend/tailwind.config.ts` - DaisyUI config

@@ -148,7 +148,7 @@ Content-Type: application/json
 ## **📦 DEPLOYMENT**
 
 Updated your container entry point:
-- Modified `/src/code_graph_mcp/server/mcp_server.py`
+- Modified `/src/codenav/server/mcp_server.py`
 - Now imports `CodeGraphMCPServer` from `sse_server`
 - Same CLI interface: `--mode sse --port 8000`
 

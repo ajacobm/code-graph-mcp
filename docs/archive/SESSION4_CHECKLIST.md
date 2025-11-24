@@ -17,8 +17,8 @@
 
 Quick check:
 ```bash
-grep -n "class ASTGrepPatterns" src/code_graph_mcp/universal_parser.py
-grep -n "list(root_node.find_all" src/code_graph_mcp/universal_parser.py
+grep -n "class ASTGrepPatterns" src/codenav/universal_parser.py
+grep -n "list(root_node.find_all" src/codenav/universal_parser.py
 ```
 
 Should show 3 results for list() conversion.
@@ -42,13 +42,13 @@ Should show 3 results for list() conversion.
 
 ### Terminal 1: Build & Deploy
 ```bash
-cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp
+cd /mnt/c/Users/ADAM/GitHub/codenav
 # Will run build and deploy commands here
 ```
 
 ### Terminal 2: Monitor Logs
 ```bash
-cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp
+cd /mnt/c/Users/ADAM/GitHub/codenav
 # Will run: docker-compose -f docker-compose-multi.yml logs -f
 ```
 
@@ -73,7 +73,7 @@ curl http://localhost:10101/health
    - 3 functions to modify
 
 2. **Build** (Terminal 1)
-   - `docker build -t ajacobm/code-graph-mcp:sse --target sse .`
+   - `docker build -t ajacobm/codenav:sse --target sse .`
    - Takes ~2-3 minutes
 
 3. **Deploy** (Terminal 1)
@@ -178,15 +178,15 @@ _________________________________________________________________________
 - READY_COMMANDS.md - Command reference
 
 💾 Code:
-- src/code_graph_mcp/universal_parser.py - Main file to edit
-- src/code_graph_mcp/file_watcher.py - Already fixed
+- src/codenav/universal_parser.py - Main file to edit
+- src/codenav/file_watcher.py - Already fixed
 - docker-compose-multi.yml - Deployment config
 - Dockerfile - Container definition
 
 🎯 Quick Commands:
 ```bash
 # Build
-docker build -t ajacobm/code-graph-mcp:sse --target sse .
+docker build -t ajacobm/codenav:sse --target sse .
 
 # Deploy fresh
 docker-compose -f docker-compose-multi.yml down -v && docker-compose -f docker-compose-multi.yml up

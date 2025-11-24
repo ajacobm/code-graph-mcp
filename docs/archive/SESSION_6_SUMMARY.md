@@ -80,7 +80,7 @@
 **Files Updated**:
 - `frontend/src/App.vue` - Two-mode UI (browse → graph)
 - `frontend/src/api/graphClient.ts` - New category/subgraph methods
-- `src/code_graph_mcp/server/graph_api.py` - New backend endpoints
+- `src/codenav/server/graph_api.py` - New backend endpoints
 
 ---
 

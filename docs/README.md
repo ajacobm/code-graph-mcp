@@ -1,6 +1,6 @@
 # Documentation Index
 
-Welcome to the Code Graph MCP documentation. This index helps you navigate the project's knowledge base.
+Welcome to the CodeNavigator documentation. This index helps you navigate the project's knowledge base.
 
 ## 📋 Quick Navigation
 

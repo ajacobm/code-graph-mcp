@@ -1,8 +1,8 @@
-# Code Graph MCP - Ready-to-Use Commands
+# CodeNavigator - Ready-to-Use Commands
 
 ## Current Status
 
-**Location**: `/mnt/c/Users/ADAM/GitHub/code-graph-mcp`
+**Location**: `/mnt/c/Users/ADAM/GitHub/codenav`
 
 **What Works**:
 - ✅ File watcher (watchdog API compatible)
@@ -13,7 +13,7 @@
 **What Doesn't Work**:
 - ❌ Graph nodes not appearing (need tracing to debug)
 
-**Container**: `ajacobm/code-graph-mcp:sse`
+**Container**: `ajacobm/codenav:sse`
 
 ---
 
@@ -21,21 +21,21 @@
 
 ### Fresh Build (clears Docker cache)
 ```bash
-cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp
-docker build -t ajacobm/code-graph-mcp:sse --target sse --no-cache .
+cd /mnt/c/Users/ADAM/GitHub/codenav
+docker build -t ajacobm/codenav:sse --target sse --no-cache .
 ```
 
 ### Regular Build (uses cache)
 ```bash
-cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp
-docker build -t ajacobm/code-graph-mcp:sse --target sse .
+cd /mnt/c/Users/ADAM/GitHub/codenav
+docker build -t ajacobm/codenav:sse --target sse .
 ```
 
 ### Build Both SSE and STDIO (optional)
 ```bash
-cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp
-docker build -t ajacobm/code-graph-mcp:sse --target sse .
-docker build -t ajacobm/code-graph-mcp:stdio --target stdio .
+cd /mnt/c/Users/ADAM/GitHub/codenav
+docker build -t ajacobm/codenav:sse --target sse .
+docker build -t ajacobm/codenav:stdio --target stdio .
 ```
 
 ---
@@ -44,25 +44,25 @@ docker build -t ajacobm/code-graph-mcp:stdio --target stdio .
 
 ### Start Services (with logs)
 ```bash
-cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp
+cd /mnt/c/Users/ADAM/GitHub/codenav
 docker-compose -f docker-compose-multi.yml up
 ```
 
 ### Start Services (detached)
 ```bash
-cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp
+cd /mnt/c/Users/ADAM/GitHub/codenav
 docker-compose -f docker-compose-multi.yml up -d
 ```
 
 ### Stop Services (clean)
 ```bash
-cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp
+cd /mnt/c/Users/ADAM/GitHub/codenav
 docker-compose -f docker-compose-multi.yml down
 ```
 
 ### Stop Services (clean volumes)
 ```bash
-cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp
+cd /mnt/c/Users/ADAM/GitHub/codenav
 docker-compose -f docker-compose-multi.yml down -v
 ```
 
@@ -72,37 +72,37 @@ docker-compose -f docker-compose-multi.yml down -v
 
 ### Watch Main App Logs
 ```bash
-cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp
+cd /mnt/c/Users/ADAM/GitHub/codenav
 docker-compose -f docker-compose-multi.yml logs -f code-graph-codegraphmcp-sse
 ```
 
 ### Watch Redis Logs
 ```bash
-cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp
+cd /mnt/c/Users/ADAM/GitHub/codenav
 docker-compose -f docker-compose-multi.yml logs -f redis
 ```
 
 ### Watch All Logs
 ```bash
-cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp
+cd /mnt/c/Users/ADAM/GitHub/codenav
 docker-compose -f docker-compose-multi.yml logs -f
 ```
 
 ### Filter for TRACE Output Only
 ```bash
-cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp
+cd /mnt/c/Users/ADAM/GitHub/codenav
 docker-compose -f docker-compose-multi.yml logs code-graph-codegraphmcp-sse | grep TRACE
 ```
 
 ### Follow TRACE Output in Real-Time
 ```bash
-cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp
+cd /mnt/c/Users/ADAM/GitHub/codenav
 docker-compose -f docker-compose-multi.yml logs -f code-graph-codegraphmcp-sse | grep --line-buffered TRACE
 ```
 
 ### Check Service Status
 ```bash
-cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp
+cd /mnt/c/Users/ADAM/GitHub/codenav
 docker-compose -f docker-compose-multi.yml ps
 ```
 
@@ -149,7 +149,7 @@ curl -s -X POST http://localhost:10101/mcp/analyze \
 ### Phase 1: Prepare
 ```bash
 # 1. Go to project
-cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp
+cd /mnt/c/Users/ADAM/GitHub/codenav
 
 # 2. Read the guide
 cat SESSION4_QUICK_START.md
@@ -161,7 +161,7 @@ cat SESSION4_QUICK_START.md
 ### Phase 2: Deploy
 ```bash
 # 1. Rebuild with tracing
-docker build -t ajacobm/code-graph-mcp:sse --target sse .
+docker build -t ajacobm/codenav:sse --target sse .
 
 # 2. Start fresh deployment
 docker-compose -f docker-compose-multi.yml down -v
@@ -174,7 +174,7 @@ sleep 5
 ### Phase 3: Monitor
 ```bash
 # Terminal 1: Watch all logs
-cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp
+cd /mnt/c/Users/ADAM/GitHub/codenav
 docker-compose -f docker-compose-multi.yml logs -f code-graph-codegraphmcp-sse
 
 # Terminal 2: Check health
@@ -204,7 +204,7 @@ cat /tmp/trace-output.txt
 **Main parsing logic**:
 ```bash
 # Edit this file to add [TRACE] output
-nano /mnt/c/Users/ADAM/GitHub/code-graph-mcp/src/code_graph_mcp/universal_parser.py
+nano /mnt/c/Users/ADAM/GitHub/codenav/src/codenav/universal_parser.py
 ```
 
 **Key functions to trace**:
@@ -227,7 +227,7 @@ sed -i 's/logger\.debug(/print(f"[DEBUG] {/g' universal_parser.py
 
 ### Test ast-grep-py directly
 ```bash
-cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp
+cd /mnt/c/Users/ADAM/GitHub/codenav
 
 # Start Python
 python
@@ -242,7 +242,7 @@ print(f"Found {len(functions)} functions")
 # Expected: Found 2 functions
 
 # Test with real file
-with open('src/code_graph_mcp/universal_parser.py', 'r') as f:
+with open('src/codenav/universal_parser.py', 'r') as f:
     code = f.read()
 sg = SgRoot(code, 'python')
 root = sg.root()
@@ -301,7 +301,7 @@ print(f"Found {len(functions)} functions in universal_parser.py")
 |------|---------|
 | `SESSION3_COMPREHENSIVE_SUMMARY.md` | Full investigation (350+ lines) |
 | `SESSION4_QUICK_START.md` | Step-by-step tracing guide |
-| `src/code_graph_mcp/universal_parser.py` | Main file to edit |
+| `src/codenav/universal_parser.py` | Main file to edit |
 | `docker-compose-multi.yml` | Deployment config |
 | `Dockerfile` | Container build |
 

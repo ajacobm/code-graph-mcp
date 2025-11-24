@@ -1,6 +1,6 @@
 # Session Documentation Index
 
-This directory contains comprehensive documentation for the code-graph-mcp project sessions, tracking progress from REST API implementation through production-ready deployment.
+This directory contains comprehensive documentation for the codenav project sessions, tracking progress from REST API implementation through production-ready deployment.
 
 ## Quick Navigation
 

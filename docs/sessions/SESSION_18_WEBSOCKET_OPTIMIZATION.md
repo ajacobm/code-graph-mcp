@@ -66,24 +66,24 @@ This provides:
 
 ```bash
 # Rebuild HTTP target (used in docker-compose)
-docker build -t ajacobm/code-graph-mcp:http -f Dockerfile --target http .
+docker build -t ajacobm/codenav:http -f Dockerfile --target http .
 
 # Verify websockets is available
-docker run --rm ajacobm/code-graph-mcp:http python -c "import websockets; print('✓ websockets available')"
+docker run --rm ajacobm/codenav:http python -c "import websockets; print('✓ websockets available')"
 
 # Rebuild SSE target
-docker build -t ajacobm/code-graph-mcp:sse -f Dockerfile --target sse .
+docker build -t ajacobm/codenav:sse -f Dockerfile --target sse .
 ```
 
 ### Step 4: Verify WebSocket Routing
 
-**File**: `src/code_graph_mcp/http_server.py`
+**File**: `src/codenav/http_server.py`
 
 Check that WebSocket router is properly mounted:
 
 ```python
 # Expected: WebSocket router mounted in startup_event()
-from code_graph_mcp.websocket_server import create_websocket_router
+from codenav.websocket_server import create_websocket_router
 
 app.router.routes.extend(create_websocket_router().routes)
 # OR
@@ -155,7 +155,7 @@ If WebSocket tests show poor performance:
 python -m cProfile -s cumtime tests/test_live_load_websocket.py
 
 # Check memory usage during load
-docker stats code-graph-mcp-code-graph-http-1 --no-stream
+docker stats codenav-code-graph-http-1 --no-stream
 ```
 
 ### Common WebSocket Optimizations
@@ -299,7 +299,7 @@ git commit -m "docs: Session 18 - WebSocket integration & optimization
 ```bash
 # 1. Update pyproject.toml (uvicorn[standard])
 # 2. Rebuild Docker image
-docker build -t ajacobm/code-graph-mcp:http -f Dockerfile --target http .
+docker build -t ajacobm/codenav:http -f Dockerfile --target http .
 
 # 3. Start stack
 compose.sh up
@@ -315,10 +315,10 @@ grep "PASSED\|FAILED" test-results.txt
 ### Debugging
 ```bash
 # Check WebSocket support in container
-docker run --rm ajacobm/code-graph-mcp:http python -c "import websockets; print('OK')"
+docker run --rm ajacobm/codenav:http python -c "import websockets; print('OK')"
 
 # Monitor WebSocket connections
-docker exec code-graph-mcp-code-graph-http-1 netstat -an | grep ESTABLISHED
+docker exec codenav-code-graph-http-1 netstat -an | grep ESTABLISHED
 
 # Check backend logs for WebSocket errors
 compose.sh logs code-graph-http | grep -i "ws\|websocket\|error"

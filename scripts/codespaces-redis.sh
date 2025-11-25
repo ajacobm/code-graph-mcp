@@ -6,9 +6,9 @@ set -e
 echo "🚀 Starting Redis for Codespaces..."
 
 # Check if Redis is already running
-if docker ps | grep -q codegraph-redis; then
+if docker ps | grep -q codenav-redis; then
     echo "✅ Redis is already running"
-    docker ps | grep codegraph-redis
+    docker ps | grep codenav-redis
     exit 0
 fi
 
@@ -17,7 +17,7 @@ mkdir -p /workspaces/.redis-data
 
 # Start Redis
 docker run -d \
-    --name codegraph-redis \
+    --name codenav-redis \
     -p 6379:6379 \
     -v /workspaces/.redis-data:/data \
     redis:alpine \
@@ -27,7 +27,7 @@ echo "⏳ Waiting for Redis to be ready..."
 sleep 2
 
 # Test connection
-if docker exec codegraph-redis redis-cli ping | grep -q PONG; then
+if docker exec codenav-redis redis-cli ping | grep -q PONG; then
     echo "✅ Redis is ready!"
     echo ""
     echo "Redis URL: redis://localhost:6379"
@@ -36,7 +36,7 @@ if docker exec codegraph-redis redis-cli ping | grep -q PONG; then
     echo "  redis-cli ping"
     echo ""
     echo "Stop Redis:"
-    echo "  docker stop codegraph-redis && docker rm codegraph-redis"
+    echo "  docker stop codenav-redis && docker rm codenav-redis"
 else
     echo "❌ Redis failed to start"
     exit 1

@@ -8,7 +8,7 @@
 
 ## Overview
 
-This document outlines the strategy for integrating Code Graph MCP's Python backend with .NET applications using OpenAPI 3.1 specification and auto-generated C# clients.
+This document outlines the strategy for integrating CodeNavigator's Python backend with .NET applications using OpenAPI 3.1 specification and auto-generated C# clients.
 
 ### Architecture
 
@@ -48,7 +48,7 @@ This document outlines the strategy for integrating Code Graph MCP's Python back
 
 ### 1.1 Enhance FastAPI Metadata
 
-**File**: `src/code_graph_mcp/http/main.py`
+**File**: `src/codenav/http/main.py`
 
 ```python
 from fastapi.openapi.utils import get_openapi
@@ -59,10 +59,10 @@ def custom_openapi():
         return app.openapi_schema
     
     openapi_schema = get_openapi(
-        title="Code Graph MCP API",
+        title="CodeNavigator API",
         version="1.0.0",
         description="""
-# Code Graph MCP HTTP API
+# CodeNavigator HTTP API
 
 Graph-based code analysis powered by Tree-sitter, rustworkx, and Memgraph.
 
@@ -86,8 +86,8 @@ No rate limits in development. Recommended: 1000 req/min per client.
             {"name": "websocket", "description": "Real-time CDC event subscriptions"}
         ],
         contact={
-            "name": "Code Graph MCP",
-            "url": "https://github.com/ajacobm/code-graph-mcp"
+            "name": "CodeNavigator",
+            "url": "https://github.com/ajacobm/codenav"
         },
         license_info={
             "name": "MIT",
@@ -97,7 +97,7 @@ No rate limits in development. Recommended: 1000 req/min per client.
     
     # Add OpenAPI extensions
     openapi_schema["info"]["x-logo"] = {
-        "url": "https://github.com/ajacobm/code-graph-mcp/blob/main/docs/logo.png"
+        "url": "https://github.com/ajacobm/codenav/blob/main/docs/logo.png"
     }
     
     app.openapi_schema = openapi_schema
@@ -120,7 +120,7 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from code_graph_mcp.http.main import app
+from codenav.http.main import app
 
 def export_openapi(output_path: Path):
     """Export OpenAPI spec to JSON file"""
@@ -321,7 +321,7 @@ using CodeGraphMcp.Client.Generated;
 namespace CodeGraphMcp.Client;
 
 /// <summary>
-/// High-level client for Code Graph MCP API with C# 13 features
+/// High-level client for CodeNavigator API with C# 13 features
 /// </summary>
 public sealed class GraphClient(HttpClient httpClient) : IDisposable
 {

@@ -287,7 +287,7 @@ pytest tests/test_cdc_sync_validation.py::TestMemgraphCDCSync::test_sync_nodes_t
 
 ### Run with Coverage
 ```bash
-pytest tests/test_cdc_sync_validation.py tests/test_query_router_validation.py --cov=code_graph_mcp --cov-report=html
+pytest tests/test_cdc_sync_validation.py tests/test_query_router_validation.py --cov=codenav --cov-report=html
 ```
 
 ### Run with Markers

@@ -75,7 +75,7 @@ gcloud auth login
 
 # Deploy SSE server
 gcloud run deploy code-graph-sse \
-  --image ghcr.io/ajacobm/code-graph-mcp:sse-latest \
+  --image ghcr.io/ajacobm/codenav:sse-latest \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated \
@@ -84,7 +84,7 @@ gcloud run deploy code-graph-sse \
 
 # Deploy HTTP API
 gcloud run deploy code-graph-http \
-  --image ghcr.io/ajacobm/code-graph-mcp:http-latest \
+  --image ghcr.io/ajacobm/codenav:http-latest \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated \
@@ -108,12 +108,12 @@ curl -L https://fly.io/install.sh | sh
 flyctl auth login
 
 # Deploy SSE server
-flyctl launch --image ghcr.io/ajacobm/code-graph-mcp:sse-latest \
+flyctl launch --image ghcr.io/ajacobm/codenav:sse-latest \
   --name code-graph-sse \
   --region sea
 
 # Deploy HTTP API
-flyctl launch --image ghcr.io/ajacobm/code-graph-mcp:http-latest \
+flyctl launch --image ghcr.io/ajacobm/codenav:http-latest \
   --name code-graph-http \
   --region sea
 
@@ -133,8 +133,8 @@ flyctl status
 1. Go to https://railway.app/
 2. Connect GitHub repository
 3. Select services to deploy:
-   - `ghcr.io/ajacobm/code-graph-mcp:sse-latest`
-   - `ghcr.io/ajacobm/code-graph-mcp:http-latest`
+   - `ghcr.io/ajacobm/codenav:sse-latest`
+   - `ghcr.io/ajacobm/codenav:http-latest`
 4. Add Redis plugin
 5. Set environment variables
 6. Deploy!
@@ -154,12 +154,12 @@ doctl auth init
 
 # Create app spec
 cat > app.yaml << 'EOF'
-name: code-graph-mcp
+name: codenav
 services:
   - name: sse-server
     image:
       registry_type: GHCR
-      repository: ajacobm/code-graph-mcp
+      repository: ajacobm/codenav
       tag: sse-latest
     http_port: 8000
     routes:
@@ -171,7 +171,7 @@ services:
   - name: http-api
     image:
       registry_type: GHCR
-      repository: ajacobm/code-graph-mcp
+      repository: ajacobm/codenav
       tag: http-latest
     http_port: 8000
     routes:
@@ -194,7 +194,7 @@ doctl apps create --spec app.yaml
 
 1. Go to https://render.com/
 2. New Web Service
-3. Docker image: `ghcr.io/ajacobm/code-graph-mcp:sse-latest`
+3. Docker image: `ghcr.io/ajacobm/codenav:sse-latest`
 4. Add Redis
 5. Deploy
 
@@ -222,7 +222,7 @@ services:
       - redis-data:/data
       
   sse-server:
-    image: ghcr.io/ajacobm/code-graph-mcp:sse-latest
+    image: ghcr.io/ajacobm/codenav:sse-latest
     ports:
       - "8000:8000"
     environment:
@@ -231,7 +231,7 @@ services:
       - redis
       
   http-api:
-    image: ghcr.io/ajacobm/code-graph-mcp:http-latest
+    image: ghcr.io/ajacobm/codenav:http-latest
     ports:
       - "10101:8000"
     environment:
@@ -263,7 +263,7 @@ curl https://getcaddy.com | bash -s personal
 1. **Deploy backend to Cloud Run (or any option above)**:
 ```bash
 gcloud run deploy code-graph-http \
-  --image ghcr.io/ajacobm/code-graph-mcp:http-latest \
+  --image ghcr.io/ajacobm/codenav:http-latest \
   --allow-unauthenticated
 
 # Note the URL: https://code-graph-http-xxx-uc.a.run.app
@@ -314,7 +314,7 @@ npm run dev
 ./scripts/codespaces-redis.sh
 
 # Run backend with CORS enabled for GitHub Pages
-uv run python -m code_graph_mcp.http_server \
+uv run python -m codenav.http_server \
   --port 10101 \
   --cors-origins "https://ajacobm.github.io"
 ```
@@ -333,7 +333,7 @@ export const API_URL = import.meta.env.DEV
 docker compose -f docker-compose-backend-only.yml up -d
 
 # Frontend already deployed, just access:
-# https://ajacobm.github.io/code-graph-mcp/
+# https://ajacobm.github.io/codenav/
 ```
 
 ## Production Architecture
@@ -401,7 +401,7 @@ axios.get(`${config.apiUrl}/graph/nodes`);
 ### Backend with CORS for GitHub Pages
 
 ```python
-# src/code_graph_mcp/http_server.py
+# src/codenav/http_server.py
 from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
@@ -437,7 +437,7 @@ npm run dev
 
 ```bash
 # Deploy backend (one-time)
-gcloud run deploy --image ghcr.io/ajacobm/code-graph-mcp:http-latest
+gcloud run deploy --image ghcr.io/ajacobm/codenav:http-latest
 
 # Frontend
 cd frontend
@@ -452,7 +452,7 @@ npm run dev
 
 ```bash
 # Both already deployed
-# Frontend: https://ajacobm.github.io/code-graph-mcp/
+# Frontend: https://ajacobm.github.io/codenav/
 # Backend: https://your-cloud-run-url.run.app
 
 # Test locally with same setup

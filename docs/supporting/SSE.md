@@ -1,6 +1,6 @@
 # SSE (Server-Sent Events) Support
 
-This document describes the SSE HTTP API support added to the Code Graph MCP Server, allowing you to use the analysis tools via HTTP endpoints instead of the MCP protocol.
+This document describes the SSE HTTP API support added to the CodeNavigator Server, allowing you to use the analysis tools via HTTP endpoints instead of the MCP protocol.
 
 ## Overview
 
@@ -14,10 +14,10 @@ The SSE server provides HTTP endpoints that expose the same functionality as the
 
 ```bash
 # Run in SSE mode
-code-graph-mcp --mode sse --host 0.0.0.0 --port 8000
+codenav --mode sse --host 0.0.0.0 --port 8000
 
 # Run in stdio (MCP) mode (default)
-code-graph-mcp --mode stdio
+codenav --mode stdio
 ```
 
 ### Method 2: Using the dedicated SSE script
@@ -31,8 +31,8 @@ code-graph-sse --host 0.0.0.0 --port 8000 --debug
 
 ```bash
 # Build and run SSE server
-docker build -t code-graph-mcp --target sse .
-docker run -p 8000:8000 -v ./your-project:/app/workspace:ro code-graph-mcp
+docker build -t codenav --target sse .
+docker run -p 8000:8000 -v ./your-project:/app/workspace:ro codenav
 
 # Or using docker-compose
 docker-compose up code-graph-sse
@@ -48,10 +48,10 @@ docker-compose --profile dev up code-graph-dev
 uv sync
 
 # Run SSE server
-uv run python -m code_graph_mcp.sse_server --port 8000 --debug
+uv run python -m codenav.sse_server --port 8000 --debug
 
 # Or run main script in SSE mode
-uv run code-graph-mcp --mode sse --port 8000 --verbose
+uv run codenav --mode sse --port 8000 --verbose
 ```
 
 ## API Endpoints
@@ -63,7 +63,7 @@ Returns server information and available endpoints.
 **Response:**
 ```json
 {
-  "name": "Code Graph MCP SSE Server",
+  "name": "CodeNavigator SSE Server",
   "version": "1.2.3",
   "description": "Server-Sent Events API for code graph intelligence",
   "project_root": "/app/workspace",
@@ -261,7 +261,7 @@ curl -X POST http://localhost:8000/call-tool \
 ### Command Line Arguments (SSE Mode)
 
 ```bash
-code-graph-mcp --mode sse [options]
+codenav --mode sse [options]
 code-graph-sse [options]
 ```
 
@@ -275,20 +275,20 @@ Options:
 ### Environment Variables
 
 ```bash
-export CODEGRAPHMCP_LOG_LEVEL=DEBUG
-export CODEGRAPHMCP_CACHE_SIZE=500000
-export CODEGRAPHMCP_MAX_FILES=10000
-export CODEGRAPHMCP_FILE_WATCHER=true
-export CODEGRAPHMCP_DEBOUNCE_DELAY=2.0
+export CODENAV_LOG_LEVEL=DEBUG
+export CODENAV_CACHE_SIZE=500000
+export CODENAV_MAX_FILES=10000
+export CODENAV_FILE_WATCHER=true
+export CODENAV_DEBOUNCE_DELAY=2.0
 ```
 
 ### Docker Environment Variables
 
 ```yaml
 environment:
-  - CODEGRAPHMCP_LOG_LEVEL=INFO
-  - CODEGRAPHMCP_FILE_WATCHER=true
-  - CODEGRAPHMCP_CACHE_SIZE=300000
+  - CODENAV_LOG_LEVEL=INFO
+  - CODENAV_FILE_WATCHER=true
+  - CODENAV_CACHE_SIZE=300000
 ```
 
 ## Docker Deployment
@@ -297,16 +297,16 @@ environment:
 
 ```bash
 # Build production image
-docker build -t code-graph-mcp --target production .
+docker build -t codenav --target production .
 
 # Run SSE server
 docker run -d \
   --name code-graph-sse \
   -p 8000:8000 \
   -v /path/to/your/code:/app/workspace:ro \
-  -e CODEGRAPHMCP_LOG_LEVEL=INFO \
-  code-graph-mcp \
-  code-graph-mcp --mode sse --host 0.0.0.0 --port 8000
+  -e CODENAV_LOG_LEVEL=INFO \
+  codenav \
+  codenav --mode sse --host 0.0.0.0 --port 8000
 ```
 
 ### Docker Compose
@@ -324,7 +324,7 @@ services:
     volumes:
       - "./your-project:/app/workspace:ro"
     environment:
-      - CODEGRAPHMCP_LOG_LEVEL=INFO
+      - CODENAV_LOG_LEVEL=INFO
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -363,11 +363,11 @@ spec:
     spec:
       containers:
       - name: code-graph-sse
-        image: code-graph-mcp:latest
+        image: codenav:latest
         ports:
         - containerPort: 8000
         env:
-        - name: CODEGRAPHMCP_LOG_LEVEL
+        - name: CODENAV_LOG_LEVEL
           value: "INFO"
         volumeMounts:
         - name: workspace

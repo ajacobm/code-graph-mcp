@@ -542,12 +542,12 @@ pytest tests/e2e/ -v --video=retain-on-failure
 ### In Docker
 ```bash
 # Run tests in backend container
-docker exec code-graph-mcp-code-graph-http-1 \
+docker exec codenav-code-graph-http-1 \
   uv run pytest tests/e2e/ -v
 
 # Or build dedicated test image
-docker build -t code-graph-mcp:test -f Dockerfile.test .
-docker run --rm code-graph-mcp:test pytest tests/e2e/
+docker build -t codenav:test -f Dockerfile.test .
+docker run --rm codenav:test pytest tests/e2e/
 ```
 
 ### CI/CD (GitHub Actions)

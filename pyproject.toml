@@ -1,7 +1,7 @@
 [project]
-name = "code-graph-mcp"
-version = "1.2.3"
-description = "MCP server for multi-language code graph intelligence and analysis across 25+ programming languages"
+name = "codenav"
+version = "0.5.0"
+description = "CodeNavigator - MCP server for multi-language code graph intelligence and analysis across 25+ programming languages"
 readme = "README.md"
 authors = [
     { name = "entrepeneur4lyf", email = "shawn.payments@gmail.com" }
@@ -9,34 +9,25 @@ authors = [
 license = { file = "LICENSE" }
 requires-python = ">=3.12"
 dependencies = [
-    "mcp>=1.12.2",
+    # Core analysis engine dependencies
     "ast-grep-py>=0.39.0",
-    "anyio>=4.0.0",
-    "click>=8.0.0",
     "rustworkx>=0.15.0",
+    "networkx>=3.0",
+    "pathspec>=0.12.1",
     "watchdog>=6.0.0",
-    # SSE dependencies
-    "fastapi>=0.104.0",
-    "uvicorn[standard]>=0.24.0",
-    "pydantic>=2.5.0",
     # Redis cache dependencies
     "redis>=5.0.0",
     "msgpack>=1.0.0",
-    "pathspec>=0.12.1",
-    # Graph & data analysis dependencies
+    # Graph database support
     "neo4j>=5.0.0",
-    "httpx>=0.24.0",
-    "networkx>=3.0",
-    "pandas>=2.0.0",
-    "numpy>=1.24.0",
-    "matplotlib>=3.7.0",
 ]
 keywords = [
     "mcp", "code-analysis", "ast", "claude-code", "graph", "intelligence", 
-    "python", "code-quality", "complexity-analysis", "static-analysis"
+    "python", "code-quality", "complexity-analysis", "static-analysis",
+    "codenav", "codenavigator"
 ]
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
@@ -49,34 +40,85 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
+# MCP server with stdio transport (most common, minimal deps)
+mcp-stdio = [
+    "mcp>=1.12.2",
+    "anyio>=4.0.0",
+    "click>=8.0.0",
+]
+
+# MCP server with streamableHttp transport
+mcp-http = [
+    "mcp>=1.12.2",
+    "anyio>=4.0.0",
+    "click>=8.0.0",
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "sse-starlette>=2.0.0",
+]
+
+# All MCP options
+mcp = [
+    "codenav[mcp-stdio]",
+    "codenav[mcp-http]",
+]
+
+# Web REST API server
+web = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "pydantic>=2.5.0",
+    "httpx>=0.24.0",
+]
+
+# Jupyter notebook support
+notebooks = [
+    "jupyter>=1.0.0",
+    "ipykernel>=6.0.0",
+    "matplotlib>=3.7.0",
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+]
+
+# Development dependencies
 dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.23.0",
     "black>=23.0.0",
     "ruff>=0.1.0",
 ]
+
+# Testing dependencies
 test = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.23.0",
 ]
 
+# Everything
+all = [
+    "codenav[mcp]",
+    "codenav[web]",
+    "codenav[notebooks]",
+    "codenav[dev]",
+]
+
 [project.urls]
-Homepage = "https://github.com/entrepeneur4lyf/code-graph-mcp"
-Repository = "https://github.com/entrepeneur4lyf/code-graph-mcp"
-Documentation = "https://github.com/entrepeneur4lyf/code-graph-mcp#readme"
-Changelog = "https://github.com/entrepeneur4lyf/code-graph-mcp/releases"
-Issues = "https://github.com/entrepeneur4lyf/code-graph-mcp/issues"
+Homepage = "https://github.com/ajacobm/codenav"
+Repository = "https://github.com/ajacobm/codenav"
+Documentation = "https://github.com/ajacobm/codenav#readme"
+Changelog = "https://github.com/ajacobm/codenav/releases"
+Issues = "https://github.com/ajacobm/codenav/issues"
 
 [project.scripts]
-code-graph-mcp = "code_graph_mcp:main"
-code-graph-sse = "code_graph_mcp.sse_server:main"
+codenav = "codenav:main"
+codenav-web = "codenav.http_server:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/code_graph_mcp"]
+packages = ["src/codenav"]
 
 [tool.hatch.build.targets.sdist]
 include = [

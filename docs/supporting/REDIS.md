@@ -1,6 +1,6 @@
 # Redis Cache Integration
 
-This document describes the Redis cache integration for the Code Graph MCP Server, which provides distributed, persistent caching with incremental updates for large codebases.
+This document describes the Redis cache integration for the CodeNavigator Server, which provides distributed, persistent caching with incremental updates for large codebases.
 
 ## Overview
 
@@ -33,16 +33,16 @@ redis-server
 
 ```bash
 # Enable Redis cache (default Redis URL: redis://localhost:6379)
-code-graph-mcp --redis-cache
+codenav --redis-cache
 
 # Custom Redis URL  
-code-graph-mcp --redis-url redis://your-redis-host:6379
+codenav --redis-url redis://your-redis-host:6379
 
 # Disable Redis cache (memory-only mode)
-code-graph-mcp --no-redis-cache
+codenav --no-redis-cache
 
 # SSE mode with Redis
-code-graph-mcp --mode sse --redis-cache --redis-url redis://localhost:6379
+codenav --mode sse --redis-cache --redis-url redis://localhost:6379
 ```
 
 ## Performance Benefits
@@ -116,9 +116,9 @@ When files change, the system:
 --redis-url URL            # Redis connection URL
 
 # Examples
-code-graph-mcp --redis-url redis://localhost:6379
-code-graph-mcp --redis-url redis://username:password@host:port/db
-code-graph-mcp --redis-url redis://cluster.redis.aws.com:6379
+codenav --redis-url redis://localhost:6379
+codenav --redis-url redis://username:password@host:port/db
+codenav --redis-url redis://cluster.redis.aws.com:6379
 ```
 
 ### Environment Variables
@@ -142,7 +142,7 @@ export REDIS_MAXMEMORY_POLICY="allkeys-lru"
 ### Programmatic Configuration
 
 ```python
-from code_graph_mcp.redis_cache import RedisConfig
+from codenav.redis_cache import RedisConfig
 
 # Custom Redis configuration
 redis_config = RedisConfig(
@@ -193,7 +193,7 @@ services:
     depends_on:
       - redis
     command: >
-      code-graph-mcp
+      codenav
       --mode sse
       --redis-url redis://redis:6379
       --project-root /app/workspace
@@ -301,7 +301,7 @@ spec:
     spec:
       containers:
       - name: code-graph-sse
-        image: code-graph-mcp:latest
+        image: codenav:latest
         ports:
         - containerPort: 8000
         env:
@@ -310,7 +310,7 @@ spec:
         - name: CODE_GRAPH_CACHE_TTL
           value: "604800"
         command:
-        - "code-graph-mcp"
+        - "codenav"
         - "--mode"
         - "sse"  
         - "--redis-url"
@@ -338,7 +338,7 @@ spec:
 
 ```bash
 # Use managed Redis service
-code-graph-mcp \
+codenav \
   --redis-url redis://your-cluster.cache.amazonaws.com:6379 \
   --mode sse \
   --project-root /app/workspace
@@ -375,8 +375,8 @@ curl http://localhost:8000/cache/stats
 
 ```python
 # Programmatic cache management
-from code_graph_mcp.cache_manager import HybridCacheManager
-from code_graph_mcp.redis_cache import RedisConfig
+from codenav.cache_manager import HybridCacheManager
+from codenav.redis_cache import RedisConfig
 
 # Initialize cache manager
 cache = HybridCacheManager(RedisConfig())
@@ -437,7 +437,7 @@ redis-cli info stats
 
 ```bash
 # Enable debug logging
-code-graph-mcp --verbose --redis-cache
+codenav --verbose --redis-cache
 
 # Monitor cache hit rates
 curl http://localhost:8000/cache/stats | jq '.hit_rates'
@@ -455,11 +455,11 @@ curl http://localhost:8000/health | jq '.file_watcher'
 redis-cli ping
 
 # Verify connection string
-code-graph-mcp --redis-url redis://localhost:6379 --verbose
+codenav --redis-url redis://localhost:6379 --verbose
 
 # Docker networks
 docker network ls
-docker run --network=host code-graph-mcp --redis-cache
+docker run --network=host codenav --redis-cache
 ```
 
 #### 2. Cache Misses / No Performance Improvement
@@ -607,7 +607,7 @@ class HybridCacheManager:
 
 ## Conclusion
 
-The Redis cache integration transforms the Code Graph MCP Server from a batch analysis tool into a real-time code intelligence system. For large codebases with infrequent changes, it provides:
+The Redis cache integration transforms the CodeNavigator Server from a batch analysis tool into a real-time code intelligence system. For large codebases with infrequent changes, it provides:
 
 - **Massive Performance Gains**: 95-99% reduction in analysis time
 - **Incremental Updates**: Only re-analyze changed files

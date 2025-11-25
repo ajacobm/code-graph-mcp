@@ -19,7 +19,7 @@ def test_syntax_validation():
     """Test syntax validation of the optimized universal_parser.py"""
     print("1. 🔍 SYNTAX VALIDATION")
     try:
-        with open('src/code_graph_mcp/universal_parser.py', 'r') as f:
+        with open('src/codenav/universal_parser.py', 'r') as f:
             source = f.read()
         
         tree = ast.parse(source)
@@ -41,7 +41,7 @@ def test_critical_methods_exist():
     """Test that critical optimized methods exist in the source"""
     print("\n2. 🔧 CRITICAL METHOD VERIFICATION")
     
-    with open('src/code_graph_mcp/universal_parser.py', 'r') as f:
+    with open('src/codenav/universal_parser.py', 'r') as f:
         source = f.read()
     
     # Critical methods that were optimized in Phase 2
@@ -72,7 +72,7 @@ def test_lru_cache_removal():
     """Test that LRU caches have been properly removed"""
     print("\n3. 🗑️  LRU CACHE REMOVAL VERIFICATION")
     
-    with open('src/code_graph_mcp/universal_parser.py', 'r') as f:
+    with open('src/codenav/universal_parser.py', 'r') as f:
         source = f.read()
     
     # These should NOT exist anymore
@@ -201,7 +201,7 @@ def test_cache_decorator_patterns():
     """Test that cache decorators are properly implemented"""
     print("\n5. 🎯 CACHE DECORATOR PATTERN VERIFICATION") 
     
-    with open('src/code_graph_mcp/universal_parser.py', 'r') as f:
+    with open('src/codenav/universal_parser.py', 'r') as f:
         source = f.read()
     
     # Find @cached_method decorators and their TTL values
@@ -237,7 +237,7 @@ def test_performance_markers():
     """Test that performance improvement markers are in place"""
     print("\n6. ⚡ PERFORMANCE IMPROVEMENT MARKERS")
     
-    with open('src/code_graph_mcp/universal_parser.py', 'r') as f:
+    with open('src/codenav/universal_parser.py', 'r') as f:
         source = f.read()
     
     performance_indicators = [

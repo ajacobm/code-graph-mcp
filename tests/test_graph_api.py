@@ -8,13 +8,13 @@ import pytest
 import time
 from pathlib import Path
 
-from src.code_graph_mcp.graph.query_response import (
+from src.codenav.graph.query_response import (
     NodeResponse,
     RelationshipResponse,
     TraversalResponse,
 )
-from src.code_graph_mcp.graph.rustworkx_unified import RustworkxCodeGraph
-from src.code_graph_mcp.universal_graph import (
+from src.codenav.graph.rustworkx_unified import RustworkxCodeGraph
+from src.codenav.universal_graph import (
     UniversalLocation,
     UniversalNode,
     UniversalRelationship,

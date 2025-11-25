@@ -220,7 +220,7 @@ jobs:
         env:
           REDIS_URL: redis://localhost:6379
         run: |
-          uv run pytest tests/ -v --cov=src/code_graph_mcp --cov-report=xml --cov-report=html --cov-report=term
+          uv run pytest tests/ -v --cov=src/codenav --cov-report=xml --cov-report=html --cov-report=term
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4

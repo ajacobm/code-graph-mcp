@@ -11,9 +11,9 @@ import os
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from src.code_graph_mcp.server.graph_api import create_graph_api_router
-from src.code_graph_mcp.server.analysis_engine import UniversalAnalysisEngine
-from src.code_graph_mcp.universal_graph import UniversalGraph, UniversalNode, NodeType, UniversalRelationship, RelationshipType
+from src.codenav.server.graph_api import create_graph_api_router
+from src.codenav.server.analysis_engine import UniversalAnalysisEngine
+from src.codenav.universal_graph import UniversalGraph, UniversalNode, NodeType, UniversalRelationship, RelationshipType
 
 class TestEntryPointsEndpoint:
     

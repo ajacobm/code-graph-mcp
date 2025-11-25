@@ -8,7 +8,7 @@
 
 ## What Was Built
 
-### 1. IgnorePatternsManager (`src/code_graph_mcp/ignore_patterns.py`)
+### 1. IgnorePatternsManager (`src/codenav/ignore_patterns.py`)
 
 Enables fine-grained control over what code gets analyzed:
 
@@ -35,7 +35,7 @@ language: typescript
 - Runtime pattern/language addition
 - Config serialization/deserialization
 
-### 2. SeamDetector (`src/code_graph_mcp/seam_detector.py`)
+### 2. SeamDetector (`src/codenav/seam_detector.py`)
 
 Automatically detects cross-language function calls:
 
@@ -66,7 +66,7 @@ if detector.detect_seams("csharp", "node", code, "ProcessOrder", "API"):
 - Custom pattern addition
 - Multi-language architecture detection (3+ languages)
 
-### 3. SEAM Relationship Type (`src/code_graph_mcp/universal_graph.py`)
+### 3. SEAM Relationship Type (`src/codenav/universal_graph.py`)
 
 Added `RelationshipType.SEAM` to graph model:
 - Represents cross-language function calls
@@ -261,8 +261,8 @@ tests/test_seam_detector.py::TestSeamDetector::test_multi_language_architecture 
 
 ```
 Added:
-  src/code_graph_mcp/ignore_patterns.py          (220 lines)
-  src/code_graph_mcp/seam_detector.py            (150 lines)
+  src/codenav/ignore_patterns.py          (220 lines)
+  src/codenav/seam_detector.py            (150 lines)
   tests/test_ignore_patterns.py                  (230 lines)
   tests/test_seam_detector.py                    (200 lines)
   SESSION_PLAN_MULTI_LANGUAGE.md                 (450 lines)
@@ -271,7 +271,7 @@ Added:
   SESSION_SUMMARY_SEAMS.md                       (This file)
 
 Modified:
-  src/code_graph_mcp/universal_graph.py          (Added SEAM to RelationshipType enum)
+  src/codenav/universal_graph.py          (Added SEAM to RelationshipType enum)
   CRUSH.md                                       (Added session notes + next steps)
 
 Total additions: ~1,920 lines (code + docs + tests)

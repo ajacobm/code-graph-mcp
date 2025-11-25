@@ -3,14 +3,14 @@
 import pytest
 import pytest_asyncio
 from pathlib import Path
-from src.code_graph_mcp.server.analysis_engine import UniversalAnalysisEngine
-from src.code_graph_mcp.server.graph_api import create_graph_api_router
+from src.codenav.server.analysis_engine import UniversalAnalysisEngine
+from src.codenav.server.graph_api import create_graph_api_router
 
 
 @pytest_asyncio.fixture
 async def engine():
     """Create analysis engine with test data."""
-    project_root = Path(__file__).parent.parent / "src" / "code_graph_mcp"
+    project_root = Path(__file__).parent.parent / "src" / "codenav"
     engine = UniversalAnalysisEngine(str(project_root))
     await engine._ensure_analyzed()
     yield engine
@@ -22,7 +22,7 @@ class TestQueryEndpoints:
 
     async def test_find_callers_endpoint_exists(self):
         """Verify find_callers endpoint is properly defined."""
-        project_root = Path(__file__).parent.parent / "src" / "code_graph_mcp"
+        project_root = Path(__file__).parent.parent / "src" / "codenav"
         engine = UniversalAnalysisEngine(str(project_root))
         router = create_graph_api_router(engine)
         
@@ -31,7 +31,7 @@ class TestQueryEndpoints:
 
     async def test_find_callees_endpoint_exists(self):
         """Verify find_callees endpoint is properly defined."""
-        project_root = Path(__file__).parent.parent / "src" / "code_graph_mcp"
+        project_root = Path(__file__).parent.parent / "src" / "codenav"
         engine = UniversalAnalysisEngine(str(project_root))
         router = create_graph_api_router(engine)
         
@@ -40,7 +40,7 @@ class TestQueryEndpoints:
 
     async def test_find_references_endpoint_exists(self):
         """Verify find_references endpoint is properly defined."""
-        project_root = Path(__file__).parent.parent / "src" / "code_graph_mcp"
+        project_root = Path(__file__).parent.parent / "src" / "codenav"
         engine = UniversalAnalysisEngine(str(project_root))
         router = create_graph_api_router(engine)
         
@@ -74,7 +74,7 @@ class TestQueryEndpoints:
 
     async def test_router_has_all_graph_endpoints(self):
         """Verify all expected endpoints are registered."""
-        project_root = Path(__file__).parent.parent / "src" / "code_graph_mcp"
+        project_root = Path(__file__).parent.parent / "src" / "codenav"
         engine = UniversalAnalysisEngine(str(project_root))
         router = create_graph_api_router(engine)
         

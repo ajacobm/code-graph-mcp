@@ -4,7 +4,7 @@ Test cases for entry point detection service.
 
 import unittest
 from unittest.mock import mock_open, patch
-from src.code_graph_mcp.entry_detector import EntryDetector, EntryPointCandidate
+from src.codenav.entry_detector import EntryDetector, EntryPointCandidate
 
 class TestEntryDetector(unittest.TestCase):
     

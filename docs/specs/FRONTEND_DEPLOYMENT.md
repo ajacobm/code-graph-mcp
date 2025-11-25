@@ -2,9 +2,9 @@
 
 ## Overview
 
-The **code-graph-mcp frontend** is a Vue.js 3 application with Vite, TailwindCSS, and Cytoscape for graph visualization. We've set up **three deployment options**:
+The **codenav frontend** is a Vue.js 3 application with Vite, TailwindCSS, and Cytoscape for graph visualization. We've set up **three deployment options**:
 
-1. **GitHub Pages** - Free static hosting at `https://ajacobm.github.io/code-graph-mcp/`
+1. **GitHub Pages** - Free static hosting at `https://ajacobm.github.io/codenav/`
 2. **GHCR Docker Images** - Containerized frontend for orchestration
 3. **Local Development** - Fast iteration in Codespaces or locally
 
@@ -13,7 +13,7 @@ The **code-graph-mcp frontend** is a Vue.js 3 application with Vite, TailwindCSS
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    GitHub Repository                         │
-│                  ajacobm/code-graph-mcp                      │
+│                  ajacobm/codenav                      │
 ├─────────────────────────────────────────────────────────────┤
 │                                                              │
 │  Push to main (frontend/** changes)                         │
@@ -44,7 +44,7 @@ The **code-graph-mcp frontend** is a Vue.js 3 application with Vite, TailwindCSS
 
 **Perfect for**: Public demos, documentation, marketing site
 
-**URL**: `https://ajacobm.github.io/code-graph-mcp/`
+**URL**: `https://ajacobm.github.io/codenav/`
 
 **Features**:
 - ✅ **Free** hosting with unlimited bandwidth
@@ -57,7 +57,7 @@ The **code-graph-mcp frontend** is a Vue.js 3 application with Vite, TailwindCSS
 
 ```bash
 # 1. Enable GitHub Pages
-# Go to: https://github.com/ajacobm/code-graph-mcp/settings/pages
+# Go to: https://github.com/ajacobm/codenav/settings/pages
 # Source: GitHub Actions
 # Click "Save"
 
@@ -67,7 +67,7 @@ git commit -m "Enable GitHub Pages"
 git push origin main
 
 # 3. Wait ~2 minutes for deployment
-# Visit: https://ajacobm.github.io/code-graph-mcp/
+# Visit: https://ajacobm.github.io/codenav/
 ```
 
 **How it works**:
@@ -86,8 +86,8 @@ git push origin main
 **Perfect for**: Development, testing, production deployments with backend
 
 **Images**:
-- `ghcr.io/ajacobm/code-graph-mcp-frontend:development-latest`
-- `ghcr.io/ajacobm/code-graph-mcp-frontend:production-latest`
+- `ghcr.io/ajacobm/codenav-frontend:development-latest`
+- `ghcr.io/ajacobm/codenav-frontend:production-latest`
 
 **Features**:
 - ✅ **Full stack** - Frontend + Backend together
@@ -99,8 +99,8 @@ git push origin main
 
 ```bash
 # Pull and run development image
-docker pull ghcr.io/ajacobm/code-graph-mcp-frontend:development-latest
-docker run -p 5173:5173 ghcr.io/ajacobm/code-graph-mcp-frontend:development-latest
+docker pull ghcr.io/ajacobm/codenav-frontend:development-latest
+docker run -p 5173:5173 ghcr.io/ajacobm/codenav-frontend:development-latest
 
 # Or use docker-compose with full stack
 docker compose -f docker-compose-ghcr.yml up -d
@@ -145,7 +145,7 @@ npm run dev
 ./scripts/codespaces-redis.sh
 
 # Terminal 2: Start backend HTTP API
-uv run python -m code_graph_mcp.http_server --port 10101
+uv run python -m codenav.http_server --port 10101
 
 # Terminal 3: Start frontend
 cd frontend && npm run dev
@@ -170,7 +170,7 @@ npm run dev
 
 ### Enable GitHub Pages
 
-1. Go to: https://github.com/ajacobm/code-graph-mcp/settings/pages
+1. Go to: https://github.com/ajacobm/codenav/settings/pages
 2. **Source**: Select "GitHub Actions"
 3. Click **Save**
 4. Push to `main` to trigger deployment
@@ -181,7 +181,7 @@ If your repo name is not the root path, update `vite.config.ts`:
 
 ```typescript
 export default defineConfig({
-  base: '/code-graph-mcp/', // Add this line
+  base: '/codenav/', // Add this line
   plugins: [vue()],
   // ...
 })
@@ -202,7 +202,7 @@ export default defineConfig({
    ```
 
 3. Enable in settings:
-   https://github.com/ajacobm/code-graph-mcp/settings/pages
+   https://github.com/ajacobm/codenav/settings/pages
 
 ## Docker Configuration
 
@@ -272,8 +272,8 @@ docker run -p 5173:5173 frontend-prod
 **File**: `.github/workflows/docker-publish.yml`
 
 **Builds**:
-- `ghcr.io/ajacobm/code-graph-mcp-frontend:development-latest`
-- `ghcr.io/ajacobm/code-graph-mcp-frontend:production-latest`
+- `ghcr.io/ajacobm/codenav-frontend:development-latest`
+- `ghcr.io/ajacobm/codenav-frontend:production-latest`
 - Version tags: `v1.2.3-development`, `v1.2.3-production`
 
 **Triggers**:
@@ -409,7 +409,7 @@ gh run view --log
 **Fix**:
 ```bash
 # Enable GitHub Pages
-# https://github.com/ajacobm/code-graph-mcp/settings/pages
+# https://github.com/ajacobm/codenav/settings/pages
 
 # Check permissions
 # Settings → Actions → General → Workflow permissions
@@ -511,11 +511,11 @@ source-map-explorer dist/assets/*.js
 
 ## Next Steps
 
-1. **Enable GitHub Pages**: https://github.com/ajacobm/code-graph-mcp/settings/pages
+1. **Enable GitHub Pages**: https://github.com/ajacobm/codenav/settings/pages
 2. **Push to main**: Trigger deployments
 3. **Test locally**: `npm run dev` in `frontend/`
-4. **Access GitHub Pages**: https://ajacobm.github.io/code-graph-mcp/
-5. **Pull GHCR images**: `docker pull ghcr.io/ajacobm/code-graph-mcp-frontend:production-latest`
+4. **Access GitHub Pages**: https://ajacobm.github.io/codenav/
+5. **Pull GHCR images**: `docker pull ghcr.io/ajacobm/codenav-frontend:production-latest`
 
 ## Documentation Links
 

@@ -3,7 +3,7 @@
 
 set -e
 
-echo "🚀 Setting up Code Graph MCP development environment..."
+echo "🚀 Setting up CodeNavigator (codenav) development environment..."
 echo ""
 
 # Install uv

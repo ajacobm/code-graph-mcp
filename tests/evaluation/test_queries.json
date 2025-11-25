@@ -8,7 +8,7 @@
         "node_id": "func_123",
         "name": "analyze_codebase",
         "type": "Function",
-        "file": "src/code_graph_mcp/universal_parser.py",
+        "file": "src/codenav/universal_parser.py",
         "language": "Python",
         "complexity": 8,
         "is_entry_point": true
@@ -22,7 +22,7 @@
         "node_id": "func_124",
         "name": "parse_file",
         "type": "Function",
-        "file": "src/code_graph_mcp/universal_parser.py",
+        "file": "src/codenav/universal_parser.py",
         "language": "Python",
         "complexity": 5,
         "is_entry_point": false
@@ -36,7 +36,7 @@
         "node_id": "func_125",
         "name": "extract_function_calls",
         "type": "Function",
-        "file": "src/code_graph_mcp/universal_parser.py",
+        "file": "src/codenav/universal_parser.py",
         "language": "Python",
         "complexity": 6,
         "is_entry_point": false
@@ -78,7 +78,7 @@
         "node_id": "func_126",
         "name": "add_relationship",
         "type": "Function",
-        "file": "src/code_graph_mcp/universal_graph.py",
+        "file": "src/codenav/universal_graph.py",
         "language": "Python",
         "complexity": 3,
         "is_entry_point": false
@@ -106,7 +106,7 @@
         "node_id": "func_127",
         "name": "query_graph",
         "type": "Function",
-        "file": "src/code_graph_mcp/graph_query_router.py",
+        "file": "src/codenav/graph_query_router.py",
         "language": "Python",
         "complexity": 7,
         "is_entry_point": true

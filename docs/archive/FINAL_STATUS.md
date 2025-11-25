@@ -14,7 +14,7 @@
 | GET /api/graph/query/callees | ✅ Implemented | ✅ Pass |
 | GET /api/graph/query/references | ✅ Implemented | ✅ Pass |
 
-**Code Location**: `src/code_graph_mcp/server/graph_api.py` (lines 412-507)  
+**Code Location**: `src/codenav/server/graph_api.py` (lines 412-507)  
 **Code Size**: +95 lines  
 **Tests**: 8/8 passing  
 
@@ -127,13 +127,13 @@
 
 ```bash
 # Rebuild HTTP server image
-docker build -t ajacobm/code-graph-mcp:http -f Dockerfile --target http .
+docker build -t ajacobm/codenav:http -f Dockerfile --target http .
 
 # Rebuild frontend image (already done)
-docker build -t code-graph-mcp-frontend -f frontend/Dockerfile frontend/
+docker build -t codenav-frontend -f frontend/Dockerfile frontend/
 
 # Start full stack
-cd /home/adam/GitHub/code-graph-mcp
+cd /home/adam/GitHub/codenav
 source ~/.bashrc
 compose.sh up
 
@@ -162,8 +162,8 @@ open http://localhost:5173
 
 ```
 Modified (6 files):
-  src/code_graph_mcp/server/graph_api.py         (+95 lines)
-  src/code_graph_mcp/universal_parser.py         (+2 lines)
+  src/codenav/server/graph_api.py         (+95 lines)
+  src/codenav/universal_parser.py         (+2 lines)
   frontend/src/components/ToolPanel.vue          (+183 lines)
   frontend/src/api/toolClient.ts                 (+51 lines)
   frontend/src/App.vue                           (+6 lines)

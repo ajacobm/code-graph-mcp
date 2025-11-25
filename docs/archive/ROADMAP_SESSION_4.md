@@ -179,7 +179,7 @@
 
 ## Code Changes Summary
 
-### Backend (src/code_graph_mcp/)
+### Backend (src/codenav/)
 ```
 Priority 1 - Test Fixes:
   - tests/test_graph_queries.py: Fix async fixtures
@@ -190,7 +190,7 @@ Priority 1 - Test Fixes:
 Priority 2 - (No code changes needed)
 
 Priority 3 - New APIs:
-  - src/code_graph_mcp/server/graph_api.py: Add /api/tools/execute endpoint
+  - src/codenav/server/graph_api.py: Add /api/tools/execute endpoint
 ```
 
 ### Frontend (frontend/src/)
@@ -239,7 +239,7 @@ pytest tests/ -k "not (analysis or cache_integration or mcp_http or rustworkx or
 ### Integration Testing (Docker)
 ```bash
 compose down
-docker volume rm code-graph-mcp-repo-mount  # Or change mount path
+docker volume rm codenav-repo-mount  # Or change mount path
 compose up
 # Verify in UI: http://localhost:5173
 ```

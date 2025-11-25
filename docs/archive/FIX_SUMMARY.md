@@ -80,7 +80,7 @@ All tests pass ✅:
 - ✅ `test_mcp_client.py` - MCP protocol client test
 
 ## Key Files Modified
-1. **src/code_graph_mcp/universal_parser.py**
+1. **src/codenav/universal_parser.py**
    - Added "call" patterns to ASTGrepPatterns for all 25+ languages
    - Added `_extract_function_calls_ast()` method
    - Added `_find_containing_function()` helper
@@ -125,8 +125,8 @@ python tests/test_query_tools_live.py
 python tests/test_mcp_live_session.py
 
 # Full Docker build + test
-docker build -t code-graph-mcp:test -f Dockerfile .
-docker run --rm -v /path/to/code-graph-mcp:/app code-graph-mcp:test \
+docker build -t codenav:test -f Dockerfile .
+docker run --rm -v /path/to/codenav:/app codenav:test \
   uv run python /app/tests/test_mcp_live_session.py
 ```
 

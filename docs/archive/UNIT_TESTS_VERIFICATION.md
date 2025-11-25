@@ -13,7 +13,7 @@ But the system supports 25 languages, so for all other languages, `get_pattern()
 
 ### Solution Applied
 
-**File**: `src/code_graph_mcp/universal_parser.py`
+**File**: `src/codenav/universal_parser.py`
 
 Added AST patterns for all 25 supported languages:
 - cpp, c, csharp, php, ruby, swift, kotlin, scala, dart, lua
@@ -92,6 +92,6 @@ The unit tests verify that the code changes are correct. The remaining issue is 
 
 ### Test File Location
 
-`/mnt/c/Users/ADAM/GitHub/code-graph-mcp/tests/test_parser_core.py`
+`/mnt/c/Users/ADAM/GitHub/codenav/tests/test_parser_core.py`
 
 This test file is self-contained and can be run without the full application stack, making it useful for CI/CD pipelines and quick validation.

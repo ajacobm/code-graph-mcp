@@ -11,7 +11,7 @@ import redis.asyncio as redis
 from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable
 
-from code_graph_mcp.memgraph_sync import (
+from codenav.memgraph_sync import (
     MemgraphCDCSync,
     CDCEventProcessor,
     RedisStreamConsumer

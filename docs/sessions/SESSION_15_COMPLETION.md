@@ -19,7 +19,7 @@ After Session 14 completed the event-driven architecture with WebSocket integrat
 
 ## Root Cause Analysis
 
-**Located Issue in**: `src/code_graph_mcp/websocket_server.py`, line 224
+**Located Issue in**: `src/codenav/websocket_server.py`, line 224
 
 ```python
 # OLD CODE (BLOCKING):
@@ -63,13 +63,13 @@ asyncio.create_task(listen_for_events())
 ## Changes Made
 
 ### Code Changes
-**File**: `src/code_graph_mcp/websocket_server.py`
+**File**: `src/codenav/websocket_server.py`
 - **Lines Changed**: +8 (function wrapper + background task)
 - **Type**: Bug fix (logic change)
 - **Compatibility**: ✅ Fully backward compatible
 - **Tests Affected**: None (existing tests still pass)
 
-**File**: `src/code_graph_mcp/websocket_server.py`
+**File**: `src/codenav/websocket_server.py`
 - **Lines Changed**: -1 (unused import)
 - **Type**: Linting cleanup
 - **Change**: Removed unused `Callable` from typing imports
@@ -96,8 +96,8 @@ asyncio.create_task(listen_for_events())
 
 ### Local Testing ✅
 ```bash
-timeout 30 python3 -m code_graph_mcp.http_server \
-  --project-root src/code_graph_mcp \
+timeout 30 python3 -m codenav.http_server \
+  --project-root src/codenav \
   --host 127.0.0.1 \
   --port 8888 \
   --no-redis
@@ -183,8 +183,8 @@ This pattern is critical for:
 ## File Organization
 
 ```
-code-graph-mcp/
-├── src/code_graph_mcp/
+codenav/
+├── src/codenav/
 │   ├── http_server.py              # HTTP API + startup
 │   ├── websocket_server.py         # WebSocket + CDC broadcaster ✅ FIXED
 │   ├── cdc_manager.py              # CDC publishing

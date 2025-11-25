@@ -4,10 +4,10 @@
 
 **Container logs showing inefficiency:**
 ```
-DEBUG - Skipping ignored path: /app/workspace/src/code_graph_mcp/server/__pycache__
-DEBUG - Skipping ignored path: /app/workspace/src/code_graph_mcp/__pycache__/file_watcher.cpython-312.pyc
-DEBUG - Skipping ignored path: /app/workspace/src/code_graph_mcp/__pycache__/__init__.cpython-312.pyc
-DEBUG - Skipping ignored path: /app/workspace/src/code_graph_mcp/server/__pycache__/analysis_engine.cpython-312.pyc
+DEBUG - Skipping ignored path: /app/workspace/src/codenav/server/__pycache__
+DEBUG - Skipping ignored path: /app/workspace/src/codenav/__pycache__/file_watcher.cpython-312.pyc
+DEBUG - Skipping ignored path: /app/workspace/src/codenav/__pycache__/__init__.cpython-312.pyc
+DEBUG - Skipping ignored path: /app/workspace/src/codenav/server/__pycache__/analysis_engine.cpython-312.pyc
 ```
 
 **Root Cause:** Using `directory.rglob("*")` visits **every single file** then checks each individually - **no directory tree pruning**.

@@ -1,4 +1,4 @@
-# Session 2 Final Analysis - Code Graph MCP Zero Nodes Issue
+# Session 2 Final Analysis - CodeNavigator Zero Nodes Issue
 
 **Date**: October 26, 2025  
 **Status**: UNDER INVESTIGATION - Root cause identified partially, debugging in progress
@@ -21,7 +21,7 @@ The `analyze_codebase` tool returns 0 nodes despite unit tests passing and the f
 from ast_grep_py import SgRoot
 from pathlib import Path
 
-content = Path("src/code_graph_mcp/universal_parser.py").read_text()
+content = Path("src/codenav/universal_parser.py").read_text()
 sg_root = SgRoot(content, 'python')
 root_node = sg_root.root()
 functions = list(root_node.find_all({"rule": {"kind": "function_definition"}}))
@@ -34,13 +34,13 @@ print(f"Found {len(functions)} functions")  # Output: "Found 32 functions"
 
 ```python
 # Through the full parser - RETURNS 0 NODES
-from src.code_graph_mcp.universal_parser import UniversalParser
+from src.codenav.universal_parser import UniversalParser
 from pathlib import Path
 import asyncio
 
 async def test():
     parser = UniversalParser(enable_redis_cache=False)
-    await parser.parse_file(Path("src/code_graph_mcp/universal_parser.py"))
+    await parser.parse_file(Path("src/codenav/universal_parser.py"))
     print(f"Graph nodes: {len(parser.graph.nodes)}")  # Output: "Graph nodes: 1" (only file node)
 
 asyncio.run(test())
@@ -75,7 +75,7 @@ This indicates:
 
 ### Fixed Code (Already in place):
 
-**File**: `src/code_graph_mcp/universal_parser.py`
+**File**: `src/codenav/universal_parser.py`
 
 1. **Line 784**: Iterator fix - `functions = list(root_node.find_all(...))`
 2. **Line 849**: Iterator fix - `classes = list(root_node.find_all(...))`
@@ -118,15 +118,15 @@ The methods exist, are called (parse_file returns True), but no nodes are create
 
 ```bash
 # Print-based debug test
-cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp
+cd /mnt/c/Users/ADAM/GitHub/codenav
 uv run python3 << 'EOF'
 import asyncio
 from pathlib import Path
-from src.code_graph_mcp.universal_parser import UniversalParser
+from src.codenav.universal_parser import UniversalParser
 
 async def test():
     parser = UniversalParser(enable_redis_cache=False)
-    test_file = Path("src/code_graph_mcp/universal_parser.py")
+    test_file = Path("src/codenav/universal_parser.py")
     await parser.parse_file(test_file)
     print(f"Total nodes in graph: {len(parser.graph.nodes)}")
     for node_id, node in parser.graph.nodes.items():
@@ -152,15 +152,15 @@ Expected (after fix): Should see functions, classes, imports listed
 
 ## Files Changed
 
-- `/mnt/c/Users/ADAM/GitHub/code-graph-mcp/src/code_graph_mcp/universal_parser.py`
+- `/mnt/c/Users/ADAM/GitHub/codenav/src/codenav/universal_parser.py`
   - Added debug logging to _parse_file_content and _parse_functions_ast
   - Iterator fixes already in place
   - Patterns already complete
 
-- `/mnt/c/Users/ADAM/GitHub/code-graph-mcp/AST_GREP_INVESTIGATION_OCT26.md`
+- `/mnt/c/Users/ADAM/GitHub/codenav/AST_GREP_INVESTIGATION_OCT26.md`
   - Comprehensive investigation document
 
-- `/mnt/c/Users/ADAM/GitHub/code-graph-mcp/SESSION2_FINAL_ANALYSIS.md`
+- `/mnt/c/Users/ADAM/GitHub/codenav/SESSION2_FINAL_ANALYSIS.md`
   - This file
 
 ## Conclusion

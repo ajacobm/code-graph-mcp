@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide covers running and testing `code-graph-mcp` in GitHub Codespaces with Redis, including how to work with GitHub Container Registry (GHCR) images.
+This guide covers running and testing `codenav` in GitHub Codespaces with Redis, including how to work with GitHub Container Registry (GHCR) images.
 
 ## Architecture in Codespaces
 
@@ -42,20 +42,20 @@ Your GitHub Actions workflow is configured to automatically push to GHCR. No man
 
 Images are published to:
 ```
-ghcr.io/ajacobm/code-graph-mcp:<target>-<version>
+ghcr.io/ajacobm/codenav:<target>-<version>
 ```
 
 Available targets:
-- `ghcr.io/ajacobm/code-graph-mcp:development-latest`
-- `ghcr.io/ajacobm/code-graph-mcp:production-latest`
-- `ghcr.io/ajacobm/code-graph-mcp:sse-latest`
-- `ghcr.io/ajacobm/code-graph-mcp:http-latest`
-- `ghcr.io/ajacobm/code-graph-mcp:stdio-latest`
+- `ghcr.io/ajacobm/codenav:development-latest`
+- `ghcr.io/ajacobm/codenav:production-latest`
+- `ghcr.io/ajacobm/codenav:sse-latest`
+- `ghcr.io/ajacobm/codenav:http-latest`
+- `ghcr.io/ajacobm/codenav:stdio-latest`
 
 ### 3. Make Packages Public (One-Time Setup)
 
 1. Go to https://github.com/ajacobm?tab=packages
-2. Click on `code-graph-mcp`
+2. Click on `codenav`
 3. Click **Package settings**
 4. Scroll to **Danger Zone** → Change visibility to **Public**
 
@@ -70,10 +70,10 @@ Run directly without Docker for fastest iteration:
 ./scripts/codespaces-redis.sh
 
 # Run MCP server in stdio mode
-uv run code-graph-mcp --mode stdio --enable-cache --redis-url redis://localhost:6379
+uv run codenav --mode stdio --enable-cache --redis-url redis://localhost:6379
 
 # Or SSE mode with hot reload
-uv run code-graph-mcp --mode sse --host 0.0.0.0 --port 8000 --enable-cache --redis-url redis://localhost:6379 --verbose
+uv run codenav --mode sse --host 0.0.0.0 --port 8000 --enable-cache --redis-url redis://localhost:6379 --verbose
 ```
 
 ### Option 2: Docker Compose (Full Stack)
@@ -97,7 +97,7 @@ Use pre-built images from your registry:
 
 ```bash
 # Pull latest SSE image
-docker pull ghcr.io/ajacobm/code-graph-mcp:sse-latest
+docker pull ghcr.io/ajacobm/codenav:sse-latest
 
 # Run with Redis
 docker compose -f docker-compose-ghcr.yml up -d
@@ -179,7 +179,7 @@ redis-cli ping  # Should return PONG
 curl http://localhost:8000/health
 
 # Test MCP server (stdio mode)
-echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | uv run code-graph-mcp --mode stdio
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | uv run codenav --mode stdio
 ```
 
 ## Development Workflow
@@ -192,10 +192,10 @@ Edit code in Codespaces editor (VS Code in browser).
 
 ```bash
 # Fast iteration - no Docker rebuild
-uv run code-graph-mcp --mode stdio --verbose
+uv run codenav --mode stdio --verbose
 
 # Or with hot reload
-uv run code-graph-mcp --mode sse --host 0.0.0.0 --port 8000 --verbose
+uv run codenav --mode sse --host 0.0.0.0 --port 8000 --verbose
 ```
 
 ### 3. Test with Docker (Optional)
@@ -221,15 +221,15 @@ git push origin main
 
 - Workflow triggers on push to `main`
 - Builds all 5 targets in parallel
-- Pushes to `ghcr.io/ajacobm/code-graph-mcp:*`
+- Pushes to `ghcr.io/ajacobm/codenav:*`
 - Takes ~5-10 minutes
 
 ### 6. Pull and Use New Images
 
 ```bash
 # On another machine or clean environment
-docker pull ghcr.io/ajacobm/code-graph-mcp:sse-latest
-docker run -p 8000:8000 ghcr.io/ajacobm/code-graph-mcp:sse-latest
+docker pull ghcr.io/ajacobm/codenav:sse-latest
+docker run -p 8000:8000 ghcr.io/ajacobm/codenav:sse-latest
 ```
 
 ## Persistent Storage in Codespaces
@@ -280,7 +280,7 @@ docker compose up redis -d
 lsof -ti:8000 | xargs kill -9
 
 # Or use different port
-uv run code-graph-mcp --mode sse --port 8001
+uv run codenav --mode sse --port 8001
 ```
 
 ### "Docker build fails"
@@ -318,7 +318,7 @@ docker compose build --no-cache
 docker run -d -p 6379:6379 redis:alpine
 
 # 2. Run MCP server locally
-uv run code-graph-mcp --mode sse --port 8000 --redis-url redis://localhost:6379 --verbose
+uv run codenav --mode sse --port 8000 --redis-url redis://localhost:6379 --verbose
 
 # 3. In another terminal, test it
 curl http://localhost:8000/health
@@ -338,11 +338,11 @@ git commit -m "Add new feature"
 git push
 
 # 8. GitHub Actions builds and pushes to GHCR automatically
-# Check: https://github.com/ajacobm/code-graph-mcp/actions
+# Check: https://github.com/ajacobm/codenav/actions
 
 # 9. Pull and test production image
-docker pull ghcr.io/ajacobm/code-graph-mcp:sse-latest
-docker run -p 8000:8000 ghcr.io/ajacobm/code-graph-mcp:sse-latest
+docker pull ghcr.io/ajacobm/codenav:sse-latest
+docker run -p 8000:8000 ghcr.io/ajacobm/codenav:sse-latest
 ```
 
 ## Next Steps

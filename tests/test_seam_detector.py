@@ -1,7 +1,7 @@
 """Tests for cross-language seam detection."""
 
 import pytest
-from code_graph_mcp.seam_detector import SeamDetector
+from codenav.seam_detector import SeamDetector
 
 
 class TestSeamDetector:

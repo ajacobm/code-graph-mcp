@@ -1,4 +1,4 @@
-# Deploy Code Graph MCP Now - Ready to Test!
+# Deploy CodeNavigator Now - Ready to Test!
 
 ## ✅ All Fixes Implemented & Verified
 
@@ -11,13 +11,13 @@ Both critical issues have been fixed and syntax-verified:
 
 ### Build Command
 ```bash
-cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp
-docker build -t ajacobm/code-graph-mcp:sse --target sse .
+cd /mnt/c/Users/ADAM/GitHub/codenav
+docker build -t ajacobm/codenav:sse --target sse .
 ```
 
 **Why this command works:**
 - `--target sse` builds up to the SSE stage in Dockerfile
-- Results in image tagged `ajacobm/code-graph-mcp:sse`
+- Results in image tagged `ajacobm/codenav:sse`
 - Matches what `docker-compose-multi.yml` expects
 - Sets default CMD to HTTP SSE server mode
 
@@ -28,7 +28,7 @@ docker-compose -f docker-compose-multi.yml up
 
 **What this does:**
 - Starts Redis service on port 6379
-- Starts Code Graph MCP container on port 10101
+- Starts CodeNavigator container on port 10101
 - Mounts workspace volume
 - Enables Redis cache automatically
 - Sets up proper networking
@@ -63,8 +63,8 @@ docker-compose -f docker-compose-multi.yml logs -f code-graph-codegraphmcp-sse
 
 ### Terminal 1: Build & Deploy
 ```bash
-cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp && \
-docker build -t ajacobm/code-graph-mcp:sse --target sse . && \
+cd /mnt/c/Users/ADAM/GitHub/codenav && \
+docker build -t ajacobm/codenav:sse --target sse . && \
 docker-compose -f docker-compose-multi.yml up
 ```
 
@@ -79,7 +79,7 @@ echo "✅ Server is healthy!"
 
 ### Terminal 3: Monitor Logs (Optional)
 ```bash
-cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp && \
+cd /mnt/c/Users/ADAM/GitHub/codenav && \
 docker-compose -f docker-compose-multi.yml logs -f
 ```
 
@@ -125,11 +125,11 @@ Your Machine
     ↓
 docker build (local)
     ↓
-Image: ajacobm/code-graph-mcp:sse
+Image: ajacobm/codenav:sse
     ↓
 docker-compose-multi.yml
     ├─ Redis Service (6379)
-    └─ Code Graph MCP (10101 → 8000)
+    └─ CodeNavigator (10101 → 8000)
          ├─ File Watcher (working, no errors)
          ├─ AST-Grep Parser (real nodes)
          └─ SSE HTTP Server (ready for clients)
@@ -214,15 +214,15 @@ All fixes are documented in:
 
 ```bash
 # Copy and paste this entire block:
-cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp && \
-docker build -t ajacobm/code-graph-mcp:sse --target sse . && \
+cd /mnt/c/Users/ADAM/GitHub/codenav && \
+docker build -t ajacobm/codenav:sse --target sse . && \
 docker-compose -f docker-compose-multi.yml up
 ```
 
 This will:
 1. Navigate to project directory
 2. Build the Docker image with fixes
-3. Start all services (Redis + Code Graph MCP)
+3. Start all services (Redis + CodeNavigator)
 4. Show live logs
 
 Then in another terminal:

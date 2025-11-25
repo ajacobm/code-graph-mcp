@@ -105,7 +105,7 @@ Transform the mobile-first UI into a **desktop knowledge mining tool** with resi
 ## 🚨 P0: Critical Performance Fixes (Do First!)
 
 ### 1. Backend Pagination
-**Files**: `src/code_graph_mcp/server/graph_api.py`
+**Files**: `src/codenav/server/graph_api.py`
 
 Add `limit` and `offset` parameters to query endpoints:
 
@@ -163,7 +163,7 @@ async function loadMoreCallers() {
 ```
 
 ### 3. Import Node Filtering
-**Files**: `src/code_graph_mcp/server/graph_api.py` (categories endpoint)
+**Files**: `src/codenav/server/graph_api.py` (categories endpoint)
 
 Filter out common stdlib imports from Entry Points:
 

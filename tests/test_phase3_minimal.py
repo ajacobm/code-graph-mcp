@@ -21,7 +21,7 @@ def test_file_syntax():
     try:
         import ast
         
-        with open('src/code_graph_mcp/universal_parser.py', 'r') as f:
+        with open('src/codenav/universal_parser.py', 'r') as f:
             source = f.read()
         
         tree = ast.parse(source)
@@ -42,7 +42,7 @@ def test_file_syntax():
 def test_optimization_markers():
     """Test that optimization markers are present in the code."""
     try:
-        with open('src/code_graph_mcp/universal_parser.py', 'r') as f:
+        with open('src/codenav/universal_parser.py', 'r') as f:
             source = f.read()
         
         # Check for critical optimization markers
@@ -89,7 +89,7 @@ def test_optimization_markers():
 def test_import_structure():
     """Test import statements and dependencies."""
     try:
-        with open('src/code_graph_mcp/universal_parser.py', 'r') as f:
+        with open('src/codenav/universal_parser.py', 'r') as f:
             source = f.read()
         
         # Check for expected imports
@@ -122,7 +122,7 @@ def test_import_structure():
 def test_class_structure():
     """Test that critical classes and methods exist."""
     try:
-        with open('src/code_graph_mcp/universal_parser.py', 'r') as f:
+        with open('src/codenav/universal_parser.py', 'r') as f:
             source = f.read()
         
         # Check for critical classes and methods
@@ -158,7 +158,7 @@ def test_class_structure():
 def test_cache_decorator_usage():
     """Test that cache decorators are properly used."""
     try:
-        with open('src/code_graph_mcp/universal_parser.py', 'r') as f:
+        with open('src/codenav/universal_parser.py', 'r') as f:
             source = f.read()
         
         import re
@@ -193,7 +193,7 @@ def test_cache_decorator_usage():
 def test_performance_critical_paths():
     """Test that performance critical code paths are optimized."""
     try:
-        with open('src/code_graph_mcp/universal_parser.py', 'r') as f:
+        with open('src/codenav/universal_parser.py', 'r') as f:
             source = f.read()
         
         # Check for performance optimization patterns
@@ -225,7 +225,7 @@ def test_performance_critical_paths():
 def test_language_support_completeness():
     """Test that language support is comprehensive."""
     try:
-        with open('src/code_graph_mcp/universal_parser.py', 'r') as f:
+        with open('src/codenav/universal_parser.py', 'r') as f:
             source = f.read()
         
         # Count language configurations

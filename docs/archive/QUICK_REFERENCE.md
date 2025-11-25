@@ -1,4 +1,4 @@
-# Code Graph MCP - Implementation Summary Card
+# CodeNavigator - Implementation Summary Card
 
 ## 🎯 Two Critical Issues - BOTH FIXED ✅
 
@@ -6,7 +6,7 @@
 ```
 ERROR: BaseObserver.schedule() got an unexpected keyword argument 'ignore_patterns'
 ```
-**File**: `src/code_graph_mcp/file_watcher.py`
+**File**: `src/codenav/file_watcher.py`
 - Removed `ignore_patterns` parameter from watchdog observer.schedule()
 - Added `_should_skip_path()` method to filter ignored directories
 - Works with watchdog 6.0.0+
@@ -24,7 +24,7 @@ ERROR: BaseObserver.schedule() got an unexpected keyword argument 'ignore_patter
 ```
 Analysis complete: 0 nodes, 0 relationships
 ```
-**File**: `src/code_graph_mcp/universal_parser.py`
+**File**: `src/codenav/universal_parser.py`
 - Added `ASTGrepPatterns` class with language-specific patterns
 - Replaced text-based `_parse_functions()` with AST-Grep powered `_parse_functions_ast()`
 - Replaced text-based `_parse_classes()` with AST-Grep powered `_parse_classes_ast()`
@@ -87,31 +87,31 @@ INFO: Analysis complete: 0 nodes, 0 relationships
 ## 🔧 Build & Test
 
 ```bash
-cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp
+cd /mnt/c/Users/ADAM/GitHub/codenav
 
 # Verify syntax
-python3 -m py_compile src/code_graph_mcp/file_watcher.py src/code_graph_mcp/universal_parser.py
+python3 -m py_compile src/codenav/file_watcher.py src/codenav/universal_parser.py
 
 # Build
 uv build
 
 # Test in Docker
-docker build -t code-graph-mcp .
-docker run code-graph-mcp
+docker build -t codenav .
+docker run codenav
 ```
 
 ---
 
 ## 📝 Files Modified
 
-1. `src/code_graph_mcp/file_watcher.py`
+1. `src/codenav/file_watcher.py`
    - Lines 8: Added fix comment
    - Lines 75, 81, 87, 94, 99: Added `_should_skip_path()` checks
    - Lines 102-117: Added `_should_skip_path()` method
    - Lines 235-238: Removed `ignore_patterns` parameter, added comment
    - ✅ Syntax verified ✅
 
-2. `src/code_graph_mcp/universal_parser.py`
+2. `src/codenav/universal_parser.py`
    - Lines 36-64: Added `ASTGrepPatterns` class
    - Lines 616-618: Updated `_parse_file_content()` to call new AST methods
    - Lines 654-715: Added `_parse_functions_ast()` method
@@ -166,4 +166,4 @@ docker run code-graph-mcp
 - ✅ Verified syntax of all changes
 - ✅ Documented implementation thoroughly
 
-**Result**: Code Graph MCP now properly parses code into semantic graphs using actual AST analysis instead of text-based pattern matching.
+**Result**: CodeNavigator now properly parses code into semantic graphs using actual AST analysis instead of text-based pattern matching.

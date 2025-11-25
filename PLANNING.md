@@ -1,4 +1,4 @@
-# Code Graph MCP - Development Planning
+# CodeNavigator - Development Planning
 
 **Last Updated**: 2025-11-08 | **Branch**: `feature/sigma-graph-spike` | **Commit**: `4d5c8c9`
 

@@ -43,7 +43,7 @@ jobs:
         run: npm run build
         env:
           # Set base path for GitHub Pages (if needed)
-          # BASE_URL: /code-graph-mcp/
+          # BASE_URL: /codenav/
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

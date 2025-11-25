@@ -17,7 +17,7 @@ services:
       retries: 3
 
   # SSE HTTP Server mode (Redis auto-detected when available)
-  code-graph-sse:
+  codenav-mcp:
     build:
       context: .
       target: sse
@@ -26,8 +26,8 @@ services:
     volumes:
       - "./workspace:/app/workspace:ro"  # Mount your code directory here
     environment:
-      - CODEGRAPHMCP_LOG_LEVEL=INFO
-      - CODEGRAPHMCP_FILE_WATCHER=true
+      - CODENAV_LOG_LEVEL=INFO
+      - CODENAV_FILE_WATCHER=true
       - REDIS_URL=redis://redis:6379/0  # Optional: Redis will be used if available
       - CODE_GRAPH_CACHE_TTL=604800
     depends_on:
@@ -42,15 +42,15 @@ services:
       start_period: 40s
 
   # Stdio mode (Redis auto-detected when available)
-  code-graph-stdio:
+  codenav-stdio:
     build:
       context: .
       target: stdio
     volumes:
       - "./workspace:/app/workspace:ro"  # Mount your code directory here
     environment:
-      - CODEGRAPHMCP_LOG_LEVEL=INFO
-      - CODEGRAPHMCP_FILE_WATCHER=true
+      - CODENAV_LOG_LEVEL=INFO
+      - CODENAV_FILE_WATCHER=true
       - REDIS_URL=redis://redis:6379/0  # Optional: Redis will be used if available
     depends_on:
       redis:
@@ -60,7 +60,7 @@ services:
       - stdio  # Only start when explicitly requested
 
   # Development mode with hot reload
-  code-graph-dev:
+  codenav-dev:
     build:
       context: .
       target: development
@@ -70,14 +70,14 @@ services:
       - ".:/app"  # Mount entire project for development
       - "./workspace:/app/workspace"  # Mount workspace
     environment:
-      - CODEGRAPHMCP_LOG_LEVEL=DEBUG
-      - CODEGRAPHMCP_FILE_WATCHER=true
+      - CODENAV_LOG_LEVEL=DEBUG
+      - CODENAV_FILE_WATCHER=true
       - REDIS_URL=redis://redis:6379/0  # Optional: Redis will be used if available
     depends_on:
       redis:
         condition: service_healthy
     command: >
-      uv run code-graph-mcp
+      uv run codenav
       --mode sse
       --enable-cache
       --project-root /app/workspace

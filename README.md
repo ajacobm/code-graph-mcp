@@ -1,4 +1,4 @@
-# Code Graph MCP Server
+# CodeNavigator (codenav)
 
 Model Context Protocol server providing comprehensive code analysis, navigation, and quality assessment capabilities **across 25+ programming languages**.
 
@@ -50,7 +50,7 @@ Model Context Protocol server providing comprehensive code analysis, navigation,
 ### Quick Start (PyPI)
 
 ```bash
-pip install code-graph-mcp ast-grep-py rustworkx
+pip install codenav ast-grep-py rustworkx
 ```
 
 ## MCP Host Integration
@@ -62,19 +62,19 @@ pip install code-graph-mcp ast-grep-py rustworkx
 **For PyPI installation:**
 ```bash
 # Project-specific installation
-claude mcp add --scope project code-graph-mcp code-graph-mcp
+claude mcp add --scope project codenav codenav
 
 # User-wide installation  
-claude mcp add --scope user code-graph-mcp code-graph-mcp
+claude mcp add --scope user codenav codenav
 ```
 
 **For development installation:**
 ```bash
 # Project-specific installation
-claude mcp add --scope project code-graph-mcp uv run code-graph-mcp
+claude mcp add --scope project codenav uv run codenav
 
 # User-wide installation  
-claude mcp add --scope user code-graph-mcp uv run code-graph-mcp
+claude mcp add --scope user codenav uv run codenav
 ```
 
 **Verify installation:**
@@ -91,8 +91,8 @@ Add to your Claude Desktop configuration file:
 ```json
 {
   "mcpServers": {
-    "code-graph-mcp": {
-      "command": "code-graph-mcp"
+    "codenav": {
+      "command": "codenav"
     }
   }
 }
@@ -109,8 +109,8 @@ Add to your Cline MCP settings in VS Code:
 ```json
 {
   "cline.mcp.servers": {
-    "code-graph-mcp": {
-      "command": "code-graph-mcp"
+    "codenav": {
+      "command": "codenav"
     }
   }
 }
@@ -124,8 +124,8 @@ Add to your `~/.continue/config.json`:
 {
   "mcpServers": [
     {
-      "name": "code-graph-mcp",
-      "command": "code-graph-mcp",
+      "name": "codenav",
+      "command": "codenav",
       "env": {}
     }
   ]
@@ -142,8 +142,8 @@ Add to Cursor's MCP configuration:
 
 ```json
 {
-  "name": "code-graph-mcp",
-  "command": "code-graph-mcp"
+  "name": "codenav",
+  "command": "codenav"
 }
 ```
 
@@ -155,8 +155,8 @@ Add to your Zed `settings.json`:
 {
   "assistant": {
     "mcp_servers": {
-      "code-graph-mcp": {
-        "command": "code-graph-mcp"
+      "codenav": {
+        "command": "codenav"
       }
     }
   }
@@ -170,8 +170,8 @@ Add to your Zed `settings.json`:
 ```json
 {
   "mcpServers": {
-    "code-graph-mcp": {
-      "command": "code-graph-mcp",
+    "codenav": {
+      "command": "codenav",
       "env": {},
       "description": "Multi-language code analysis with 25+ language support"
     }
@@ -179,7 +179,7 @@ Add to your Zed `settings.json`:
 }
 ```
 
-**Pro Tip**: Zencoder's advanced AI capabilities work exceptionally well with Code Graph MCP's comprehensive multi-language analysis. Perfect combination for professional development! 🚀
+**Pro Tip**: Zencoder's advanced AI capabilities work exceptionally well with CodeNavigator's comprehensive multi-language analysis. Perfect combination for professional development! 🚀
 
 ### Windsurf
 
@@ -188,8 +188,8 @@ Add to Windsurf's MCP configuration:
 ```json
 {
   "mcpServers": {
-    "code-graph-mcp": {
-      "command": "code-graph-mcp"
+    "codenav": {
+      "command": "codenav"
     }
   }
 }
@@ -200,7 +200,7 @@ Add to Windsurf's MCP configuration:
 Use with Aider AI coding assistant:
 
 ```bash
-aider --mcp-server code-graph-mcp
+aider --mcp-server codenav
 ```
 
 ### Open WebUI
@@ -210,8 +210,8 @@ For Open WebUI integration, add to your MCP configuration:
 ```json
 {
   "mcp_servers": {
-    "code-graph-mcp": {
-      "command": "code-graph-mcp",
+    "codenav": {
+      "command": "codenav",
       "env": {}
     }
   }
@@ -224,8 +224,8 @@ For any MCP-compatible client, use these connection details:
 
 ```json
 {
-  "name": "code-graph-mcp",
-  "command": "code-graph-mcp",
+  "name": "codenav",
+  "command": "codenav",
   "env": {}
 }
 ```
@@ -238,24 +238,24 @@ Pull and run from GitHub Container Registry:
 
 ```bash
 # Pull latest SSE server
-docker pull ghcr.io/ajacobm/code-graph-mcp:sse-latest
+docker pull ghcr.io/ajacobm/codenav:sse-latest
 
 # Run SSE mode (HTTP streaming)
 docker run -p 8000:8000 -v $(pwd):/workspace \
-  ghcr.io/ajacobm/code-graph-mcp:sse-latest
+  ghcr.io/ajacobm/codenav:sse-latest
 
 # Run stdio mode (MCP over stdio)
-docker pull ghcr.io/ajacobm/code-graph-mcp:stdio-latest
+docker pull ghcr.io/ajacobm/codenav:stdio-latest
 docker run -v $(pwd):/workspace \
-  ghcr.io/ajacobm/code-graph-mcp:stdio-latest
+  ghcr.io/ajacobm/codenav:stdio-latest
 ```
 
 Available image tags:
-- `ghcr.io/ajacobm/code-graph-mcp:sse-latest` - SSE HTTP streaming server
-- `ghcr.io/ajacobm/code-graph-mcp:stdio-latest` - stdio MCP server
-- `ghcr.io/ajacobm/code-graph-mcp:http-latest` - REST API server
-- `ghcr.io/ajacobm/code-graph-mcp:production-latest` - Production optimized
-- `ghcr.io/ajacobm/code-graph-mcp:development-latest` - Development with hot reload
+- `ghcr.io/ajacobm/codenav:sse-latest` - SSE HTTP streaming server
+- `ghcr.io/ajacobm/codenav:stdio-latest` - stdio MCP server
+- `ghcr.io/ajacobm/codenav:http-latest` - REST API server
+- `ghcr.io/ajacobm/codenav:production-latest` - Production optimized
+- `ghcr.io/ajacobm/codenav:development-latest` - Development with hot reload
 
 #### Using Docker Compose
 
@@ -271,14 +271,14 @@ docker compose -f docker-compose-codespaces.yml up -d
 
 ```dockerfile
 FROM python:3.12-slim
-RUN pip install code-graph-mcp ast-grep-py rustworkx
+RUN pip install codenav ast-grep-py rustworkx
 WORKDIR /workspace
-CMD ["code-graph-mcp"]
+CMD ["codenav"]
 ```
 
 ```bash
-docker build -t code-graph-mcp .
-docker run -v $(pwd):/workspace code-graph-mcp
+docker build -t codenav .
+docker run -v $(pwd):/workspace codenav
 ```
 
 #### GitHub Codespaces
@@ -303,7 +303,7 @@ For contributing or custom builds:
 
 ```bash
 git clone <repository-url>
-cd code-graph-mcp
+cd codenav
 uv sync --dev
 uv build
 ```
@@ -311,17 +311,17 @@ uv build
 **Add to Claude Code (development):**
 ```bash
 # Project-specific
-claude mcp add --scope project code-graph-mcp uv run code-graph-mcp
+claude mcp add --scope project codenav uv run codenav
 
 # User-wide
-claude mcp add --scope user code-graph-mcp uv run code-graph-mcp
+claude mcp add --scope user codenav uv run codenav
 ```
 
 **For other MCP clients, use:**
 ```json
 {
   "command": "uv",
-  "args": ["run", "code-graph-mcp"]
+  "args": ["run", "codenav"]
 }
 ```
 
@@ -330,7 +330,7 @@ claude mcp add --scope user code-graph-mcp uv run code-graph-mcp
 ### Command Line Arguments
 
 ```bash
-code-graph-mcp --help
+codenav --help
 ```
 
 Available options:
@@ -341,11 +341,11 @@ Available options:
 ### Environment Variables
 
 ```bash
-export CODEGRAPHMCP_LOG_LEVEL=DEBUG
-export CODEGRAPHMCP_CACHE_SIZE=500000
-export CODEGRAPHMCP_MAX_FILES=10000
-export CODEGRAPHMCP_FILE_WATCHER=true
-export CODEGRAPHMCP_DEBOUNCE_DELAY=2.0
+export CODENAV_LOG_LEVEL=DEBUG
+export CODENAV_CACHE_SIZE=500000
+export CODENAV_MAX_FILES=10000
+export CODENAV_FILE_WATCHER=true
+export CODENAV_DEBOUNCE_DELAY=2.0
 ```
 
 ### File Watcher (v1.1.0+)
@@ -369,10 +369,10 @@ The server includes an intelligent file watcher that automatically updates the c
 
 #### Common Issues
 
-1. **"Command not found"**: Ensure `code-graph-mcp` is in your PATH
+1. **"Command not found"**: Ensure `codenav` is in your PATH
    ```bash
-   pip install --upgrade code-graph-mcp
-   which code-graph-mcp
+   pip install --upgrade codenav
+   which codenav
    ```
 
 2. **"ast-grep not found"**: Install the required dependency
@@ -386,12 +386,12 @@ The server includes an intelligent file watcher that automatically updates the c
    source venv/bin/activate  # Linux/Mac
    # or
    venv\Scripts\activate     # Windows
-   pip install code-graph-mcp ast-grep-py rustworkx
+   pip install codenav ast-grep-py rustworkx
    ```
 
 4. **Large project performance**: Use verbose mode for debugging
    ```bash
-   code-graph-mcp --verbose
+   codenav --verbose
    ```
 
 #### Debug Mode
@@ -399,7 +399,7 @@ The server includes an intelligent file watcher that automatically updates the c
 Enable verbose logging for troubleshooting:
 
 ```bash
-code-graph-mcp --verbose
+codenav --verbose
 ```
 
 #### Supported File Types
@@ -514,10 +514,10 @@ Detect code smells and duplicate patterns across the entire multi-language codeb
 uv sync
 
 # Run the server directly (auto-detects current directory)
-uv run code-graph-mcp --verbose
+uv run codenav --verbose
 
 # Test with help
-uv run code-graph-mcp --help
+uv run codenav --help
 ```
 
 ### Performance Features

@@ -20,7 +20,7 @@ Build a complete REST API + Vue.js UI for visualizing and querying code graphs a
 ### Tasks
 
 #### 1.1 Graph Query API Endpoints
-Create new file: `src/code_graph_mcp/server/graph_api.py`
+Create new file: `src/codenav/server/graph_api.py`
 
 Implement endpoints:
 ```python
@@ -45,15 +45,15 @@ GET /api/graph/call-chain/{start_node}?follow_seams=true
 ```
 
 **Files to modify**:
-- `src/code_graph_mcp/server/mcp_server.py` - integrate traversal functions
-- `src/code_graph_mcp/graph/traversal.py` - add SEAM-aware algorithms
+- `src/codenav/server/mcp_server.py` - integrate traversal functions
+- `src/codenav/graph/traversal.py` - add SEAM-aware algorithms
 
 **Tests**:
 - `tests/test_graph_api.py` - endpoint tests
 - `tests/test_seam_traversal.py` - cross-language path finding
 
 #### 1.2 Traversal Algorithm Enhancements
-Extend `src/code_graph_mcp/graph/traversal.py`:
+Extend `src/codenav/graph/traversal.py`:
 
 ```python
 def dfs_traversal(
@@ -86,7 +86,7 @@ def trace_cross_language_flow(
 - Performance: 1000-node graph traversal should be <100ms
 
 #### 1.3 Query Result Serialization
-Create: `src/code_graph_mcp/graph/query_response.py`
+Create: `src/codenav/graph/query_response.py`
 
 ```python
 @dataclass
@@ -264,7 +264,7 @@ Create: `feature/graph-ui-vue` from `feature/graph-query-api`
 ### Tasks
 
 #### 3.1 DuckDB Integration
-Create: `src/code_graph_mcp/graph/parquet_export.py`
+Create: `src/codenav/graph/parquet_export.py`
 
 ```python
 def export_to_parquet(graph: RustworkxGraphCore, output_path: str):
@@ -296,7 +296,7 @@ LIMIT 20
 ```
 
 #### 3.2 Graph Tagging & Annotations
-Create: `src/code_graph_mcp/graph/tagging.py`
+Create: `src/codenav/graph/tagging.py`
 
 ```python
 @dataclass
@@ -320,7 +320,7 @@ class TagManager:
 - Annotate "legacy" vs "new" code
 
 #### 3.3 Graph Comparison
-Create: `src/code_graph_mcp/graph/diff.py`
+Create: `src/codenav/graph/diff.py`
 
 ```python
 def compare_graphs(old: RustworkxGraphCore, new: RustworkxGraphCore) -> GraphDiff:

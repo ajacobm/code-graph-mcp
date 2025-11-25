@@ -548,7 +548,7 @@ def cli(project_root: Optional[str], verbose: bool, mode: str, host: str, port: 
     if mode == "sse":
         # Run in MCP over HTTP mode (using official SDK patterns)
         try:
-            from code_graph_mcp.sse_server import CodeGraphMCPServer
+            from codenav.sse_server import CodeGraphMCPServer
         except ImportError as e:
             logger.error(f"Failed to import HTTP server dependencies: {e}")
             logger.error("Please ensure FastAPI and Uvicorn are installed: pip install fastapi uvicorn")

@@ -19,7 +19,7 @@ async def test_basic_connectivity():
 
     try:
         server_params = StdioServerParameters(
-            command="code-graph-mcp",
+            command="codenav",
             args=["--project-root", ".", "--verbose"],
         )
         async with stdio_client(server_params) as (read, write):

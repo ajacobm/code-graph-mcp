@@ -1,4 +1,4 @@
-# Code Graph MCP Refactoring Plan
+# CodeNavigator Refactoring Plan
 ## Multi-Tier Caching Architecture Optimization
 
 ### Executive Summary

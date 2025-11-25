@@ -23,7 +23,7 @@ In Python, iterators can be consumed immediately, especially when passed through
 
 Container logs show:
 ```
-Found 0 functions in /app/workspace/src/code_graph_mcp/universal_parser.py using AST-Grep
+Found 0 functions in /app/workspace/src/codenav/universal_parser.py using AST-Grep
 ```
 
 This is a Python file with ~20 functions and 5+ classes, yet the parsing returns 0.
@@ -32,7 +32,7 @@ This is a Python file with ~20 functions and 5+ classes, yet the parsing returns
 
 Convert iterators to lists before iteration:
 
-### File: `src/code_graph_mcp/universal_parser.py`
+### File: `src/codenav/universal_parser.py`
 
 **Location 1: `_parse_functions_ast()` - Line ~710**
 ```python
@@ -92,7 +92,7 @@ The iterator fix is now in place in the running container.
 
 1. **Verify the fix is in the running container**
    ```bash
-   docker exec <container> grep -n "list(root_node.find_all" /app/src/code_graph_mcp/universal_parser.py
+   docker exec <container> grep -n "list(root_node.find_all" /app/src/codenav/universal_parser.py
    ```
 
 2. **Add detailed logging to trace execution**

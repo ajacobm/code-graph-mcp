@@ -9,14 +9,14 @@ from pathlib import Path
 
 import pytest
 
-from code_graph_mcp.server.analysis_engine import UniversalAnalysisEngine
+from codenav.server.analysis_engine import UniversalAnalysisEngine
 
 
 @pytest.mark.asyncio
 async def test_query_tools():
     """Test the query tools with live data."""
     
-    project_root = Path(__file__).parent.parent / "src" / "code_graph_mcp"
+    project_root = Path(__file__).parent.parent / "src" / "codenav"
     
     print("="*80)
     print("LIVE QUERY TOOLS TEST")

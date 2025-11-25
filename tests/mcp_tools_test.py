@@ -29,7 +29,7 @@ async def test_all_mcp_tools():
 
     try:
         server_params = StdioServerParameters(
-            command="code-graph-mcp",
+            command="codenav",
             args=["--project-root", "."],
         )
         async with stdio_client(server_params) as (read, write):

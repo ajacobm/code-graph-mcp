@@ -39,7 +39,7 @@ Live UI updates (no polling)
 
 ### Part 1: CDC Infrastructure (Session 13.1)
 
-**File**: `src/code_graph_mcp/cdc_manager.py` (470 lines)
+**File**: `src/codenav/cdc_manager.py` (470 lines)
 
 **Classes**:
 - `CDCEventType`: Enum of mutation types
@@ -63,7 +63,7 @@ Live UI updates (no polling)
 
 ### Part 2: WebSocket Server (Session 13.2)
 
-**File**: `src/code_graph_mcp/websocket_server.py` (230 lines)
+**File**: `src/codenav/websocket_server.py` (230 lines)
 
 **Classes**:
 - `WebSocketConnectionManager`: Thread-safe connection tracking
@@ -208,9 +208,9 @@ None at this time. All systems tested and working.
 
 ## Resources
 
-- CDC Manager: https://github.com/user/code-graph-mcp/blob/feature/sigma-graph-spike/src/code_graph_mcp/cdc_manager.py
-- WebSocket Server: https://github.com/user/code-graph-mcp/blob/feature/sigma-graph-spike/src/code_graph_mcp/websocket_server.py
-- Events Client: https://github.com/user/code-graph-mcp/blob/feature/sigma-graph-spike/frontend/src/api/eventsClient.ts
+- CDC Manager: https://github.com/user/codenav/blob/feature/sigma-graph-spike/src/codenav/cdc_manager.py
+- WebSocket Server: https://github.com/user/codenav/blob/feature/sigma-graph-spike/src/codenav/websocket_server.py
+- Events Client: https://github.com/user/codenav/blob/feature/sigma-graph-spike/frontend/src/api/eventsClient.ts
 
 ## Cortexgraph Memories
 

@@ -17,7 +17,7 @@ import pytest_asyncio
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
-from src.code_graph_mcp.websocket_server import (
+from src.codenav.websocket_server import (
     create_websocket_router,
     WebSocketConnectionManager,
 )

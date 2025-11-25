@@ -5,14 +5,14 @@ from unittest.mock import MagicMock
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
-from code_graph_mcp.server.graph_api import create_graph_api_router
-from code_graph_mcp.universal_graph import UniversalGraph, UniversalNode, UniversalRelationship, UniversalLocation, NodeType, RelationshipType
+from codenav.server.graph_api import create_graph_api_router
+from codenav.universal_graph import UniversalGraph, UniversalNode, UniversalRelationship, UniversalLocation, NodeType, RelationshipType
 
 
 @pytest.fixture
 def mock_engine_with_graph():
     """Create a mock engine with test graph data."""
-    from code_graph_mcp.server.analysis_engine import UniversalAnalysisEngine
+    from codenav.server.analysis_engine import UniversalAnalysisEngine
     
     # Create mock engine
     engine = MagicMock(spec=UniversalAnalysisEngine)

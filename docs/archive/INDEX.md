@@ -1,10 +1,10 @@
-# Code Graph MCP - Session Index & Quick Links
+# CodeNavigator - Session Index & Quick Links
 
 ## 🎯 Quick Start
 
 ```bash
 # 1. Build the image
-docker build -t ajacobm/code-graph-mcp:sse --target sse .
+docker build -t ajacobm/codenav:sse --target sse .
 
 # 2. Deploy with docker-compose
 docker-compose -f docker-compose-multi.yml up
@@ -38,13 +38,13 @@ curl http://localhost:10101/health
 
 ### Issue #1: File Watcher Error
 - **Problem**: `BaseObserver.schedule() got an unexpected keyword argument 'ignore_patterns'`
-- **File**: `src/code_graph_mcp/file_watcher.py`
+- **File**: `src/codenav/file_watcher.py`
 - **Solution**: Removed watchdog parameter, added internal filtering
 - **Status**: ✅ FIXED & VERIFIED
 
 ### Issue #2: Graph Has 0 Nodes
 - **Problem**: Parser creating 0 function/class/import nodes despite parsing files
-- **File**: `src/code_graph_mcp/universal_parser.py`
+- **File**: `src/codenav/universal_parser.py`
 - **Solution**: Implemented proper AST-Grep queries instead of text-based patterns
 - **Status**: ✅ FIXED & VERIFIED
 
@@ -54,7 +54,7 @@ curl http://localhost:10101/health
 
 Both fixes are complete and verified. Ready to:
 
-1. **Build**: `docker build -t ajacobm/code-graph-mcp:sse --target sse .`
+1. **Build**: `docker build -t ajacobm/codenav:sse --target sse .`
 2. **Deploy**: `docker-compose -f docker-compose-multi.yml up`
 3. **Test**: `curl http://localhost:10101/health`
 
@@ -81,12 +81,12 @@ Analysis complete: 0 nodes, 0 relationships
 
 ## 📁 Modified Files
 
-1. **src/code_graph_mcp/file_watcher.py** (~50 lines)
+1. **src/codenav/file_watcher.py** (~50 lines)
    - Watchdog API compatibility fix
    - Added `_should_skip_path()` method
    - Updated event handlers
 
-2. **src/code_graph_mcp/universal_parser.py** (~280 lines)
+2. **src/codenav/universal_parser.py** (~280 lines)
    - Added `ASTGrepPatterns` class
    - Implemented proper AST-Grep queries
    - Added helper methods for node extraction

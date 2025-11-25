@@ -7,8 +7,8 @@ Successfully completed Phase 3 of the roadmap: implemented 3 backend REST endpoi
 
 ### Phase 3a: Backend Query Endpoints ✅
 **Files Modified:**
-- `src/code_graph_mcp/server/graph_api.py` - Added 3 new endpoints (+95 lines)
-- `src/code_graph_mcp/universal_parser.py` - Fixed string->Path conversion bug (+2 lines)
+- `src/codenav/server/graph_api.py` - Added 3 new endpoints (+95 lines)
+- `src/codenav/universal_parser.py` - Fixed string->Path conversion bug (+2 lines)
 
 **Endpoints Implemented:**
 1. `GET /api/graph/query/callers?symbol=<name>`

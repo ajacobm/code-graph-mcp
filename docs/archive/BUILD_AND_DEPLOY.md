@@ -1,9 +1,9 @@
-# Build & Deploy Guide for Code Graph MCP with docker-compose-multi.yml
+# Build & Deploy Guide for CodeNavigator with docker-compose-multi.yml
 
 ## ✅ Yes, the Build Command Gets You What You Need
 
 ```bash
-docker build -t ajacobm/code-graph-mcp:sse --target sse .
+docker build -t ajacobm/codenav:sse --target sse .
 ```
 
 This is the **correct and recommended** approach for building with `docker-compose-multi.yml`.
@@ -24,14 +24,14 @@ Dockerfile has 4 stages:
 ### The `--target sse` Flag
 - Tells Docker to **stop at the `sse` stage**
 - Builds: base → production → sse
-- Sets default CMD to: `code-graph-mcp --mode sse --host 0.0.0.0 --port 8000 --enable-cache`
-- Results in image: `ajacobm/code-graph-mcp:sse`
+- Sets default CMD to: `codenav --mode sse --host 0.0.0.0 --port 8000 --enable-cache`
+- Results in image: `ajacobm/codenav:sse`
 
 ### docker-compose-multi.yml Configuration
 ```yaml
 services:
   code-graph-codegraphmcp-sse:
-    image: ajacobm/code-graph-mcp:sse  # ← Uses our built image
+    image: ajacobm/codenav:sse  # ← Uses our built image
     ports:
       - "10101:8000"                    # ← HTTP endpoint
     environment:
@@ -39,7 +39,7 @@ services:
     depends_on:
       - redis                           # ← Start Redis first
     command: >                          # ← Overrides Dockerfile CMD
-      uv run code-graph-mcp
+      uv run codenav
       --mode sse
       --redis-url redis://redis:6379
       --project-root /app/workspace
@@ -54,24 +54,24 @@ services:
 
 ### Step 1: Build the Image
 ```bash
-cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp
+cd /mnt/c/Users/ADAM/GitHub/codenav
 
 # Build with SSE stage (recommended with --target)
-docker build -t ajacobm/code-graph-mcp:sse --target sse .
+docker build -t ajacobm/codenav:sse --target sse .
 
 # OR without --target (also works, builds to stdio by default at end)
-# docker build -t ajacobm/code-graph-mcp:sse .
+# docker build -t ajacobm/codenav:sse .
 ```
 
 ### Step 2: Verify Build Succeeded
 ```bash
-docker images | grep code-graph-mcp
-# Should show: ajacobm/code-graph-mcp  sse
+docker images | grep codenav
+# Should show: ajacobm/codenav  sse
 ```
 
 ### Step 3: Start Services with docker-compose
 ```bash
-# Start Redis + Code Graph MCP
+# Start Redis + CodeNavigator
 docker-compose -f docker-compose-multi.yml up
 
 # Or in background
@@ -85,8 +85,8 @@ docker-compose -f docker-compose-multi.yml ps
 
 # Expected output:
 # NAME                              STATUS
-# code-graph-mcp-redis-1            Up (healthy)
-# code-graph-mcp-code-graph-codegraphmcp-sse-1  Up (healthy)
+# codenav-redis-1            Up (healthy)
+# codenav-code-graph-codegraphmcp-sse-1  Up (healthy)
 ```
 
 ### Step 5: Test the Endpoint
@@ -126,7 +126,7 @@ docker-compose -f docker-compose-multi.yml logs -f code-graph-codegraphmcp-sse
 │  http://localhost:10101                               │
 │           ↓                                            │
 │  ┌──────────────────────────────────────────────┐    │
-│  │ Docker Container 1: Code Graph MCP (SSE)    │    │
+│  │ Docker Container 1: CodeNavigator (SSE)    │    │
 │  │ - Port 10101 → 8000 (internal)               │    │
 │  │ - Mode: SSE (HTTP + SSE streaming)           │    │
 │  │ - Workspace: /app/workspace                  │    │
@@ -148,7 +148,7 @@ docker-compose -f docker-compose-multi.yml logs -f code-graph-codegraphmcp-sse
 
 ### Scenario 1: Build for SSE (What You Need) ✅
 ```bash
-docker build -t ajacobm/code-graph-mcp:sse --target sse .
+docker build -t ajacobm/codenav:sse --target sse .
 docker-compose -f docker-compose-multi.yml up
 ```
 - Result: HTTP SSE server on port 10101
@@ -157,7 +157,7 @@ docker-compose -f docker-compose-multi.yml up
 
 ### Scenario 2: Build for Stdio (Alternative)
 ```bash
-docker build -t ajacobm/code-graph-mcp:stdio --target stdio .
+docker build -t ajacobm/codenav:stdio --target stdio .
 docker-compose -f docker-compose-multi.yml up
 ```
 - Result: Stdio MCP server (different compose needed)
@@ -166,7 +166,7 @@ docker-compose -f docker-compose-multi.yml up
 
 ### Scenario 3: Build for Development
 ```bash
-docker build -t code-graph-mcp:dev --target development .
+docker build -t codenav:dev --target development .
 ```
 - Result: Development environment with all extras
 - Use for: Development and testing
@@ -183,7 +183,7 @@ docker-compose -f docker-compose-multi.yml logs code-graph-codegraphmcp-sse
 # Common causes:
 # 1. Port already in use: docker ps | grep 10101
 # 2. Redis not running: docker-compose -f docker-compose-multi.yml up redis
-# 3. Image build failed: docker build -t ajacobm/code-graph-mcp:sse --target sse .
+# 3. Image build failed: docker build -t ajacobm/codenav:sse --target sse .
 ```
 
 ### Issue: Health check failing
@@ -211,7 +211,7 @@ docker-compose -f docker-compose-multi.yml exec code-graph-codegraphmcp-sse redi
 
 ```bash
 # Build
-docker build -t ajacobm/code-graph-mcp:sse --target sse .
+docker build -t ajacobm/codenav:sse --target sse .
 
 # Start
 docker-compose -f docker-compose-multi.yml up
@@ -220,7 +220,7 @@ docker-compose -f docker-compose-multi.yml up
 docker-compose -f docker-compose-multi.yml down
 
 # Rebuild and restart
-docker build -t ajacobm/code-graph-mcp:sse --target sse . && \
+docker build -t ajacobm/codenav:sse --target sse . && \
   docker-compose -f docker-compose-multi.yml up --force-recreate
 
 # Test
@@ -237,7 +237,7 @@ docker-compose -f docker-compose-multi.yml down -v
 
 ## Summary
 
-✅ **Yes**, `docker build -t ajacobm/code-graph-mcp:sse --target sse .` gives you exactly what you need for `docker-compose-multi.yml`:
+✅ **Yes**, `docker build -t ajacobm/codenav:sse --target sse .` gives you exactly what you need for `docker-compose-multi.yml`:
 
 1. **Builds** the production SSE image
 2. **Includes** your AST-Grep parsing fixes
@@ -247,7 +247,7 @@ docker-compose -f docker-compose-multi.yml down -v
 
 Just run:
 ```bash
-docker build -t ajacobm/code-graph-mcp:sse --target sse . && \
+docker build -t ajacobm/codenav:sse --target sse . && \
 docker-compose -f docker-compose-multi.yml up
 ```
 

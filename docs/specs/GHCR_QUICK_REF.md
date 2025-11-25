@@ -9,29 +9,29 @@
 
 ### 2. Make Package Public (One-Time)
 1. Visit: https://github.com/ajacobm?tab=packages
-2. Click `code-graph-mcp` → Package settings
+2. Click `codenav` → Package settings
 3. Change visibility to **Public**
 
 ## 📦 Available Images
 
 ### Backend
 ```bash
-ghcr.io/ajacobm/code-graph-mcp:sse-latest          # SSE server
-ghcr.io/ajacobm/code-graph-mcp:stdio-latest        # stdio MCP
-ghcr.io/ajacobm/code-graph-mcp:http-latest         # REST API
-ghcr.io/ajacobm/code-graph-mcp:production-latest   # Optimized
-ghcr.io/ajacobm/code-graph-mcp:development-latest  # Dev mode
+ghcr.io/ajacobm/codenav:sse-latest          # SSE server
+ghcr.io/ajacobm/codenav:stdio-latest        # stdio MCP
+ghcr.io/ajacobm/codenav:http-latest         # REST API
+ghcr.io/ajacobm/codenav:production-latest   # Optimized
+ghcr.io/ajacobm/codenav:development-latest  # Dev mode
 ```
 
 ### Frontend
 ```bash
-ghcr.io/ajacobm/code-graph-mcp-frontend:production-latest   # Prod (serve)
-ghcr.io/ajacobm/code-graph-mcp-frontend:development-latest  # Dev (hot reload)
+ghcr.io/ajacobm/codenav-frontend:production-latest   # Prod (serve)
+ghcr.io/ajacobm/codenav-frontend:development-latest  # Dev (hot reload)
 ```
 
 ### GitHub Pages
 ```
-https://ajacobm.github.io/code-graph-mcp/
+https://ajacobm.github.io/codenav/
 ```
 
 ## 🔧 Development Workflow in Codespaces
@@ -81,7 +81,7 @@ redis-cli ping
 ```bash
 # Test stdio mode
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | \
-  uv run code-graph-mcp --mode stdio
+  uv run codenav --mode stdio
 ```
 
 ## 🔄 CI/CD Pipeline
@@ -144,19 +144,19 @@ chmod +x scripts/*.sh
 
 ### "Can't pull GHCR image"
 1. Check package is public
-2. Try: `docker pull ghcr.io/ajacobm/code-graph-mcp:sse-latest`
-3. View: https://github.com/ajacobm/code-graph-mcp/pkgs/container/code-graph-mcp
+2. Try: `docker pull ghcr.io/ajacobm/codenav:sse-latest`
+3. View: https://github.com/ajacobm/codenav/pkgs/container/codenav
 
 ## 🎨 Frontend Quick Start
 
 ### GitHub Pages (Static Hosting)
 ```bash
 # One-time: Enable in repo settings
-# https://github.com/ajacobm/code-graph-mcp/settings/pages
+# https://github.com/ajacobm/codenav/settings/pages
 # Source: GitHub Actions
 
 # Access deployed site
-https://ajacobm.github.io/code-graph-mcp/
+https://ajacobm.github.io/codenav/
 ```
 
 ### Docker (With Full Stack)
@@ -195,7 +195,7 @@ npm run dev
 
 ## 🔗 Quick Links
 
-- **Actions**: https://github.com/ajacobm/code-graph-mcp/actions
-- **Packages**: https://github.com/ajacobm/code-graph-mcp/pkgs/container/code-graph-mcp
-- **Settings**: https://github.com/ajacobm/code-graph-mcp/settings
-- **Workflow**: https://github.com/ajacobm/code-graph-mcp/blob/main/.github/workflows/docker-publish.yml
+- **Actions**: https://github.com/ajacobm/codenav/actions
+- **Packages**: https://github.com/ajacobm/codenav/pkgs/container/codenav
+- **Settings**: https://github.com/ajacobm/codenav/settings
+- **Workflow**: https://github.com/ajacobm/codenav/blob/main/.github/workflows/docker-publish.yml

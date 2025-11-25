@@ -1,4 +1,4 @@
-# Code Graph MCP - Usability Improvements Needed
+# CodeNavigator - Usability Improvements Needed
 
 ## Session Testing Summary (2025-11-02)
 

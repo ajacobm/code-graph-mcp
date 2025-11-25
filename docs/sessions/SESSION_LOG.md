@@ -41,23 +41,23 @@
 
 #### 2. REST API Implementation (Session 1 Goals)
 **Files Created**:
-- `src/code_graph_mcp/graph/query_response.py` (225 lines)
+- `src/codenav/graph/query_response.py` (225 lines)
   - 8 response DTOs with `.to_dict()` serialization
   - NodeResponse, TraversalResponse, CallChainResponse, SeamResponse, etc
   
-- `src/code_graph_mcp/server/graph_api.py` (412 lines)
+- `src/codenav/server/graph_api.py` (412 lines)
   - FastAPI router with 7 endpoints
   - Async handlers for traverse, search, seams, call-chain
   - Request/response validation with Pydantic
   
-- `src/code_graph_mcp/http_server.py` (160 lines)
+- `src/codenav/http_server.py` (160 lines)
   - FastAPI app factory with CORS
   - Uvicorn runner with CLI (host, port, redis-url, no-redis)
   - Health check endpoint with Redis connectivity check
   - Auto-engine initialization on startup
 
 **Files Modified**:
-- `src/code_graph_mcp/graph/traversal.py`
+- `src/codenav/graph/traversal.py`
   - Added `dfs_traversal_with_depth()` - Depth-organized DFS with SEAM tracking
   - Added `find_call_chain()` - BFS shortest path with SEAM filtering
   - Added `trace_cross_language_flow()` - Multi-language execution tracing

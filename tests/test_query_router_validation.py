@@ -8,7 +8,7 @@ for graph queries based on complexity analysis.
 import pytest
 import time
 
-from code_graph_mcp.query_router import (
+from codenav.query_router import (
     QueryRouter,
     QueryComplexityAnalyzer,
     RoutingMetrics

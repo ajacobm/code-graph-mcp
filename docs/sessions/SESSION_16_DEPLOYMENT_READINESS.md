@@ -36,7 +36,7 @@ async def listen_for_events() -> None:
 asyncio.create_task(listen_for_events())  # Background task, startup continues
 ```
 
-**File**: `src/code_graph_mcp/websocket_server.py`  
+**File**: `src/codenav/websocket_server.py`  
 **Changes**: 3 lines (non-blocking background task initialization)
 
 ### 2. Code Quality Verification ✅
@@ -361,7 +361,7 @@ curl http://localhost:8000/health
 wscat -c ws://localhost:8000/ws/events
 
 # Check Redis connectivity
-docker exec code-graph-mcp-redis-1 redis-cli ping
+docker exec codenav-redis-1 redis-cli ping
 
 # View graph statistics
 curl http://localhost:8000/api/graph/stats
@@ -376,7 +376,7 @@ curl http://localhost:5173
 
 ### Server doesn't start
 1. Check logs: `compose.sh logs code-graph-http`
-2. Verify Redis: `docker exec code-graph-mcp-redis-1 redis-cli ping`
+2. Verify Redis: `docker exec codenav-redis-1 redis-cli ping`
 3. Check port availability: `lsof -i :8000`
 
 ### WebSocket won't connect
@@ -386,7 +386,7 @@ curl http://localhost:5173
 
 ### Graph shows 0 nodes
 1. Trigger re-analysis: `curl -X POST http://localhost:8000/api/graph/admin/reanalyze`
-2. Clear Redis cache: `docker exec code-graph-mcp-redis-1 redis-cli FLUSHALL`
+2. Clear Redis cache: `docker exec codenav-redis-1 redis-cli FLUSHALL`
 3. Check project root configuration in docker-compose
 
 ---

@@ -6,7 +6,7 @@
 
 ## Overview
 
-This specification defines a comprehensive observability stack for Code Graph MCP, enabling real-time monitoring of graph construction, analysis operations, and system health.
+This specification defines a comprehensive observability stack for CodeNavigator, enabling real-time monitoring of graph construction, analysis operations, and system health.
 
 **Core Vision**: Watch a codebase spawn into a graph as it's analyzed, with rich telemetry, distributed tracing, and live metrics visualization.
 
@@ -158,7 +158,7 @@ structlog = "^23.2.0"
 python-json-logger = "^2.0.7"
 ```
 
-2. **Configure in `src/code_graph_mcp/logging_config.py`**:
+2. **Configure in `src/codenav/logging_config.py`**:
 ```python
 import structlog
 import logging
@@ -237,7 +237,7 @@ logger.warning(
 
 **Changes**:
 
-1. **Initialize OTel SDK** (`src/code_graph_mcp/telemetry.py`):
+1. **Initialize OTel SDK** (`src/codenav/telemetry.py`):
 ```python
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
@@ -245,7 +245,7 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import Resource
 
-def init_tracing(service_name: str = "code-graph-mcp"):
+def init_tracing(service_name: str = "codenav"):
     """Initialize OpenTelemetry tracing."""
     resource = Resource(attributes={
         "service.name": service_name,
@@ -267,11 +267,11 @@ def init_tracing(service_name: str = "code-graph-mcp"):
     return trace.get_tracer(__name__)
 ```
 
-2. **Instrument FastAPI** (`src/code_graph_mcp/server/graph_api.py`):
+2. **Instrument FastAPI** (`src/codenav/server/graph_api.py`):
 ```python
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
-app = FastAPI(title="Code Graph MCP API")
+app = FastAPI(title="CodeNavigator API")
 
 # Auto-instrument all endpoints
 FastAPIInstrumentor.instrument_app(app)
@@ -322,7 +322,7 @@ async def analyze_file(filepath: Path, language: str):
 prometheus-client = "^0.19.0"
 ```
 
-2. **Define metrics** (`src/code_graph_mcp/metrics.py`):
+2. **Define metrics** (`src/codenav/metrics.py`):
 ```python
 from prometheus_client import Counter, Histogram, Gauge, Info
 
@@ -490,7 +490,7 @@ services:
     environment:
       - LOG_FORMAT=json
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-      - OTEL_SERVICE_NAME=code-graph-mcp
+      - OTEL_SERVICE_NAME=codenav
     labels:
       logging: "promtail"
 
@@ -506,7 +506,7 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: 'code-graph-mcp'
+  - job_name: 'codenav'
     static_configs:
       - targets: ['code-graph-http:8000']
     metrics_path: '/metrics'
@@ -579,7 +579,7 @@ scrape_configs:
 apiVersion: 1
 
 providers:
-  - name: 'Code Graph MCP'
+  - name: 'CodeNavigator'
     orgId: 1
     folder: ''
     type: file
@@ -742,7 +742,7 @@ LOG_FORMAT=json  # json or console
 
 # OpenTelemetry
 OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-OTEL_SERVICE_NAME=code-graph-mcp
+OTEL_SERVICE_NAME=codenav
 OTEL_TRACES_SAMPLER=parentbased_traceidratio
 OTEL_TRACES_SAMPLER_ARG=1.0  # 100% sampling in dev
 
@@ -960,7 +960,7 @@ http://localhost:5173/graph
 Create a bridge to send WebSocket events to OpenTelemetry:
 
 ```python
-# src/code_graph_mcp/telemetry_bridge.py
+# src/codenav/telemetry_bridge.py
 import asyncio
 from opentelemetry import trace
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
@@ -1035,7 +1035,7 @@ If you **must** show graph in Grafana (not recommended for primary view):
 #### Option B: Use Grafana's Node Graph Panel with Trace Data
 ```promql
 # Query traces to show service dependencies
-traces{service.name="code-graph-mcp"}
+traces{service.name="codenav"}
 ```
 Shows service-to-service calls, not code graph.
 
@@ -1092,7 +1092,7 @@ Build a Grafana plugin that:
 
 1. Create `infrastructure/profiles/observability.yml`
 2. Install Python dependencies (structlog, opentelemetry-*)
-3. Add `src/code_graph_mcp/telemetry.py` + `logging_config.py` + `telemetry_bridge.py`
+3. Add `src/codenav/telemetry.py` + `logging_config.py` + `telemetry_bridge.py`
 4. Instrument key code paths (file analysis, queries, CDC)
 5. Build Grafana dashboards (metrics only, not graph viz)
 6. Keep graph visualization in React UI (Sigma.js/Cytoscape.js)

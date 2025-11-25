@@ -12,14 +12,14 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from code_graph_mcp.universal_parser import UniversalParser
-from code_graph_mcp.universal_graph import RelationshipType, NodeType
+from codenav.universal_parser import UniversalParser
+from codenav.universal_graph import RelationshipType, NodeType
 
 @pytest.mark.asyncio
 async def test_calls_extraction():
     """Test that function calls are being extracted and CALLS relationships created."""
     
-    project_root = Path("/app/src/code_graph_mcp")
+    project_root = Path("/app/src/codenav")
     if not project_root.exists():
         print(f"Project root not found: {project_root}")
         return False

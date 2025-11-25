@@ -21,7 +21,7 @@ services:
       - codegraph
 
   # SSE mode - MCP server with HTTP streaming
-  code-graph-sse:
+  codenav-mcp:
     build:
       context: .
       target: development
@@ -32,14 +32,14 @@ services:
       - .:/app
       - /workspace:/workspace
     environment:
-      - CODEGRAPHMCP_LOG_LEVEL=DEBUG
-      - CODEGRAPHMCP_FILE_WATCHER=true
+      - CODENAV_LOG_LEVEL=DEBUG
+      - CODENAV_FILE_WATCHER=true
       - REDIS_URL=redis://redis:6379
     depends_on:
       redis:
         condition: service_healthy
     command: >
-      uv run code-graph-mcp
+      uv run codenav
       --mode sse
       --host 0.0.0.0
       --port 8000
@@ -51,7 +51,7 @@ services:
       - codegraph
 
   # HTTP API mode (optional)
-  code-graph-http:
+  codenav-web:
     build:
       context: .
       target: development
@@ -62,13 +62,13 @@ services:
       - .:/app
       - /workspace:/workspace
     environment:
-      - CODEGRAPHMCP_LOG_LEVEL=DEBUG
+      - CODENAV_LOG_LEVEL=DEBUG
       - REDIS_URL=redis://redis:6379
     depends_on:
       redis:
         condition: service_healthy
     command: >
-      python -m code_graph_mcp.http_server
+      python -m codenav.http_server
       --host 0.0.0.0
       --port 8000
     restart: unless-stopped
@@ -94,7 +94,7 @@ services:
     networks:
       - codegraph
     depends_on:
-      - code-graph-http
+      - codenav-web
 
 networks:
   codegraph:

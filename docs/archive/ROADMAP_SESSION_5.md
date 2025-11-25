@@ -41,7 +41,7 @@ Add three missing REST API endpoints to handle graph queries.
 }
 ```
 
-**Implementation Location**: `src/code_graph_mcp/server/graph_api.py`  
+**Implementation Location**: `src/codenav/server/graph_api.py`  
 **Implementation Steps**:
 1. Add route decorator: `@router.get("/query/callers")`
 2. Extract symbol from query params
@@ -245,7 +245,7 @@ Build a component to discover and execute MCP tools from the UI.
 
 ### Backend Files (Phase 1)
 ```
-src/code_graph_mcp/server/
+src/codenav/server/
 ├── graph_api.py (ADD: 3 endpoints, ~100 lines)
 └── [existing response models]
 
@@ -380,7 +380,7 @@ Merge back to main at end of each phase
 
 ## Quick Links
 
-- Backend API: `src/code_graph_mcp/server/graph_api.py`
+- Backend API: `src/codenav/server/graph_api.py`
 - Frontend API: `frontend/src/api/graphClient.ts`
 - Test Commands: See tests/ directory
 - Frontend Docs: `frontend/DEV_GUIDE.md`

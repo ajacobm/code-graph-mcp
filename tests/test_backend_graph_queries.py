@@ -12,14 +12,14 @@ from pathlib import Path
 import pytest
 import pytest_asyncio
 
-from code_graph_mcp.server.analysis_engine import UniversalAnalysisEngine
-from code_graph_mcp.universal_graph import NodeType
+from codenav.server.analysis_engine import UniversalAnalysisEngine
+from codenav.universal_graph import NodeType
 
 
 @pytest_asyncio.fixture(scope="module")
 async def graph_with_calls():
-    """Analyze code_graph_mcp to get real call relationships."""
-    project_root = Path(__file__).parent.parent / "src" / "code_graph_mcp"
+    """Analyze codenav to get real call relationships."""
+    project_root = Path(__file__).parent.parent / "src" / "codenav"
     
     engine = UniversalAnalysisEngine(
         project_root,
@@ -45,7 +45,7 @@ async def test_graph_has_function_nodes(graph_with_calls):
 async def test_graph_has_calls_relationships(graph_with_calls):
     """Verify graph has CALLS relationships."""
     graph = graph_with_calls.graph
-    from code_graph_mcp.universal_graph import RelationshipType
+    from codenav.universal_graph import RelationshipType
     
     calls = graph.get_relationships_by_type(RelationshipType.CALLS)
     assert len(calls) > 0, "Graph should have CALLS relationships"

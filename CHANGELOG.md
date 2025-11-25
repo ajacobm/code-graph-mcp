@@ -5,6 +5,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2025-01-28
+
+### 🚀 Major Release: Project Rename to CodeNavigator (codenav)
+
+This release renames the project from `code-graph-mcp` to **CodeNavigator** (`codenav`). The migration preserves all functionality while providing a cleaner, more Pythonic package name.
+
+#### ⚡ Breaking Changes
+- **Package Name Change**: `code-graph-mcp` → `codenav`
+- **Python Package**: `code_graph_mcp` → `codenav`
+- **Entry Points**: 
+  - `code-graph-mcp` → `codenav` (main MCP server)
+  - `code-graph-sse` removed (merged into `codenav`)
+  - New: `codenav-web` (HTTP REST API server)
+- **Environment Variables**: `CODEGRAPHMCP_*` → `CODENAV_*`
+- **Docker Images**: `ghcr.io/ajacobm/code-graph-mcp` → `ghcr.io/ajacobm/codenav`
+
+#### 🏗️ Architecture: Optional Dependencies
+The package now supports optional extras for modular installation:
+- `codenav` - Core analyzer (base package)
+- `codenav[mcp-stdio]` - MCP with stdio transport
+- `codenav[mcp-http]` - MCP with streamableHttp transport
+- `codenav[mcp]` - All MCP options
+- `codenav[web]` - HTTP REST API
+- `codenav[notebooks]` - Jupyter support
+- `codenav[all]` - Everything
+
+#### 🔧 Updated
+- All imports from `code_graph_mcp.*` to `codenav.*`
+- Docker Compose service names
+- GitHub Actions workflows
+- Documentation and README
+- Shell scripts and Makefile
+- Configuration files
+
+#### 📚 Migration Guide
+```bash
+# Old installation
+pip install code-graph-mcp
+
+# New installation  
+pip install codenav[all]
+
+# Old CLI
+code-graph-mcp --help
+
+# New CLI
+codenav --help
+```
+
+---
+
 ## [1.2.3] - 2025-01-27
 
 ### 🔧 Patch Release: Complete JSON Serialization Fix
@@ -397,7 +448,7 @@ This critical release resolves MCP server integration issues and ensures reliabl
 
 #### ✅ Verified
 - **Server Functionality** - Comprehensive test suite confirms all 8 MCP tools working correctly
-- **Command Execution** - Server starts properly with `code-graph-mcp --project-root .`
+- **Command Execution** - Server starts properly with `codenav --project-root .`
 - **Protocol Initialization** - MCP server initializes correctly with debug logging
 - **Package Installation** - Development mode installation resolves all import dependencies
 
@@ -474,7 +525,7 @@ Major code quality improvements and performance optimizations while maintaining 
 
 ### 🎉 Major Release: Multi-Language Support
 
-This release transforms the code-graph-mcp from a Python-only analyzer to a comprehensive **25+ language code analysis platform**.
+This release transforms the codenav from a Python-only analyzer to a comprehensive **25+ language code analysis platform**.
 
 ### ✨ Added
 
@@ -563,8 +614,8 @@ The v1.0.0 release is backward compatible - all existing functionality continues
 
 #### New Installation
 ```bash
-pip install code-graph-mcp  # Now automatically includes ast-grep-py
-claude mcp add --scope project code-graph-mcp "uv run code-graph-mcp --verbose"
+pip install codenav  # Now automatically includes ast-grep-py
+claude mcp add --scope project codenav "uv run codenav --verbose"
 ```
 
 #### Enhanced Features

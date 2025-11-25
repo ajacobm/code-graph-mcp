@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MCP Client for testing code-graph-mcp server.
+MCP Client for testing codenav server.
 Tests the graph query tools via MCP protocol.
 """
 
@@ -27,7 +27,7 @@ async def test_mcp_tools():
     
     server_params = StdioServerParameters(
         command="uv",
-        args=["run", "code-graph-mcp", "--project-root", "/app/src/code_graph_mcp", "--verbose"]
+        args=["run", "codenav", "--project-root", "/app/src/codenav", "--verbose"]
     )
     
     try:

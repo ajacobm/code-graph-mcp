@@ -1,4 +1,4 @@
-# Code Graph MCP - Deployment Guide
+# CodeNavigator - Deployment Guide
 
 ## Quick Start (Docker Compose)
 
@@ -19,7 +19,7 @@ Initial startup takes ~2-3 minutes while the backend analyzes the codebase.
 
 Monitor progress:
 ```bash
-docker logs code-graph-mcp-code-graph-http-1
+docker logs codenav-code-graph-http-1
 ```
 
 Wait for: `INFO: Application startup complete`
@@ -53,10 +53,10 @@ asyncio.run(test_ws())
 ## Architecture Overview
 
 ### Backend (Python FastAPI + MCP SDK)
-- **Entry Point**: `src/code_graph_mcp/http_server.py`
-- **Graph Engine**: `src/code_graph_mcp/server/analysis_engine.py`
-- **CDC Manager**: `src/code_graph_mcp/cdc_manager.py` (Change Data Capture)
-- **WebSocket Server**: `src/code_graph_mcp/websocket_server.py`
+- **Entry Point**: `src/codenav/http_server.py`
+- **Graph Engine**: `src/codenav/server/analysis_engine.py`
+- **CDC Manager**: `src/codenav/cdc_manager.py` (Change Data Capture)
+- **WebSocket Server**: `src/codenav/websocket_server.py`
 
 ### Event Flow
 ```
@@ -86,20 +86,20 @@ Latency: <100ms from mutation to UI
 
 ### 1. Build HTTP Server Image
 ```bash
-docker build -t ajacobm/code-graph-mcp:http -f Dockerfile --target http .
+docker build -t ajacobm/codenav:http -f Dockerfile --target http .
 ```
 
 ### 2. Configure Environment
 Create `.compose.env` (or use defaults):
 ```bash
 # Project root to analyze
-CODEGRAPHMCP_REPO_MOUNT=/path/to/codebase
+CODENAV_REPO_MOUNT=/path/to/codebase
 
 # Redis connection
-CODEGRAPHMCP_REDIS_URL=redis://redis:6379
+CODENAV_REDIS_URL=redis://redis:6379
 
 # Stack name for docker-compose
-STACK_NAME=code-graph-mcp
+STACK_NAME=codenav
 ```
 
 ### 3. Verify Health
@@ -108,7 +108,7 @@ STACK_NAME=code-graph-mcp
 docker-compose -f docker-compose-multi.yml ps
 
 # View HTTP server startup logs
-docker logs code-graph-mcp-code-graph-http-1 | grep -E "startup|initialized|health"
+docker logs codenav-code-graph-http-1 | grep -E "startup|initialized|health"
 
 # Test endpoints
 curl http://localhost:8000/api/graph/stats
@@ -121,9 +121,9 @@ curl http://localhost:5173  # Frontend
 **Symptoms**: Health check stays "health: starting" after 2 minutes
 
 **Solution**: 
-1. Check logs: `docker logs code-graph-mcp-code-graph-http-1`
+1. Check logs: `docker logs codenav-code-graph-http-1`
 2. Look for `Application startup complete` message
-3. Verify Redis is running: `docker logs code-graph-mcp-redis-1`
+3. Verify Redis is running: `docker logs codenav-redis-1`
 
 **Common Causes**:
 - Analysis timeout (5 minute limit in code)
@@ -136,13 +136,13 @@ curl http://localhost:5173  # Frontend
 **Solution**:
 1. Check browser console for connection errors
 2. Verify endpoint: `curl http://localhost:8000/ws/status`
-3. Check server logs: `docker logs code-graph-mcp-code-graph-http-1`
+3. Check server logs: `docker logs codenav-code-graph-http-1`
 
 ### Performance Issues
 **Monitoring Tools**:
 - Redis Insight: `http://localhost:5540`
-- Uvicorn logs: `docker logs code-graph-mcp-code-graph-http-1 | grep -E "GET|POST|ERROR"`
-- Container stats: `docker stats code-graph-mcp-code-graph-http-1`
+- Uvicorn logs: `docker logs codenav-code-graph-http-1 | grep -E "GET|POST|ERROR"`
+- Container stats: `docker stats codenav-code-graph-http-1`
 
 ## Performance Considerations
 
@@ -170,14 +170,14 @@ All list endpoints support pagination to prevent memory overload:
 ### Single Server
 ```bash
 # Use production Dockerfile targets
-docker build -t code-graph-mcp:prod -f Dockerfile --target production .
+docker build -t codenav:prod -f Dockerfile --target production .
 
 # Run with gunicorn for multiple workers
 docker run -p 8000:8000 \
   -e REDIS_URL=redis://redis:6379 \
-  code-graph-mcp:prod \
+  codenav:prod \
   gunicorn -w 4 -k uvicorn.workers.UvicornWorker \
-  code_graph_mcp.http_server:app
+  codenav.http_server:app
 ```
 
 ### Kubernetes Deployment
@@ -192,7 +192,7 @@ spec:
     spec:
       containers:
       - name: api
-        image: code-graph-mcp:prod
+        image: codenav:prod
         ports:
         - containerPort: 8000
         env:
@@ -220,13 +220,13 @@ curl http://localhost:8000/ws/status
 ### Log Levels
 ```bash
 # Standard logs
-docker logs code-graph-mcp-code-graph-http-1
+docker logs codenav-code-graph-http-1
 
 # Tail with follow
-docker logs -f code-graph-mcp-code-graph-http-1
+docker logs -f codenav-code-graph-http-1
 
 # Filter by level
-docker logs code-graph-mcp-code-graph-http-1 | grep ERROR
+docker logs codenav-code-graph-http-1 | grep ERROR
 ```
 
 ## Cleanup

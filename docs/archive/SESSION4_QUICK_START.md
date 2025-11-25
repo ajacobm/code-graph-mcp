@@ -1,8 +1,8 @@
-# Code Graph MCP - Session 4 Quick Start Guide
+# CodeNavigator - Session 4 Quick Start Guide
 
 ## 🎯 Your Mission (If You Choose to Accept It)
 
-The Code Graph MCP project has all fixes in place BUT graph nodes still aren't being created. Your job: **Add tracing output to find where the code is failing**.
+The CodeNavigator project has all fixes in place BUT graph nodes still aren't being created. Your job: **Add tracing output to find where the code is failing**.
 
 ## ⚡ Quick Facts
 
@@ -17,7 +17,7 @@ The Code Graph MCP project has all fixes in place BUT graph nodes still aren't b
 
 ### Step 1: Add Tracing (10 minutes)
 
-Edit `src/code_graph_mcp/universal_parser.py`
+Edit `src/codenav/universal_parser.py`
 
 **Find**: `def _parse_functions_ast(self, sg_root: Any, file_path: Path, language_config: LanguageConfig) -> int:`
 
@@ -116,10 +116,10 @@ def _parse_functions_ast(self, sg_root: Any, file_path: Path, language_config: L
 ### Step 2: Rebuild & Deploy (5 minutes)
 
 ```bash
-cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp
+cd /mnt/c/Users/ADAM/GitHub/codenav
 
 # Clean rebuild
-docker build -t ajacobm/code-graph-mcp:sse --target sse .
+docker build -t ajacobm/codenav:sse --target sse .
 
 # Deploy fresh
 docker-compose -f docker-compose-multi.yml down -v
@@ -228,7 +228,7 @@ For complete context, read: `SESSION3_COMPREHENSIVE_SUMMARY.md`
 
 ## 💡 Pro Tips
 
-- Test locally first: `cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp && uv run`
+- Test locally first: `cd /mnt/c/Users/ADAM/GitHub/codenav && uv run`
 - Keep one terminal watching logs while you make changes
 - Use grep to filter logs: `docker-compose ... logs | grep TRACE`
 - Commit your tracing code - it helps future debugging

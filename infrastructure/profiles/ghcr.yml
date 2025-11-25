@@ -19,21 +19,21 @@ services:
     networks:
       - codegraph
 
-  code-graph-sse:
-    image: ghcr.io/ajacobm/code-graph-mcp:sse-latest
+  codenav-mcp:
+    image: ghcr.io/ajacobm/codenav:sse-latest
     container_name: codegraph-sse-ghcr
     ports:
       - "10101:8000"
     volumes:
       - /workspace:/workspace
     environment:
-      - CODEGRAPHMCP_LOG_LEVEL=INFO
+      - CODENAV_LOG_LEVEL=INFO
       - REDIS_URL=redis://redis:6379
     depends_on:
       redis:
         condition: service_healthy
     command: >
-      code-graph-mcp
+      codenav
       --mode sse
       --host 0.0.0.0
       --port 8000
@@ -43,15 +43,15 @@ services:
     networks:
       - codegraph
 
-  code-graph-http:
-    image: ghcr.io/ajacobm/code-graph-mcp:http-latest
+  codenav-web:
+    image: ghcr.io/ajacobm/codenav:http-latest
     container_name: codegraph-http-ghcr
     ports:
       - "8000:8000"
     volumes:
       - /workspace:/workspace
     environment:
-      - CODEGRAPHMCP_LOG_LEVEL=INFO
+      - CODENAV_LOG_LEVEL=INFO
       - REDIS_URL=redis://redis:6379
     depends_on:
       redis:
@@ -63,7 +63,7 @@ services:
       - full
 
   frontend:
-    image: ghcr.io/ajacobm/code-graph-mcp-frontend:production-latest
+    image: ghcr.io/ajacobm/codenav-frontend:production-latest
     container_name: codegraph-frontend-ghcr
     ports:
       - "5173:5173"
@@ -73,7 +73,7 @@ services:
     networks:
       - codegraph
     depends_on:
-      - code-graph-http
+      - codenav-web
 
 networks:
   codegraph:

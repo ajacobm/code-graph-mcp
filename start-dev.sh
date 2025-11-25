@@ -3,7 +3,7 @@
 
 set -e
 
-echo "Starting Code Graph Visualizer (dev mode)"
+echo "Starting CodeNavigator Visualizer (dev mode)"
 echo ""
 
 # Colors for output
@@ -13,7 +13,7 @@ NC='\033[0m' # No Color
 
 # Start backend
 echo -e "${BLUE}[Backend]${NC} Starting FastAPI server on localhost:8000"
-python -m code_graph_mcp.http_server --host 0.0.0.0 --port 8000 &
+codenav-web --host 0.0.0.0 --port 8000 &
 BACKEND_PID=$!
 
 # Wait for backend to start

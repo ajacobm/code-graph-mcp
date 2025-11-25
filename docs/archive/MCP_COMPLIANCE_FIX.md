@@ -135,7 +135,7 @@ After deploying the fixed implementation:
 ## **🔧 DEPLOYMENT INSTRUCTIONS**
 
 **Updated your container to use the compliant server:**
-- Modified `/src/code_graph_mcp/server/mcp_server.py` 
+- Modified `/src/codenav/server/mcp_server.py` 
 - Now imports `MCPCompliantServer` instead of `MCPOverHTTPServer`
 - Same command-line interface, fully compliant backend
 

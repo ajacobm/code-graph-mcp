@@ -1,11 +1,11 @@
-# Code Graph MCP - Comprehensive Investigation Summary
+# CodeNavigator - Comprehensive Investigation Summary
 ## Sessions 1-3 (Oct 25-26, 2025)
 
 ---
 
 ## 🎯 Executive Summary
 
-The Code Graph MCP project has been thoroughly investigated across three sessions to resolve the "0 nodes" graph population issue. While multiple fixes have been applied and verified in isolation, the core graph population layer still requires focused debugging to complete the implementation.
+The CodeNavigator project has been thoroughly investigated across three sessions to resolve the "0 nodes" graph population issue. While multiple fixes have been applied and verified in isolation, the core graph population layer still requires focused debugging to complete the implementation.
 
 **Current Status**: 
 - ✅ All library APIs verified and working correctly
@@ -25,13 +25,13 @@ The Code Graph MCP project has been thoroughly investigated across three session
 1. **File Watcher Watchdog Incompatibility** ✅ FIXED
    - Problem: `ignore_patterns` parameter removed in watchdog 6.0.0+
    - Solution: Removed parameter, moved filtering to event handler
-   - File: `src/code_graph_mcp/file_watcher.py`
+   - File: `src/codenav/file_watcher.py`
    - Status: Implementation complete and verified
 
 2. **AST-Grep Pattern Mismatch** ✅ FIXED  
    - Problem: Patterns like `function_def` didn't match actual AST node types
    - Solution: Corrected to `function_definition` for Python and all 25 languages
-   - File: `src/code_graph_mcp/universal_parser.py`
+   - File: `src/codenav/universal_parser.py`
    - Pattern coverage: All 25 languages now have complete function/class/import/variable patterns
 
 3. **Iterator Consumption Bug** ✅ FIXED
@@ -122,7 +122,7 @@ Lines 794-812: Similar implementation for _parse_imports_ast
 - Moved filtering to event handler methods (`_should_skip_path()`)
 - Added ignore logic to all event handlers (on_modified, on_created, on_deleted, on_moved)
 
-**File**: `src/code_graph_mcp/file_watcher.py`
+**File**: `src/codenav/file_watcher.py`
 
 **Status**: COMPLETE - Ready for production
 
@@ -137,7 +137,7 @@ Lines 794-812: Similar implementation for _parse_imports_ast
 - Implemented _parse_imports_ast() with proper AST-Grep queries
 - Added AST node extraction helpers (_extract_name_from_ast, _extract_import_target_from_ast)
 
-**File**: `src/code_graph_mcp/universal_parser.py`
+**File**: `src/codenav/universal_parser.py`
 
 **Status**: COMPLETE - API calls verified working
 
@@ -250,8 +250,8 @@ def _parse_functions_ast(self, sg_root: Any, file_path: Path, language_config: L
 
 2. **Rebuild container with tracing enabled**
    ```bash
-   cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp
-   docker build -t ajacobm/code-graph-mcp:sse --target sse .
+   cd /mnt/c/Users/ADAM/GitHub/codenav
+   docker build -t ajacobm/codenav:sse --target sse .
    ```
 
 3. **Run container and check output**
@@ -298,7 +298,7 @@ Before next debugging session, verify:
 - [ ] File watcher API fixed in file_watcher.py
 - [ ] Docker image built with --target sse flag
 - [ ] docker-compose-multi.yml configuration correct
-- [ ] Project name "code-graph-mcp" (not "docker-stack")
+- [ ] Project name "codenav" (not "docker-stack")
 - [ ] Watchdog logs suppressed (no noise pollution)
 - [ ] Print tracing statements added to all parsing methods
 - [ ] Full traceback printing on exceptions
@@ -308,16 +308,16 @@ Before next debugging session, verify:
 ## 📊 Code Quality Metrics
 
 ### Files Modified:
-1. `src/code_graph_mcp/file_watcher.py`
+1. `src/codenav/file_watcher.py`
    - Changes: 1 (API compatibility fix)
    - Status: ✅ Complete
 
-2. `src/code_graph_mcp/universal_parser.py`
+2. `src/codenav/universal_parser.py`
    - Changes: 4 (ASTGrepPatterns, 3 parsing methods, pattern fixes)
    - Lines modified: ~200 lines
    - Status: ✅ Complete, needs tracing for debugging
 
-3. `src/code_graph_mcp/sse_server.py`
+3. `src/codenav/sse_server.py`
    - Changes: 1 (watchdog logger suppression)
    - Status: ✅ Complete
 
@@ -358,10 +358,10 @@ Add tracing output to identify exact failure point in graph population layer
 
 | File | Purpose | Status |
 |------|---------|--------|
-| `src/code_graph_mcp/universal_parser.py` | Main parser with AST-Grep integration | ✅ Implemented, ⏳ Debugging |
-| `src/code_graph_mcp/file_watcher.py` | File system monitoring | ✅ Fixed |
-| `src/code_graph_mcp/sse_server.py` | HTTP/SSE server | ✅ Updated |
-| `src/code_graph_mcp/graph/rustworkx_unified.py` | Graph data structure | ⏳ To be verified |
+| `src/codenav/universal_parser.py` | Main parser with AST-Grep integration | ✅ Implemented, ⏳ Debugging |
+| `src/codenav/file_watcher.py` | File system monitoring | ✅ Fixed |
+| `src/codenav/sse_server.py` | HTTP/SSE server | ✅ Updated |
+| `src/codenav/graph/rustworkx_unified.py` | Graph data structure | ⏳ To be verified |
 | `Dockerfile` | Container build | ✅ Ready |
 | `docker-compose-multi.yml` | Deployment config | ✅ Ready |
 

@@ -2,7 +2,7 @@
 
 ## **Executive Summary**
 
-This document outlines a complete transformation of the Code Graph MCP from a basic prototype into a professional, agentic platform for LLM code assistance and transactional navigation.
+This document outlines a complete transformation of the CodeNavigator from a basic prototype into a professional, agentic platform for LLM code assistance and transactional navigation.
 
 ## **Current State Assessment**
 
@@ -154,5 +154,5 @@ This document outlines a complete transformation of the Code Graph MCP from a ba
 6. **Enhanced Graph Visualizations** 📋 (Phase 2 Week 2)
 7. **Collaborative Features** 📋 (Phase 3 Week 1-2)
 
-**Welcome to the professional era of Code Graph MCP!** 🎉</content>
-<parameter name="file_path">/home/adam/GitHub/code-graph-mcp/COMPREHENSIVE_UI_UX_PLAN.md
+**Welcome to the professional era of CodeNavigator!** 🎉</content>
+<parameter name="file_path">/home/adam/GitHub/codenav/COMPREHENSIVE_UI_UX_PLAN.md

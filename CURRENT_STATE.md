@@ -1,4 +1,4 @@
-# Code Graph MCP - Current State
+# CodeNavigator - Current State
 
 **Rolling document tracking session-by-session progress with git context.**
 
@@ -47,7 +47,7 @@ Fixed critical backend relationship bugs and enhanced UI styling, but discovered
 - User feedback: "seems to be designed primarily for mobile"
 
 ### Graph State
-- **Core Codebase**: 489 nodes, 4,475 relationships (src/code_graph_mcp only)
+- **Core Codebase**: 489 nodes, 4,475 relationships (src/codenav only)
 - **With Workspace**: 974 nodes, 12,767 relationships (includes tests, frontend)
 - **Relationship Types**: contains (703), imports (193), calls (11,871)
 - **Languages Supported**: 25 (Python, TypeScript, JavaScript, C#, Go, Rust, etc.)
@@ -68,7 +68,7 @@ Fixed critical backend relationship bugs and enhanced UI styling, but discovered
 - **Playwright**: Used for E2E UX validation, discovered the 1,600+ connections issue
 
 ### Files Modified
-- `src/code_graph_mcp/universal_parser.py` - Fixed relationship deserialization
+- `src/codenav/universal_parser.py` - Fixed relationship deserialization
 - `frontend/src/components/ConnectionsList.vue` - Fixed API format mapping
 - `frontend/src/App.vue` - Enhanced styling with NodeTile and card layouts
 
@@ -323,7 +323,7 @@ compose.sh logs frontend
 compose.sh restart
 
 # Clear Redis cache
-docker exec code-graph-mcp-redis-1 redis-cli FLUSHALL
+docker exec codenav-redis-1 redis-cli FLUSHALL
 ```
 
 ### Testing
@@ -335,19 +335,19 @@ pytest tests/
 pytest tests/test_graph_queries.py -v
 
 # In Docker
-docker exec code-graph-mcp-code-graph-http-1 uv run pytest tests/
+docker exec codenav-code-graph-http-1 uv run pytest tests/
 ```
 
 ### Building Images
 ```bash
 # Backend HTTP server
-docker build -t ajacobm/code-graph-mcp:http -f Dockerfile --target http .
+docker build -t ajacobm/codenav:http -f Dockerfile --target http .
 
 # Frontend dev
-docker build -t code-graph-mcp-frontend -f frontend/Dockerfile frontend/
+docker build -t codenav-frontend -f frontend/Dockerfile frontend/
 
 # Frontend production
-docker build -t code-graph-mcp-frontend:prod -f frontend/Dockerfile.prod frontend/
+docker build -t codenav-frontend:prod -f frontend/Dockerfile.prod frontend/
 ```
 
 ---

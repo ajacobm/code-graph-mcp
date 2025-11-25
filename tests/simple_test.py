@@ -14,7 +14,7 @@ async def test_basic_functionality():
     print("\n1. Testing server startup...")
     try:
         result = subprocess.run([
-            "code-graph-mcp", "--help"
+            "codenav", "--help"
         ], capture_output=True, text=True, timeout=10)
 
         if result.returncode == 0:
@@ -31,7 +31,7 @@ async def test_basic_functionality():
     print("\n2. Testing server with project root...")
     try:
         proc = subprocess.Popen([
-            "code-graph-mcp", "--project-root", ".", "--verbose"
+            "codenav", "--project-root", ".", "--verbose"
         ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
         # Let it run for 2 seconds then kill

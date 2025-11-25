@@ -51,7 +51,7 @@ Services will be ready in ~15 seconds:
 ### 1. Start Backend
 
 ```bash
-python -m code_graph_mcp.http_server --host 0.0.0.0 --port 8000
+python -m codenav.http_server --host 0.0.0.0 --port 8000
 ```
 
 **Wait for**: `Application startup complete`
@@ -130,9 +130,9 @@ The frontend uses these REST API endpoints:
 ## Project Structure
 
 ```
-code-graph-mcp/
+codenav/
 ├── src/                           # Python backend
-│   └── code_graph_mcp/
+│   └── codenav/
 │       ├── http_server.py         # FastAPI entry point
 │       ├── universal_parser.py    # AST parsing (25+ languages)
 │       ├── universal_graph.py     # Graph data structure
@@ -190,7 +190,7 @@ mypy src/
 ruff check src/
 
 # Run HTTP server
-python -m code_graph_mcp.http_server --help
+python -m codenav.http_server --help
 ```
 
 ## Troubleshooting

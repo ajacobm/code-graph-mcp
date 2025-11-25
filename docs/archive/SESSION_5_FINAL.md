@@ -82,7 +82,7 @@ Redis Cache (Port 6379)
 
 ```bash
 # Start full stack
-cd /home/adam/GitHub/code-graph-mcp
+cd /home/adam/GitHub/codenav
 compose.sh up
 
 # Verify endpoints

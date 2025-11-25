@@ -132,8 +132,8 @@ services:
 
   code-graph-sse:
     volumes:
-      - ~/code/code-graph-mcp:/app
-      - ~/code/code-graph-mcp:/app/workspace
+      - ~/code/codenav:/app
+      - ~/code/codenav:/app/workspace
 
   memgraph:
     volumes:
@@ -150,8 +150,8 @@ services:
 
   code-graph-sse:
     volumes:
-      - /mnt/c/Users/ADAM/GitHub/code-graph-mcp:/app
-      - /mnt/c/Users/ADAM/GitHub/code-graph-mcp:/app/workspace
+      - /mnt/c/Users/ADAM/GitHub/codenav:/app
+      - /mnt/c/Users/ADAM/GitHub/codenav:/app/workspace
 
   memgraph:
     volumes:

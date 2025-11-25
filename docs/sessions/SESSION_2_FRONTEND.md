@@ -188,7 +188,7 @@ API:
 **Or manually:**
 ```bash
 # Terminal 1: Backend
-python -m code_graph_mcp.http_server --host 0.0.0.0 --port 8000
+python -m codenav.http_server --host 0.0.0.0 --port 8000
 
 # Terminal 2: Frontend
 cd frontend && npm run dev

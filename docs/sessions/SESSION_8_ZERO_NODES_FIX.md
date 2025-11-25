@@ -6,7 +6,7 @@
 
 ## Problem Statement
 
-The code-graph-mcp system consistently showed **0 nodes** in both the HTTP API (`/api/graph/stats`) and frontend UI, despite:
+The codenav system consistently showed **0 nodes** in both the HTTP API (`/api/graph/stats`) and frontend UI, despite:
 - Tests showing graph building works (481 nodes, 4396 edges)
 - Docker containers running healthy
 - No obvious errors in logs
@@ -40,7 +40,7 @@ The issue persisted across multiple rebuild attempts and had not been resolved i
 4. **Found serialization errors in logs**:
    ```
    ERROR - can not serialize 'builtin_function_or_method' object
-   ERROR - Error caching nodes for /app/workspace/src/code_graph_mcp/cache_manager.py
+   ERROR - Error caching nodes for /app/workspace/src/codenav/cache_manager.py
    ```
 
 ### Root Causes Identified
@@ -53,7 +53,7 @@ The issue persisted across multiple rebuild attempts and had not been resolved i
 
 ### Fix 1: Redis Enum Serialization
 
-**File**: `src/code_graph_mcp/redis_cache.py`
+**File**: `src/codenav/redis_cache.py`
 
 Added two helper functions to convert Enums to strings before serialization:
 
@@ -90,10 +90,10 @@ serializable_nodes = [serialize_node(node) for node in nodes]
 
 ```bash
 # 1. Flush Redis cache
-docker exec code-graph-mcp-redis-1 redis-cli FLUSHALL
+docker exec codenav-redis-1 redis-cli FLUSHALL
 
 # 2. Restart HTTP server (triggers re-analysis)
-docker restart code-graph-mcp-code-graph-http-1
+docker restart codenav-code-graph-http-1
 
 # 3. Wait for analysis completion (8-10 seconds)
 sleep 10
@@ -150,7 +150,7 @@ pytest tests/test_backend_graph_queries.py -v
 
 ### 1. Check Graph State
 ```bash
-docker exec code-graph-mcp-code-graph-http-1 /app/.venv/bin/python -c "
+docker exec codenav-code-graph-http-1 /app/.venv/bin/python -c "
 import urllib.request, json
 r = json.loads(urllib.request.urlopen('http://localhost:8000/api/graph/stats').read())
 print(f\"Nodes: {r['total_nodes']}, Edges: {r['total_relationships']}\")
@@ -160,13 +160,13 @@ print(f\"Nodes: {r['total_nodes']}, Edges: {r['total_relationships']}\")
 
 ### 2. Check Redis Cache
 ```bash
-docker exec code-graph-mcp-redis-1 redis-cli DBSIZE
+docker exec codenav-redis-1 redis-cli DBSIZE
 # Expected: > 50 keys
 ```
 
 ### 3. Check for Serialization Errors
 ```bash
-docker logs code-graph-mcp-code-graph-http-1 2>&1 | grep -i "serialize.*error"
+docker logs codenav-code-graph-http-1 2>&1 | grep -i "serialize.*error"
 # Expected: No output (no errors)
 ```
 
@@ -178,7 +178,7 @@ curl -X POST http://localhost:8000/api/graph/admin/reanalyze | python -m json.to
 
 ## Files Modified
 
-1. `src/code_graph_mcp/redis_cache.py` (+20 lines)
+1. `src/codenav/redis_cache.py` (+20 lines)
    - Added `serialize_node()` function
    - Added `serialize_relationship()` function
    - Updated `set_file_nodes()` to use helper
@@ -195,7 +195,7 @@ curl -X POST http://localhost:8000/api/graph/admin/reanalyze | python -m json.to
 
 ```bash
 # Rebuild with new code
-docker build -t ajacobm/code-graph-mcp:http -f Dockerfile --target http .
+docker build -t ajacobm/codenav:http -f Dockerfile --target http .
 
 # Restart stack
 compose.sh restart
@@ -203,8 +203,8 @@ compose.sh restart
 
 **Quick fix for testing** (without full rebuild):
 ```bash
-docker cp src/code_graph_mcp/redis_cache.py code-graph-mcp-code-graph-http-1:/app/src/code_graph_mcp/
-docker restart code-graph-mcp-code-graph-http-1
+docker cp src/codenav/redis_cache.py codenav-code-graph-http-1:/app/src/codenav/
+docker restart codenav-code-graph-http-1
 ```
 
 ## Lessons Learned
@@ -251,7 +251,7 @@ docker restart code-graph-mcp-code-graph-http-1
 - **Breaking Changes**: None (backward compatible)
 - **Tests Added**: 0 (existing tests now pass)
 - **Tests Fixed**: 9 (test_graph_queries.py)
-- **Docker Images Updated**: 1 (code-graph-mcp:http)
+- **Docker Images Updated**: 1 (codenav:http)
 - **Time to Debug**: ~90 minutes
 - **Time to Fix**: ~30 minutes
 - **Confidence Level**: **95%** (thoroughly tested, root cause understood)

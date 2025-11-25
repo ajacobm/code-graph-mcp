@@ -73,7 +73,7 @@ find_function_callees: Returns results
 
 ## Files to Modify
 
-1. **`src/code_graph_mcp/universal_parser.py`**
+1. **`src/codenav/universal_parser.py`**
    - Add `_extract_calls_from_function()` method
    - Call it after function extraction
    - Create CALLS relationships
@@ -81,7 +81,7 @@ find_function_callees: Returns results
 2. **`tests/test_graph_queries.py`**
    - Already created - use for validation
 
-3. **`src/code_graph_mcp/server/mcp_server.py`**
+3. **`src/codenav/server/mcp_server.py`**
    - No changes needed - tools already use correct relationship types
 
 ## Impact

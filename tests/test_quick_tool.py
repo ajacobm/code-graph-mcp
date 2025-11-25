@@ -10,7 +10,7 @@ from mcp.client.stdio import stdio_client
 @pytest.mark.asyncio
 async def test_single_tool():
     server_params = StdioServerParameters(
-        command="code-graph-mcp",
+        command="codenav",
         args=["--project-root", "."],
     )
 

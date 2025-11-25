@@ -27,7 +27,7 @@ language: typescript
 ### 2. Load in code
 
 ```python
-from code_graph_mcp.ignore_patterns import IgnorePatternsManager
+from codenav.ignore_patterns import IgnorePatternsManager
 
 manager = IgnorePatternsManager("/path/to/repo")
 
@@ -143,7 +143,7 @@ cursor.execute("SELECT * FROM users")
 ### Using SeamDetector
 
 ```python
-from code_graph_mcp.seam_detector import SeamDetector
+from codenav.seam_detector import SeamDetector
 
 detector = SeamDetector()
 
@@ -219,8 +219,8 @@ language: sql
 
 **Usage**:
 ```python
-from code_graph_mcp.ignore_patterns import IgnorePatternsManager
-from code_graph_mcp.seam_detector import SeamDetector
+from codenav.ignore_patterns import IgnorePatternsManager
+from codenav.seam_detector import SeamDetector
 
 manager = IgnorePatternsManager("/path/to/my-app")
 detector = SeamDetector()

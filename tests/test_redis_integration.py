@@ -13,7 +13,7 @@ import json
 import pytest
 import pytest_asyncio
 
-from code_graph_mcp.server.analysis_engine import UniversalAnalysisEngine
+from codenav.server.analysis_engine import UniversalAnalysisEngine
 
 
 @pytest.fixture(scope="module")
@@ -34,7 +34,7 @@ async def engine_with_redis(redis_available):
     if not redis_available:
         pytest.skip("Redis not available")
     
-    project_root = Path(__file__).parent.parent / "src" / "code_graph_mcp"
+    project_root = Path(__file__).parent.parent / "src" / "codenav"
     
     engine = UniversalAnalysisEngine(
         project_root,
@@ -69,7 +69,7 @@ async def test_cache_hit_on_second_access(redis_available):
     if not redis_available:
         pytest.skip("Redis not available")
     
-    project_root = Path(__file__).parent.parent / "src" / "code_graph_mcp"
+    project_root = Path(__file__).parent.parent / "src" / "codenav"
     
     engine1 = UniversalAnalysisEngine(
         project_root,
@@ -144,7 +144,7 @@ async def test_cache_survives_engine_restart(redis_available):
     if not redis_available:
         pytest.skip("Redis not available")
     
-    project_root = Path(__file__).parent.parent / "src" / "code_graph_mcp"
+    project_root = Path(__file__).parent.parent / "src" / "codenav"
     
     engine1 = UniversalAnalysisEngine(
         project_root,

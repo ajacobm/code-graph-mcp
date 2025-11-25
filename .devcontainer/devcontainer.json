@@ -1,5 +1,5 @@
 {
-  "name": "Code Graph MCP Development",
+  "name": "CodeNavigator (codenav) Development",
   "image": "mcr.microsoft.com/devcontainers/python:3.12",
   
   "features": {
@@ -47,11 +47,11 @@
       "onAutoForward": "notify"
     },
     "8000": {
-      "label": "SSE Server",
+      "label": "MCP Server (HTTP)",
       "onAutoForward": "notify"
     },
     "10101": {
-      "label": "HTTP API",
+      "label": "Web API",
       "onAutoForward": "notify"
     },
     "6379": {

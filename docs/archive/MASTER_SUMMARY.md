@@ -1,14 +1,14 @@
-# Code Graph MCP - Master Summary
+# CodeNavigator - Master Summary
 ## Investigation Complete: Ready for Session 4 Debugging
 
 ---
 
 ## 📍 Where We Are
 
-**Project**: Code Graph MCP - Multi-language code analysis via AST-Grep  
+**Project**: CodeNavigator - Multi-language code analysis via AST-Grep  
 **Status**: All architectural fixes complete, graph population issue identified but not yet resolved  
-**Container**: `ajacobm/code-graph-mcp:sse` with HTTP/SSE server  
-**Location**: `/mnt/c/Users/ADAM/GitHub/code-graph-mcp`
+**Container**: `ajacobm/codenav:sse` with HTTP/SSE server  
+**Location**: `/mnt/c/Users/ADAM/GitHub/codenav`
 
 ---
 
@@ -128,7 +128,7 @@
 ### Build & Deploy (from project root)
 ```bash
 # Fresh rebuild
-docker build -t ajacobm/code-graph-mcp:sse --target sse .
+docker build -t ajacobm/codenav:sse --target sse .
 
 # Fresh deploy
 docker-compose -f docker-compose-multi.yml down -v
@@ -140,7 +140,7 @@ docker-compose -f docker-compose-multi.yml logs -f code-graph-codegraphmcp-sse |
 
 ### Key File to Edit
 ```bash
-nano /mnt/c/Users/ADAM/GitHub/code-graph-mcp/src/code_graph_mcp/universal_parser.py
+nano /mnt/c/Users/ADAM/GitHub/codenav/src/codenav/universal_parser.py
 ```
 
 ### Functions to Trace
@@ -306,7 +306,7 @@ Before starting Session 4:
 | Investigation report | ✅ Complete | SESSION3_COMPREHENSIVE_SUMMARY.md |
 | Debugging guide | ✅ Ready | SESSION4_QUICK_START.md |
 | Command reference | ✅ Complete | READY_COMMANDS.md |
-| Code changes | ✅ Implemented | src/code_graph_mcp/universal_parser.py |
+| Code changes | ✅ Implemented | src/codenav/universal_parser.py |
 | Memory summary | ✅ Stored | Local memory system |
 
 ---

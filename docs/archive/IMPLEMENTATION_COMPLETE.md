@@ -1,4 +1,4 @@
-# Code Graph MCP - Complete Fix Implementation (Jan 7, 2025)
+# CodeNavigator - Complete Fix Implementation (Jan 7, 2025)
 
 ## Summary
 
@@ -10,7 +10,7 @@ Successfully implemented comprehensive fixes for both the "Graph Has 0 Nodes" is
 
 ### Problem
 ```
-2025-10-25 22:11:33,704 - code_graph_mcp.file_watcher - ERROR - Failed to start file watcher: 
+2025-10-25 22:11:33,704 - codenav.file_watcher - ERROR - Failed to start file watcher: 
 BaseObserver.schedule() got an unexpected keyword argument 'ignore_patterns'
 ```
 
@@ -26,7 +26,7 @@ self._observer.schedule(
 ```
 
 ### Solution
-**File**: `src/code_graph_mcp/file_watcher.py`
+**File**: `src/codenav/file_watcher.py`
 
 1. **Removed `ignore_patterns` parameter** from `observer.schedule()` call
 2. **Added `_should_skip_path()` method** to `_EventHandler` class:
@@ -92,7 +92,7 @@ def _parse_functions(self, sg_root: Any, file_path: Path, ...):
 
 ### Solution
 
-**File**: `src/code_graph_mcp/universal_parser.py`
+**File**: `src/codenav/universal_parser.py`
 
 #### 1. Created ASTGrepPatterns Class
 ```python
@@ -230,9 +230,9 @@ Can be easily extended to other languages by adding entries to `ASTGrepPatterns.
 
 ### Before Fix
 ```
-2025-10-25 22:11:33,704 - code_graph_mcp.file_watcher - ERROR - Failed to start file watcher: 
+2025-10-25 22:11:33,704 - codenav.file_watcher - ERROR - Failed to start file watcher: 
 BaseObserver.schedule() got an unexpected keyword argument 'ignore_patterns'
-2025-10-25 22:11:33,704 - code_graph_mcp.server.analysis_engine - INFO - 
+2025-10-25 22:11:33,704 - codenav.server.analysis_engine - INFO - 
 AFTER _ensure_analyzed: graph has 0 nodes
 ```
 
@@ -253,14 +253,14 @@ AFTER _ensure_analyzed: graph has 0 nodes
 
 ### Manual Test
 ```bash
-cd /mnt/c/Users/ADAM/GitHub/code-graph-mcp
+cd /mnt/c/Users/ADAM/GitHub/codenav
 
 # Clean rebuild
 uv build
-docker build -t code-graph-mcp .
+docker build -t codenav .
 
 # Run and check logs
-docker run code-graph-mcp 2>&1 | tail -50
+docker run codenav 2>&1 | tail -50
 
 # Should see:
 # ✅ No "ignore_patterns" error
@@ -275,12 +275,12 @@ All existing unit tests should pass. The change is internal to parsing implement
 
 ## Files Modified
 
-1. **`src/code_graph_mcp/file_watcher.py`**
+1. **`src/codenav/file_watcher.py`**
    - Removed `ignore_patterns` parameter
    - Added `_should_skip_path()` method to `_EventHandler`
    - Updated all event handlers to use `_should_skip_path()`
 
-2. **`src/code_graph_mcp/universal_parser.py`**
+2. **`src/codenav/universal_parser.py`**
    - Added `ASTGrepPatterns` class
    - Replaced `_parse_functions()` with `_parse_functions_ast()`
    - Replaced `_parse_classes()` with `_parse_classes_ast()`

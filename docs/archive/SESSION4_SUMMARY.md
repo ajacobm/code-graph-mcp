@@ -27,7 +27,7 @@ end_pos = r.end
 - start/end are `Pos` objects with `.line` and `.column` properties
 
 ### **Files Fixed**
-✅ `/mnt/c/Users/ADAM/GitHub/code-graph-mcp/src/code_graph_mcp/universal_parser.py`
+✅ `/mnt/c/Users/ADAM/GitHub/codenav/src/codenav/universal_parser.py`
 - Line 814: `_parse_functions_ast()`
 - Line 881: `_parse_classes_ast()`
 - Line 953: `_parse_imports_ast()`
@@ -54,7 +54,7 @@ Test results show:
 
 ### **Status: 🟢 PRODUCTION READY**
 
-The Code Graph MCP server is now fully functional with proper AST-Grep integration. The parser correctly creates and adds nodes to the graph for all supported languages.
+The CodeNavigator server is now fully functional with proper AST-Grep integration. The parser correctly creates and adds nodes to the graph for all supported languages.
 
 ---
 

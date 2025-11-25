@@ -67,7 +67,7 @@ print(f"Found {len(functions)} functions")
 
 ## Current Code Status
 
-**File**: `src/code_graph_mcp/universal_parser.py`
+**File**: `src/codenav/universal_parser.py`
 
 Lines with the hanging code:
 - Line 784: `root_node = sg_root.root()` (in _parse_functions_ast)
@@ -125,7 +125,7 @@ except asyncio.TimeoutError:
 ```bash
 # Language detection works:
 docker exec <id> /app/.venv/bin/python3 -c "
-from src.code_graph_mcp.universal_parser import LanguageRegistry
+from src.codenav.universal_parser import LanguageRegistry
 import asyncio
 async def test():
     reg = LanguageRegistry()
@@ -136,7 +136,7 @@ asyncio.run(test())
 
 # Pattern retrieval works:
 docker exec <id> /app/.venv/bin/python3 -c "
-from src.code_graph_mcp.universal_parser import ASTGrepPatterns
+from src.codenav.universal_parser import ASTGrepPatterns
 print(ASTGrepPatterns.get_pattern('python', 'function'))
 "
 

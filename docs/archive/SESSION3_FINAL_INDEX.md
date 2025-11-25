@@ -1,4 +1,4 @@
-# Code Graph MCP - Session 3 Final Index
+# CodeNavigator - Session 3 Final Index
 
 ## 🎯 Quick Navigation for Session 4
 
@@ -126,9 +126,9 @@
 ## 📊 Code State Summary
 
 ### Files Modified (All Fixes Applied):
-- ✅ `src/code_graph_mcp/file_watcher.py` - Watchdog API fix
-- ✅ `src/code_graph_mcp/universal_parser.py` - AST integration, patterns, iterator fix
-- ✅ `src/code_graph_mcp/sse_server.py` - Watchdog logger suppression
+- ✅ `src/codenav/file_watcher.py` - Watchdog API fix
+- ✅ `src/codenav/universal_parser.py` - AST integration, patterns, iterator fix
+- ✅ `src/codenav/sse_server.py` - Watchdog logger suppression
 
 ### Files Ready (No Changes Needed):
 - ✅ `Dockerfile` - Multi-stage build ready

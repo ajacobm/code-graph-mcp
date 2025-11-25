@@ -23,7 +23,7 @@ from starlette.responses import JSONResponse
 from starlette.types import Receive, Scope, Send
 
 # Import our existing MCP infrastructure
-from code_graph_mcp.server.mcp_server import (
+from codenav.server.mcp_server import (
     get_tool_definitions,
     get_tool_handlers,
     ensure_analysis_engine_ready,
@@ -45,7 +45,7 @@ class CodeGraphMCPServer:
         self.project_root = project_root
         self.redis_url = redis_url
         self.json_response = json_response
-        self.app = Server("code-graph-mcp")
+        self.app = Server("codenav")
         self.analysis_engine = None
         self._setup_handlers()
         

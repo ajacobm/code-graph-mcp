@@ -544,10 +544,15 @@ interface ForceGraphLink {
 // Dispose pattern for large graphs
 class GraphManager {
   private graph: ForceGraph;
+  private containerRef: HTMLElement;
   
   dispose() {
+    // Clear graph data first
     this.graph.graphData({ nodes: [], links: [] });
-    this.graph._destructor();
+    // Remove the canvas element and recreate if needed
+    // Note: force-graph doesn't expose a public destructor - 
+    // the recommended pattern is to clear data and let garbage collection handle cleanup
+    this.containerRef.innerHTML = '';
   }
   
   // Limit active nodes
@@ -571,7 +576,11 @@ class GraphManager {
     "react-dom": "^18.2.0",
     "force-graph": "^1.51.0",
     "3d-force-graph": "^1.73.0",
-    "@radix-ui/react-*": "latest",
+    "@radix-ui/react-dialog": "^1.0.5",
+    "@radix-ui/react-dropdown-menu": "^2.0.6",
+    "@radix-ui/react-tabs": "^1.0.4",
+    "@radix-ui/react-tooltip": "^1.0.7",
+    "@radix-ui/react-slider": "^1.1.2",
     "zustand": "^4.5.0",
     "react-markdown": "^9.0.0",
     "prismjs": "^1.29.0",

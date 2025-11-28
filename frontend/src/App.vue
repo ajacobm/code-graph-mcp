@@ -7,13 +7,23 @@
           <div class="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-pink-400 bg-clip-text text-transparent">
             📊 CodeNavigator
           </div>
+          <span class="px-2 py-0.5 text-xs bg-slate-700 text-slate-300 rounded">
+            Legacy UI
+          </span>
         </div>
         
         <div class="flex items-center gap-4">
+          <a 
+            href="http://localhost:5174"
+            target="_blank"
+            class="px-4 py-2 bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-700 hover:to-pink-700 text-white rounded-lg transition-colors text-sm font-medium"
+          >
+            🔮 Open Graph View (v2)
+          </a>
           <button
             @click="graphStore.reanalyze()"
             :disabled="graphStore.isLoading"
-            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-lg transition-colors text-sm"
+            class="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white rounded-lg transition-colors text-sm"
           >
             {{ graphStore.isLoading ? '⏳ Analyzing...' : '🔄 Re-analyze' }}
           </button>
@@ -49,16 +59,8 @@
 
     <!-- Main Content -->
     <main class="w-full overflow-hidden">
-      <!-- Graph Tab (NEW - Full Screen Layout) -->
-      <div v-if="activeTab === 'graph'" class="h-[calc(100vh-120px)]">
-        <GraphView
-          ref="graphViewRef"
-          @node-selected="handleGraphNodeSelected"
-        />
-      </div>
-
       <!-- Browse/Connections Tab (Original Layout) -->
-      <div v-else class="grid grid-cols-1 lg:grid-cols-4 gap-6 px-4 py-6 max-w-7xl mx-auto">
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 px-4 py-6 max-w-7xl mx-auto">
         <!-- Main Panel (3 cols on desktop, full width on mobile) -->
         <div class="lg:col-span-3 order-2 lg:order-1">
           <!-- Browse Tab -->
@@ -206,19 +208,16 @@ import CategoryCard from './components/CategoryCard.vue'
 import LiveStats from './components/LiveStats.vue'
 import AnalysisProgress from './components/AnalysisProgress.vue'
 import EventLog from './components/EventLog.vue'
-import GraphView from './components/graph/GraphView.vue'
 import type { NodeResponse } from './types/graph'
 
 const graphStore = useGraphStore()
-const activeTab = ref('graph')  // Default to new graph view
+const activeTab = ref('browse')  // Default to browse
 const categoryLoading = ref<string | null>(null)
 const categoryNodes = ref<NodeResponse[]>([])
 const categoryTitle = ref('')
 const categoryTotal = ref(0)
-const graphViewRef = ref<InstanceType<typeof GraphView> | null>(null)
 
 const tabs = [
-  { id: 'graph', label: '🔮 Graph' },
   { id: 'browse', label: '📂 Browse' },
   { id: 'connections', label: '🔗 Connections' }
 ]
@@ -260,12 +259,6 @@ function selectNodeForConnections(node: NodeResponse | { id: string; name?: stri
   console.log('selectNodeForConnections called with:', { id: node?.id, name: node?.name, node })
   graphStore.selectNode(node.id)
   console.log('After selectNode, selectedNodeId:', graphStore.selectedNodeId, 'selectedNode:', graphStore.selectedNode)
-  activeTab.value = 'connections'
-}
-
-function handleGraphNodeSelected(nodeId: string) {
-  // When a node is selected in the graph, switch to connections view
-  graphStore.selectNode(nodeId)
   activeTab.value = 'connections'
 }
 

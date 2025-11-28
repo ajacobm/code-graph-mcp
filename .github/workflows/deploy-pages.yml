@@ -38,7 +38,7 @@ jobs:
         working-directory: ./frontend
         run: npm ci
 
-      - name: Build Vue.js app
+      - name: Build React app
         working-directory: ./frontend
         run: npm run build
         env:

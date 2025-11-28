@@ -687,6 +687,109 @@ def create_graph_api_router(engine: UniversalAnalysisEngine) -> APIRouter:
             logger.error(f"Get subgraph failed: {e}")
             raise HTTPException(status_code=500, detail=str(e))
 
+    @router.get("/export")
+    async def export_full_graph(
+        limit: int = Query(10000, ge=1, le=50000),
+        include_metadata: bool = Query(True),
+        language: Optional[str] = Query(None, description="Filter by programming language"),
+        node_type: Optional[str] = Query(None, description="Filter by node type (function, class, etc)")
+    ):
+        """
+        Export full graph for force-directed visualization.
+        Returns all nodes and relationships in a format optimized for force-graph rendering.
+        """
+        try:
+            if not engine or not engine.analyzer or not engine.analyzer.graph:
+                raise HTTPException(status_code=500, detail="Analysis engine not ready")
+            
+            start_time = time.time()
+            graph = engine.analyzer.graph
+            
+            # Collect nodes with optional filtering
+            nodes_output = []
+            node_id_set = set()
+            
+            for node_id, node in list(graph.nodes.items())[:limit]:
+                # Apply filters
+                if language and getattr(node, 'language', '') != language:
+                    continue
+                if node_type:
+                    ntype = getattr(node, 'node_type', '')
+                    ntype_str = ntype.value if hasattr(ntype, 'value') else str(ntype)
+                    if ntype_str != node_type:
+                        continue
+                
+                node_id_set.add(node_id)
+                location = getattr(node, 'location', None)
+                ntype = getattr(node, 'node_type', 'unknown')
+                ntype_str = ntype.value if hasattr(ntype, 'value') else str(ntype)
+                
+                node_data = {
+                    "id": node_id,
+                    "name": getattr(node, 'name', ''),
+                    "type": ntype_str,
+                    "language": getattr(node, 'language', ''),
+                    "complexity": getattr(node, 'complexity', 0),
+                    "file": location.file_path if location else "",
+                    "line": location.start_line if location else 0,
+                }
+                
+                if include_metadata:
+                    node_data["metadata"] = {
+                        "docstring": getattr(node, 'docstring', ''),
+                        "line_count": getattr(node, 'line_count', 0),
+                        "end_line": location.end_line if location else 0,
+                    }
+                
+                nodes_output.append(node_data)
+            
+            # Collect relationships between included nodes
+            links_output = []
+            for rel_id, rel in graph.relationships.items():
+                source_id = getattr(rel, 'source_id', '')
+                target_id = getattr(rel, 'target_id', '')
+                
+                # Only include relationships where both nodes are in our set
+                if source_id in node_id_set and target_id in node_id_set:
+                    rel_type = getattr(rel, 'relationship_type', 'unknown')
+                    rel_type_str = rel_type.value if hasattr(rel_type, 'value') else str(rel_type)
+                    
+                    links_output.append({
+                        "source": source_id,
+                        "target": target_id,
+                        "type": rel_type_str,
+                        "isSeam": rel_type_str == 'seam',
+                    })
+            
+            # Compute language distribution stats
+            languages = {}
+            for node in nodes_output:
+                lang = node.get("language", "unknown")
+                languages[lang] = languages.get(lang, 0) + 1
+            
+            # Compute type distribution stats
+            node_types = {}
+            for node in nodes_output:
+                nt = node.get("type", "unknown")
+                node_types[nt] = node_types.get(nt, 0) + 1
+            
+            return {
+                "nodes": nodes_output,
+                "links": links_output,
+                "stats": {
+                    "totalNodes": len(nodes_output),
+                    "totalLinks": len(links_output),
+                    "languages": languages,
+                    "nodeTypes": node_types,
+                    "avgComplexity": sum(n.get("complexity", 0) for n in nodes_output) / max(len(nodes_output), 1),
+                },
+                "execution_time_ms": (time.time() - start_time) * 1000
+            }
+        
+        except Exception as e:
+            logger.error(f"Export graph failed: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+
     @router.get("/debug/analysis")
     async def debug_analysis():
         """Debug endpoint showing analysis status and file information."""

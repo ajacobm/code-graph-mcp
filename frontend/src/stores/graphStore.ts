@@ -1,259 +1,111 @@
-import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import type {
-  Node,
-  Edge,
-  NodeResponse,
-  GraphStatsResponse,
-} from '../types/graph'
-import { graphClient } from '../api/graphClient'
+/**
+ * Graph Store
+ * 
+ * Zustand store for graph state management.
+ */
 
-export const useGraphStore = defineStore('graph', () => {
-  // State
-  const nodes = ref<Node[]>([])
-  const relationships = ref<Edge[]>([])
-  const selectedNodeId = ref<string | null>(null)
-  const isLoading = ref(false)
-  const error = ref<string | null>(null)
-  const stats = ref<GraphStatsResponse | null>(null)
+import { create } from 'zustand'
+import type { GraphData, GraphNode, FilterOptions } from '@/types'
+import { fetchGraphExport } from '@/api/graphApi'
 
-  // Computed
-  const selectedNode = computed(() => {
-    return nodes.value.find(n => n.id === selectedNodeId.value) || null
-  })
+interface GraphState {
+  // Graph data
+  graphData: GraphData | null
+  isLoading: boolean
+  error: string | null
+  
+  // Selection state
+  selectedNodeId: string | null
+  highlightedNodeIds: string[]
+  hoveredNodeId: string | null
+  
+  // Filter state
+  filters: FilterOptions
+  
+  // Display options
+  showLabels: boolean
+  colorMode: 'type' | 'language' | 'complexity'
+  
+  // Actions
+  loadGraph: (options?: { language?: string; nodeType?: string }) => Promise<void>
+  selectNode: (nodeId: string | null) => void
+  hoverNode: (nodeId: string | null) => void
+  highlightNodes: (nodeIds: string[]) => void
+  setFilter: (filter: Partial<FilterOptions>) => void
+  setShowLabels: (show: boolean) => void
+  setColorMode: (mode: 'type' | 'language' | 'complexity') => void
+  getSelectedNode: () => GraphNode | null
+}
 
-  // Helper to convert API node to internal format
-  function toInternalNode(n: NodeResponse): Node {
-    return {
-      id: n.id,
-      name: n.name,
-      node_type: n.node_type,
-      language: n.language || 'unknown',
-      complexity: n.complexity || 0,
-      location: n.location,
-      metadata: n.metadata
-    }
-  }
+const defaultFilters: FilterOptions = {
+  languages: [],
+  nodeTypes: [],
+  searchQuery: '',
+  minComplexity: 0,
+  maxComplexity: 100,
+  showSeamsOnly: false,
+}
 
-
+export const useGraphStore = create<GraphState>((set, get) => ({
+  // Initial state
+  graphData: null,
+  isLoading: false,
+  error: null,
+  selectedNodeId: null,
+  highlightedNodeIds: [],
+  hoveredNodeId: null,
+  filters: defaultFilters,
+  showLabels: true,
+  colorMode: 'type',
 
   // Actions
-  async function loadStats() {
-    isLoading.value = true
-    error.value = null
+  loadGraph: async (options) => {
+    set({ isLoading: true, error: null })
     try {
-      // Use direct fetch instead of axios to bypass any axios issues
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 5000)
-      
-      const response = await fetch(`${graphClient.baseURL}/graph/stats`, {
-        signal: controller.signal
+      const data = await fetchGraphExport({
+        limit: 5000,
+        language: options?.language,
+        nodeType: options?.nodeType,
+        includeMetadata: true,
       })
-      clearTimeout(timeoutId)
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`)
-      }
-      stats.value = await response.json()
-      error.value = null
-    } catch (err: any) {
-      const errMsg = err instanceof Error ? err.message : 'Failed to load stats'
-      error.value = errMsg
-      console.log('Failed to load stats:', { errMsg, url: graphClient.baseURL })
-    }
-    isLoading.value = false
-  }
-
-  async function getNodesByCategory(category: 'entry_points' | 'hubs' | 'leaves', limit: number, offset: number) {
-    try {
-      isLoading.value = true
-      error.value = null
-      // Use direct fetch instead of axios
-      const url = `${graphClient.baseURL}/graph/categories/${category}?limit=${limit}&offset=${offset}`
-      const response = await fetch(url)
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`)
-      }
-      const result = await response.json()
-      return result
-    } catch (err: any) {
-      console.log('getNodesByCategory error details:', {
-        type: err?.constructor?.name,
-        message: err?.message
-      });
-      error.value = err instanceof Error ? err.message : 'Failed to load nodes'
-      return { nodes: [], total: 0 }
-    } finally {
-      isLoading.value = false
-    }
-  }
-
-  async function loadFullGraph() {
-    try {
-      isLoading.value = true
-      error.value = null
-      
-      // Load nodes from all categories (workaround - backend has no GET /nodes endpoint)
-      const [entryPoints, hubs, leaves] = await Promise.all([
-        graphClient.getNodesByCategory('entry_points', 500, 0).catch(() => ({ nodes: [] as NodeResponse[], total: 0 })),
-        graphClient.getNodesByCategory('hubs', 500, 0).catch(() => ({ nodes: [] as NodeResponse[], total: 0 })),
-        graphClient.getNodesByCategory('leaves', 500, 0).catch(() => ({ nodes: [] as NodeResponse[], total: 0 }))
-      ])
-      
-      // Combine and deduplicate
-      const allNodes = [...entryPoints.nodes, ...hubs.nodes, ...leaves.nodes]
-      const uniqueNodesMap = new Map<string, NodeResponse>()
-      allNodes.forEach(n => uniqueNodesMap.set(n.id, n))
-      
-      // Convert to internal format
-      nodes.value = Array.from(uniqueNodesMap.values()).map(toInternalNode)
-      relationships.value = []
-      
-      console.log(`Loaded ${nodes.value.length} nodes from categories`)
+      set({ graphData: data, isLoading: false })
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to load graph'
-      console.error('Failed to load graph:', err)
-    } finally {
-      isLoading.value = false
+      set({ 
+        error: err instanceof Error ? err.message : 'Failed to load graph',
+        isLoading: false 
+      })
     }
-  }
+  },
 
-  async function loadNodeConnections(nodeId: string) {
-    try {
-      isLoading.value = true
-      error.value = null
-      
-      // Get node and its immediate connections
-      const node = nodes.value.find(n => n.id === nodeId)
-      if (!node) return
-      
-      // Load callers and callees
-      const symbol = node.name
-      const [callersResult, calleesResult] = await Promise.all([
-        graphClient.findCallers(symbol).catch(() => ({ results: [] as any[] })),
-        graphClient.findCallees(symbol).catch(() => ({ results: [] as any[] }))
-      ])
-      
-      // Add any new nodes we discovered
-      const discoveredNodes = [
-        ...(callersResult.results || []),
-        ...(calleesResult.results || [])
-      ]
-      
-      discoveredNodes.forEach((n: any) => {
-        if (!nodes.value.find(existing => existing.id === n.id)) {
-          nodes.value.push({
-            id: n.id,
-            name: n.name,
-            node_type: n.node_type,
-            language: n.language || 'unknown',
-            complexity: n.complexity || 0,
-            location: n.location,
-            metadata: {}
-          })
-        }
-      })
-      
-      // Create relationship edges
-      const newEdges: Edge[] = []
-      
-      callersResult.results?.forEach((caller: any) => {
-        newEdges.push({
-          id: `${caller.id}-${nodeId}`,
-          source: caller.id,
-          target: nodeId,
-          relationship_type: 'calls',
-          isSeam: false
-        })
-      })
-      
-      calleesResult.results?.forEach((callee: any) => {
-        newEdges.push({
-          id: `${nodeId}-${callee.id}`,
-          source: nodeId,
-          target: callee.id,
-          relationship_type: 'calls',
-          isSeam: false
-        })
-      })
-      
-      // Add edges that don't already exist
-      newEdges.forEach(edge => {
-        if (!relationships.value.find(e => e.id === edge.id)) {
-          relationships.value.push(edge)
-        }
-      })
-      
-      console.log(`Loaded connections for ${node.name}: ${callersResult.results?.length || 0} callers, ${calleesResult.results?.length || 0} callees`)
-    } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to load node connections'
-      console.error('Failed to load node connections:', err)
-    } finally {
-      isLoading.value = false
-    }
-  }
+  selectNode: (nodeId) => {
+    set({ selectedNodeId: nodeId })
+  },
 
-  async function reanalyze() {
-    try {
-      isLoading.value = true
-      error.value = null
-      
-      // Use graphClient's configured baseURL
-      const response = await fetch(`${graphClient.baseURL}/graph/admin/reanalyze`, {
-        method: 'POST'
-      })
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      
-      const result = await response.json()
-      console.log('Re-analysis complete:', result)
-      
-      // Reload graph data
-      await loadFullGraph()
-      await loadStats()
-    } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to re-analyze'
-      console.error('Failed to re-analyze:', err)
-    } finally {
-      isLoading.value = false
-    }
-  }
+  hoverNode: (nodeId) => {
+    set({ hoveredNodeId: nodeId })
+  },
 
-  function selectNode(nodeId: string | null) {
-    selectedNodeId.value = nodeId
-    // Auto-load connections when a node is selected
-    if (nodeId) {
-      loadNodeConnections(nodeId)
-    }
-  }
+  highlightNodes: (nodeIds) => {
+    set({ highlightedNodeIds: nodeIds })
+  },
 
-  function clearGraph() {
-    nodes.value = []
-    relationships.value = []
-    selectedNodeId.value = null
-  }
+  setFilter: (filter) => {
+    set((state) => ({
+      filters: { ...state.filters, ...filter }
+    }))
+  },
 
-  return {
-    // State
-    nodes,
-    relationships,
-    selectedNodeId,
-    isLoading,
-    error,
-    stats,
-    
-    // Computed
-    selectedNode,
-    
-    // Actions
-    loadStats,
-    getNodesByCategory,
-    loadFullGraph,
-    loadNodeConnections,
-    reanalyze,
-    selectNode,
-    clearGraph
-  }
-})
+  setShowLabels: (show) => {
+    set({ showLabels: show })
+  },
+
+  setColorMode: (mode) => {
+    set({ colorMode: mode })
+  },
+
+  getSelectedNode: () => {
+    const { graphData, selectedNodeId } = get()
+    if (!graphData || !selectedNodeId) return null
+    return graphData.nodes.find(n => n.id === selectedNodeId) || null
+  },
+}))

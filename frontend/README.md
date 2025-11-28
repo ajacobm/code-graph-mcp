@@ -1,115 +1,117 @@
-# Code Graph Visualizer - Frontend
+# CodeNavigator Frontend
 
-Interactive Vue 3 + Cytoscape.js visualization for code graphs with filtering, search, and call chain navigation.
+Force-directed graph visualization for CodeNavigator, built with React 19, TypeScript, and Zustand.
 
-## Quick Start
+## Tech Stack
+
+As recommended in the [GRAPH_VISUALIZATION_PLAN.md](../docs/GRAPH_VISUALIZATION_PLAN.md):
+
+- **React 19** - Frontend framework
+- **TypeScript** - Type safety
+- **Vite** - Build tool
+- **Zustand** - State management
+- **Tailwind CSS** - Styling
+- **force-graph** - Graph visualization library
+- **Radix UI** - Accessible UI primitives
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- npm 9+
+- Backend API running on http://localhost:8000
+
+### Development
 
 ```bash
+# Install dependencies
 npm install
+
+# Start development server
 npm run dev
 ```
 
-Then open `http://localhost:5173`
+The app will be available at http://localhost:5173
 
-## Features
+### Production Build
 
-### Graph Visualization
-- **Cytoscape.js** with DAG hierarchical layout
-- Interactive node selection and inspection
-- Pan, zoom, fit controls
-- SEAM edges marked with dashed red lines (cross-language boundaries)
-
-### Node Details
-- Full metadata: name, language, type, file path, complexity
-- Click to select node → details panel updates
-- Lists incoming (callers) and outgoing (callees) relationships
-- Click related nodes to navigate graph
-
-### Filtering
-- Filter by language (Python, JavaScript, C#, SQL, etc.)
-- Filter by node type (function, class, interface, etc.)
-- Filter by complexity range (0-50)
-- Toggle SEAM-only view (cross-language relationships)
-- Real-time graph updates
-
-### Search
-- Autocomplete search by node name
-- Language/type filtering in search
-- Click result to traverse from that node
-
-### Call Chain Tracer
-- Step-through navigation through linear call chains
-- See language crossings (SEAM points)
-- Previous/Next/Reset controls
-- Export chain as JSON
-
-### Traversal Controls
-- Enter node ID and click **Traverse** (DFS, depth 5)
-- Click **Call Chain** for linear call sequence
-- Both automatically load related nodes
+```bash
+npm run build
+npm run preview
+```
 
 ## Architecture
 
 ```
 frontend/
 ├── src/
-│   ├── components/          # 5 Vue components
-│   │   ├── GraphViewer      # Cytoscape visualization
-│   │   ├── NodeDetails      # Right sidebar
-│   │   ├── SearchBar        # Autocomplete search
-│   │   ├── FilterPanel      # Left sidebar filters
-│   │   └── CallChainTracer  # Step-through navigation
-│   ├── api/graphClient.ts   # Typed axios wrapper
-│   ├── stores/              # Pinia state management
-│   │   ├── graphStore.ts    # Graph + computed filters
-│   │   └── filterStore.ts   # Filter state
-│   └── types/graph.ts       # TypeScript interfaces
-└── vite.config.ts           # Vite + proxy to :8000
+│   ├── components/
+│   │   ├── graph/           # ForceGraph, GraphControls, NodeTooltip
+│   │   ├── panels/          # ToolsPanel, DetailsPanel
+│   │   └── layout/          # Header, StatusBar
+│   ├── hooks/               # React hooks
+│   ├── stores/              # Zustand stores
+│   │   └── graphStore.ts    # Graph state management
+│   ├── api/                 # API client
+│   │   └── graphApi.ts      # HTTP calls to backend
+│   ├── types/               # TypeScript types
+│   │   └── index.ts         # Shared type definitions
+│   ├── App.tsx              # Main application
+│   ├── main.tsx             # Entry point
+│   └── index.css            # Global styles + Tailwind
+├── public/
+├── package.json
+├── vite.config.ts
+├── tailwind.config.js
+└── tsconfig.json
 ```
 
-## Key Technologies
+## Features
 
-- **Vite** - Lightning-fast dev server + build
-- **Vue 3** - Composition API
-- **Pinia** - State management
-- **Cytoscape.js** - Graph visualization
-- **Tailwind CSS** - Dark theme styling
-- **TypeScript** - Type safety
+### Implemented
+
+- ✅ Force-directed graph visualization
+- ✅ Node selection and details panel
+- ✅ Color by type/language/complexity
+- ✅ Node search with highlighting
+- ✅ Zoom to fit / center on node
+- ✅ Collapsible side panels
+- ✅ Live stats display
+- ✅ Re-analyze trigger
+
+### Planned
+
+- 🔜 WebSocket integration for real-time updates
+- 🔜 Pathway visualization
+- 🔜 Annotation system
+- 🔜 Cluster detection
+- 🔜 Export/share functionality
 
 ## API Integration
 
-Connects to backend REST API:
+The frontend connects to the backend API at `/api/graph/*`:
+
+- `GET /api/graph/export` - Full graph data for visualization
 - `GET /api/graph/stats` - Graph statistics
-- `GET /api/graph/nodes/{id}` - Single node lookup
-- `POST /api/graph/traverse` - DFS/BFS traversal
-- `GET /api/graph/nodes/search` - Full-text search
-- `GET /api/graph/seams` - Cross-language relationships
-- `GET /api/graph/call-chain/{id}` - Call sequence
-
-## Development
-
-See `DEV_GUIDE.md` for detailed development instructions.
-
-## Performance
-
-- First load: < 2s for typical graph
-- Node selection: < 100ms UI update
-- Filter apply: < 500ms graph re-render
-- Cytoscape pan/zoom: 60 FPS
+- `GET /api/graph/categories/:category` - Node categories
+- `GET /api/graph/nodes/search` - Node search
+- `POST /api/graph/admin/reanalyze` - Force re-analysis
 
 ## Styling
 
-Uses Tailwind CSS dark theme with:
-- Primary: Indigo-500 (#4F46E5)
-- Accent: Pink-500 (#EC4899)
-- Background: Gray-900 (#111827)
-- Borders: Gray-700 (#374151)
+Using Tailwind CSS with a dark slate color scheme. The color palette:
 
-## Roadmap
+- Background: `slate-900`
+- Panels: `slate-800`
+- Borders: `slate-700`
+- Text: `slate-100` to `slate-400`
+- Accent: `indigo-600`
+- Success: `green-500`
+- Warning: `amber-500`
+- Error: `red-500`
 
-- [ ] Add more layout algorithms (force-directed, concentric)
-- [ ] Timeline view for execution history
-- [ ] Export graph as SVG/PNG
-- [ ] Persist filters to URL
-- [ ] Multi-language legend
-- [ ] Performance metrics overlay
+## Related
+
+- [GRAPH_VISUALIZATION_PLAN.md](../docs/GRAPH_VISUALIZATION_PLAN.md) - Feature planning document
+- [Backend API](../src/codenav/) - Python FastAPI backend

@@ -2,14 +2,44 @@
  * ForceGraph Component
  * 
  * React wrapper for the force-graph library.
+ * 
+ * Note: The force-graph library uses a factory pattern where the default export
+ * returns a function that creates graph instances. TypeScript struggles with this
+ * pattern, so we use a type assertion to work around it. The library does ship
+ * with proper type definitions in dist/force-graph.d.ts.
  */
 
 import { useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react'
 import ForceGraph2D from 'force-graph'
 import type { GraphData, ForceGraphNode, ForceGraphLink } from '@/types'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ForceGraphInstance = any
+/**
+ * ForceGraph instance type - represents a configured force-graph instance.
+ * The library's TypeScript definitions are complex due to the factory pattern,
+ * so we define a simplified interface for the methods we use.
+ */
+interface ForceGraphInstance {
+  graphData: (data?: { nodes: object[]; links: object[] }) => ForceGraphInstance
+  nodeId: (accessor: string) => ForceGraphInstance
+  nodeLabel: (fn: (node: ForceGraphNode) => string) => ForceGraphInstance
+  nodeColor: (fn: (node: ForceGraphNode) => string) => ForceGraphInstance
+  nodeVal: (fn: (node: ForceGraphNode) => number) => ForceGraphInstance
+  linkColor: (fn: (link: ForceGraphLink) => string) => ForceGraphInstance
+  linkWidth: (fn: (link: ForceGraphLink) => number) => ForceGraphInstance
+  linkDirectionalArrowLength: (length: number) => ForceGraphInstance
+  linkDirectionalArrowRelPos: (pos: number) => ForceGraphInstance
+  onNodeClick: (fn: (node: ForceGraphNode) => void) => ForceGraphInstance
+  onNodeHover: (fn: (node: ForceGraphNode | null) => void) => ForceGraphInstance
+  onBackgroundClick: (fn: () => void) => ForceGraphInstance
+  cooldownTicks: (ticks: number) => ForceGraphInstance
+  backgroundColor: (color: string) => ForceGraphInstance
+  nodeCanvasObject: (fn: (node: ForceGraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => void) => ForceGraphInstance
+  zoomToFit: (duration: number, padding: number) => void
+  centerAt: (x: number | undefined, y: number | undefined, duration: number) => void
+  zoom: (factor: number, duration: number) => void
+  width: (width: number) => ForceGraphInstance
+  height: (height: number) => ForceGraphInstance
+}
 
 // Color mappings
 const LANGUAGE_COLORS: Record<string, string> = {
@@ -118,32 +148,33 @@ export const ForceGraph = forwardRef<ForceGraphRef, ForceGraphProps>(({
     // Clear existing
     containerRef.current.innerHTML = ''
 
-    // force-graph uses factory pattern
+    /**
+     * Initialize the force-graph instance.
+     * The library uses a factory pattern: ForceGraph2D() returns a function
+     * that takes an HTMLElement and returns a chainable graph instance.
+     */
     const ForceGraphFactory = ForceGraph2D as unknown as () => (container: HTMLElement) => ForceGraphInstance
     const graph = ForceGraphFactory()(containerRef.current)
       .graphData({ nodes: [], links: [] })
       .nodeId('id')
       .nodeLabel((node: ForceGraphNode) => {
-        const n = node as ForceGraphNode
-        return `${n.name}\n${n.type} | ${n.language}\nComplexity: ${n.complexity}`
+        return `${node.name}\n${node.type} | ${node.language}\nComplexity: ${node.complexity}`
       })
-      .nodeColor((node: ForceGraphNode) => getNodeColor(node as ForceGraphNode))
-      .nodeVal((node: ForceGraphNode) => getNodeSize(node as ForceGraphNode))
+      .nodeColor((node: ForceGraphNode) => getNodeColor(node))
+      .nodeVal((node: ForceGraphNode) => getNodeSize(node))
       .linkColor((link: ForceGraphLink) => {
-        const l = link as ForceGraphLink
-        return l.isSeam ? '#f59e0b' : '#475569'
+        return link.isSeam ? '#f59e0b' : '#475569'
       })
       .linkWidth((link: ForceGraphLink) => {
-        const l = link as ForceGraphLink
-        return l.isSeam ? 2 : 1
+        return link.isSeam ? 2 : 1
       })
       .linkDirectionalArrowLength(6)
       .linkDirectionalArrowRelPos(1)
       .onNodeClick((node: ForceGraphNode) => {
-        onNodeClick?.(node as ForceGraphNode)
+        onNodeClick?.(node)
       })
       .onNodeHover((node: ForceGraphNode | null) => {
-        onNodeHover?.(node as ForceGraphNode | null)
+        onNodeHover?.(node)
       })
       .onBackgroundClick(() => {
         onBackgroundClick?.()

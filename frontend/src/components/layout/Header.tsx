@@ -34,9 +34,6 @@ export function Header() {
           <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-400 to-pink-400 bg-clip-text text-transparent">
             📊 CodeNavigator
           </h1>
-          <span className="px-2 py-0.5 text-xs bg-indigo-600/30 text-indigo-300 rounded">
-            v2
-          </span>
         </div>
 
         {/* Right side: Stats and Actions */}

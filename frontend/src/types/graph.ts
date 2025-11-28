@@ -79,9 +79,14 @@ export interface QueryResult {
 export interface QueryResultsResponse {
   symbol: string
   results?: QueryResult[]
+  callers?: QueryResult[]
+  callees?: QueryResult[]
+  references?: QueryResult[]
   total_callers?: number
   total_callees?: number
   total_references?: number
+  limit?: number
+  offset?: number
   execution_time_ms: number
 }
 

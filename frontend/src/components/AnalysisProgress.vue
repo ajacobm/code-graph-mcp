@@ -113,7 +113,7 @@ const handleAnalysisCompleted = () => {
 }
 
 const cancelAnalysis = () => {
-  graphStore.cancelAnalysis?.()
+  // Note: cancelAnalysis function may be added to graphStore in the future
   isAnalyzing.value = false
 
   if (progressInterval) {

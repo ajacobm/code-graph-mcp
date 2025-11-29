@@ -1,264 +1,283 @@
 """Graph data client for Jupyter notebooks.
 
-Provides unified access to Redis, Memgraph, and Backend API for data science workflows.
+Provides unified access to the CodeNav backend API for data science workflows.
+Updated for modern Jupyter async support (uses native await, no run_until_complete).
+
+Usage in Jupyter:
+    from utils.graph_client import GraphClient
+    
+    client = GraphClient()
+    await client.connect()
+    
+    # Get graph stats
+    stats = await client.get_stats()
+    
+    # Export filtered graph
+    data = await client.export_graph(exclude_tests=True)
+    
+    # Build NetworkX graph directly
+    G = await client.build_networkx_graph()
 """
 
-from typing import Any, Dict, List, Optional, Tuple
-from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
+from dataclasses import dataclass, field
 import os
 
-import redis.asyncio as redis
-from neo4j import GraphDatabase
 import httpx
 import networkx as nx
-from collections import defaultdict
+import pandas as pd
 
 
 @dataclass
 class GraphStats:
     """Statistics about the graph."""
-    nodes: int
-    relationships: int
-    languages: List[str]
-    entry_points: int
-    circular_deps: int
+    total_nodes: int = 0
+    total_relationships: int = 0
+    languages: Dict[str, int] = field(default_factory=dict)
+    node_types: Dict[str, int] = field(default_factory=dict)
+    relationship_types: Dict[str, int] = field(default_factory=dict)
+    seam_count: int = 0
 
 
-class GraphDataClient:
-    """Unified client for graph data science operations."""
+class GraphClient:
+    """
+    Unified client for CodeNav graph data operations.
+    
+    Designed for Jupyter notebooks with native async support.
+    Uses the /api/graph/* endpoints from the CodeNav backend.
+    """
 
     def __init__(
         self,
-        redis_url: str = None,
-        memgraph_url: str = None,
         api_url: str = None,
-        timeout: int = 10,
+        timeout: int = 30,
     ):
-        """Initialize client with service URLs from environment or parameters."""
-        self.redis_url = redis_url or os.getenv("REDIS_URL", "redis://redis:6379")
-        self.memgraph_url = memgraph_url or os.getenv("MEMGRAPH_URL", "bolt://memgraph:7687")
-        self.api_url = api_url or os.getenv("BACKEND_API_URL", "http://code-graph-http:8000")
+        """Initialize client with API URL from parameter or environment."""
+        self.api_url = api_url or os.getenv("CODENAV_API_URL", "http://localhost:8000")
         self.timeout = timeout
+        self._client: Optional[httpx.AsyncClient] = None
 
-        self.redis: Optional[redis.Redis] = None
-        self.memgraph_driver = None
-        self.api_client = httpx.AsyncClient(base_url=self.api_url, timeout=timeout)
+    @property
+    def client(self) -> httpx.AsyncClient:
+        """Get or create the HTTP client."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                base_url=self.api_url, 
+                timeout=self.timeout
+            )
+        return self._client
 
-    async def connect(self) -> None:
-        """Establish connections to all services."""
+    async def connect(self) -> bool:
+        """Test connection to the backend API."""
         try:
-            self.redis = await redis.from_url(self.redis_url, decode_responses=True)
-            await self.redis.ping()
-            print("✓ Redis connected")
+            resp = await self.client.get("/health")
+            if resp.status_code == 200:
+                print(f"✅ Connected to CodeNav API at {self.api_url}")
+                return True
+            else:
+                print(f"⚠️  API returned status {resp.status_code}")
+                return False
         except Exception as e:
-            print(f"✗ Redis connection failed: {e}")
-
-        try:
-            self.memgraph_driver = GraphDatabase.driver(self.memgraph_url)
-            with self.memgraph_driver.session() as session:
-                session.run("RETURN 1")
-            print("✓ Memgraph connected")
-        except Exception as e:
-            print(f"✗ Memgraph connection failed: {e}")
-
-        try:
-            resp = await self.api_client.get("/health")
-            print(f"✓ Backend API connected ({resp.status_code})")
-        except Exception as e:
-            print(f"✗ Backend API connection failed: {e}")
+            print(f"❌ Connection failed: {e}")
+            return False
 
     async def close(self) -> None:
-        """Close all connections."""
-        if self.redis:
-            await self.redis.close()
-        if self.memgraph_driver:
-            self.memgraph_driver.close()
-        await self.api_client.aclose()
+        """Close the HTTP client."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+            print("✅ Client closed")
 
-    async def get_graph_stats(self) -> GraphStats:
+    async def get_stats(self) -> GraphStats:
         """Get high-level graph statistics."""
-        resp = await self.api_client.get("/api/graph/stats")
+        resp = await self.client.get("/api/graph/stats")
+        resp.raise_for_status()
         data = resp.json()
+        
         return GraphStats(
-            nodes=data.get("total_nodes", 0),
-            relationships=data.get("total_relationships", 0),
-            languages=data.get("languages", []),
-            entry_points=data.get("entry_points", 0),
-            circular_deps=data.get("circular_dependencies", 0),
+            total_nodes=data.get("total_nodes", 0),
+            total_relationships=data.get("total_relationships", 0),
+            languages=data.get("languages", {}),
+            node_types=data.get("node_types", {}),
+            relationship_types=data.get("relationship_types", {}),
+            seam_count=data.get("seam_count", 0),
         )
 
-    async def get_all_nodes(self, limit: int = 10000) -> List[Dict[str, Any]]:
-        """Fetch all nodes from API."""
-        resp = await self.api_client.get(f"/api/graph/nodes/search?limit={limit}")
-        return resp.json().get("nodes", [])
+    async def export_graph(
+        self,
+        limit: int = 10000,
+        language: str = None,
+        node_type: str = None,
+        exclude_stdlib: bool = True,
+        exclude_tests: bool = True,
+        include_private: bool = True,
+        include_dunder: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Export graph data for visualization with filtering.
+        
+        Args:
+            limit: Maximum nodes to return
+            language: Filter by programming language (e.g., 'Python')
+            node_type: Filter by node type (e.g., 'function', 'class')
+            exclude_stdlib: Exclude standard library imports
+            exclude_tests: Exclude test files and directories
+            include_private: Include private symbols (_prefix)
+            include_dunder: Include Python dunder methods (__x__)
+            
+        Returns:
+            Dict with 'nodes', 'links', and 'stats' keys
+        """
+        params = {
+            "limit": limit,
+            "exclude_stdlib": str(exclude_stdlib).lower(),
+            "exclude_tests": str(exclude_tests).lower(),
+            "include_private": str(include_private).lower(),
+            "include_dunder": str(include_dunder).lower(),
+        }
+        if language:
+            params["language"] = language
+        if node_type:
+            params["node_type"] = node_type
+            
+        resp = await self.client.get("/api/graph/export", params=params)
+        resp.raise_for_status()
+        return resp.json()
 
-    async def get_all_relationships(self, limit: int = 50000) -> List[Dict[str, Any]]:
-        """Fetch all relationships from API."""
-        resp = await self.api_client.get(f"/api/graph/relationships?limit={limit}")
-        return resp.json().get("relationships", [])
+    async def search_nodes(
+        self,
+        name: str = None,
+        language: str = None,
+        node_type: str = None,
+        limit: int = 100,
+    ) -> List[Dict[str, Any]]:
+        """Search for nodes by name, language, or type."""
+        params = {"limit": limit}
+        if name:
+            params["name"] = name
+        if language:
+            params["language"] = language
+        if node_type:
+            params["node_type"] = node_type
+            
+        resp = await self.client.get("/api/graph/nodes/search", params=params)
+        resp.raise_for_status()
+        data = resp.json()
+        return data.get("results", data.get("nodes", []))
 
-    def run_cypher(self, query: str, **params) -> List[Dict[str, Any]]:
-        """Execute Cypher query against Memgraph."""
-        if not self.memgraph_driver:
-            raise RuntimeError("Memgraph not connected")
+    async def get_entry_points(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """Get detected entry points (CLI commands, HTTP handlers, etc.)."""
+        resp = await self.client.get("/api/graph/entry-points", params={"limit": limit})
+        resp.raise_for_status()
+        data = resp.json()
+        return data.get("entry_points", [])
 
-        with self.memgraph_driver.session() as session:
-            result = session.run(query, **params)
-            return [dict(record) for record in result]
+    async def get_seams(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """Get cross-language seam points."""
+        resp = await self.client.get("/api/graph/seams", params={"limit": limit})
+        resp.raise_for_status()
+        data = resp.json()
+        return data.get("seams", [])
 
-    async def build_networkx_graph(self) -> nx.DiGraph:
-        """Build NetworkX graph from all nodes and relationships."""
-        print("Loading graph data...")
-        nodes = await self.get_all_nodes()
-        relationships = await self.get_all_relationships()
+    async def get_callers(self, node_id: str, depth: int = 1) -> Dict[str, Any]:
+        """Get functions that call the specified node."""
+        resp = await self.client.get(
+            "/api/graph/query/callers",
+            params={"node_id": node_id, "depth": depth}
+        )
+        resp.raise_for_status()
+        return resp.json()
 
-        G = nx.DiGraph()
+    async def get_callees(self, node_id: str, depth: int = 1) -> Dict[str, Any]:
+        """Get functions called by the specified node."""
+        resp = await self.client.get(
+            "/api/graph/query/callees",
+            params={"node_id": node_id, "depth": depth}
+        )
+        resp.raise_for_status()
+        return resp.json()
 
-        # Add nodes with attributes
-        for node in nodes:
+    async def build_networkx_graph(
+        self,
+        exclude_stdlib: bool = True,
+        exclude_tests: bool = True,
+        include_private: bool = True,
+        directed: bool = True,
+    ) -> nx.DiGraph:
+        """
+        Build a NetworkX graph from the exported data.
+        
+        Args:
+            exclude_stdlib: Exclude standard library imports
+            exclude_tests: Exclude test files
+            include_private: Include private symbols
+            directed: Create DiGraph (True) or Graph (False)
+            
+        Returns:
+            NetworkX graph with nodes and edges
+        """
+        data = await self.export_graph(
+            exclude_stdlib=exclude_stdlib,
+            exclude_tests=exclude_tests,
+            include_private=include_private,
+        )
+        
+        G = nx.DiGraph() if directed else nx.Graph()
+        
+        # Add nodes
+        for node in data.get("nodes", []):
+            node_id = node.get("id", node.get("name"))
             G.add_node(
-                node["id"],
+                node_id,
                 name=node.get("name", ""),
                 type=node.get("type", ""),
                 language=node.get("language", ""),
+                file=node.get("file", ""),
                 complexity=node.get("complexity", 0),
-                is_entry_point=node.get("is_entry_point", False),
             )
-
+        
         # Add edges
-        for rel in relationships:
-            G.add_edge(rel["source"], rel["target"], rel_type=rel.get("type", ""))
-
-        print(f"✓ Graph loaded: {len(G.nodes)} nodes, {len(G.edges)} edges")
+        for link in data.get("links", []):
+            source = link.get("source")
+            target = link.get("target")
+            if source and target and source in G and target in G:
+                G.add_edge(
+                    source, 
+                    target,
+                    type=link.get("type", ""),
+                )
+        
         return G
 
-    def get_node_centrality(
-        self, G: nx.DiGraph, metric: str = "betweenness"
-    ) -> Dict[str, float]:
-        """Calculate centrality metrics for nodes.
-
-        Args:
-            G: NetworkX directed graph
-            metric: "betweenness", "closeness", "degree", or "pagerank"
-        """
-        if metric == "betweenness":
-            return nx.betweenness_centrality(G)
-        elif metric == "closeness":
-            return nx.closeness_centrality(G)
-        elif metric == "degree":
-            return {node: G.degree(node) for node in G.nodes()}
-        elif metric == "pagerank":
-            return nx.pagerank(G)
-        else:
-            raise ValueError(f"Unknown metric: {metric}")
-
-    def detect_communities(self, G: nx.DiGraph, algorithm: str = "louvain") -> Dict[str, int]:
-        """Detect communities in graph.
-
-        Args:
-            G: NetworkX directed graph
-            algorithm: "louvain" or "label_propagation"
-        """
-        # Convert to undirected for community detection
-        G_undirected = G.to_undirected()
-
-        if algorithm == "louvain":
-            try:
-                import community
-                communities = community.best_partition(G_undirected)
-                return communities
-            except ImportError:
-                raise RuntimeError("python-louvain not installed")
-
-        elif algorithm == "label_propagation":
-            communities_gen = nx.community.label_propagation_communities(G_undirected)
-            communities = {}
-            for comm_id, nodes in enumerate(communities_gen):
-                for node in nodes:
-                    communities[node] = comm_id
-            return communities
-
-        else:
-            raise ValueError(f"Unknown algorithm: {algorithm}")
-
-    def find_critical_nodes(
-        self, G: nx.DiGraph, top_n: int = 20, metric: str = "pagerank"
-    ) -> List[Tuple[str, float]]:
-        """Find most critical nodes by centrality metric."""
-        centrality = self.get_node_centrality(G, metric)
-        return sorted(centrality.items(), key=lambda x: x[1], reverse=True)[:top_n]
-
-    def find_architecture_seams(
-        self, G: nx.DiGraph, min_coupling: int = 10
-    ) -> List[Tuple[str, str, int]]:
-        """Find high-coupling boundaries between modules.
-
-        Returns list of (module_a, module_b, coupling_count)
-        """
-        seams = defaultdict(int)
-
-        for source, target, data in G.edges(data=True):
-            # Extract file path from node id (format: type:/path/file:func:line)
-            source_file = source.split(":")[1] if ":" in source else source
-            target_file = target.split(":")[1] if ":" in target else target
-
-            if source_file != target_file:
-                pair = tuple(sorted([source_file, target_file]))
-                seams[pair] += 1
-
-        # Filter by minimum coupling
-        return [
-            (a, b, count)
-            for (a, b), count in seams.items()
-            if count >= min_coupling
-        ]
-
-    def get_call_paths(
-        self, G: nx.DiGraph, start: str, end: str, max_length: int = 10
-    ) -> List[List[str]]:
-        """Find all call paths between two nodes."""
-        try:
-            paths = nx.all_simple_paths(G, start, end, cutoff=max_length)
-            return list(paths)
-        except nx.NetworkXNoPath:
-            return []
-
-    async def query_cypher_resource(self, resource_name: str, **params) -> List[Dict[str, Any]]:
-        """Execute a pre-built MCP Cypher resource.
-
-        Args:
-            resource_name: Name of resource (e.g., "entry-to-db-paths")
-            **params: Query parameters
-        """
-        resp = await self.api_client.get(
-            f"/api/resources/cypher/{resource_name}", params=params
-        )
-        return resp.json().get("results", [])
-
-
-# Context manager for easy notebook usage
-class GraphAnalysis:
-    """Context manager for graph analysis sessions."""
-
-    def __init__(
+    async def get_nodes_dataframe(
         self,
-        redis_url: str = None,
-        memgraph_url: str = None,
-        api_url: str = None,
-    ):
-        self.client = GraphDataClient(redis_url, memgraph_url, api_url)
-        self.graph = None
+        exclude_stdlib: bool = True,
+        exclude_tests: bool = True,
+    ) -> pd.DataFrame:
+        """Get nodes as a pandas DataFrame."""
+        data = await self.export_graph(
+            exclude_stdlib=exclude_stdlib,
+            exclude_tests=exclude_tests,
+        )
+        nodes = data.get("nodes", [])
+        if not nodes:
+            return pd.DataFrame()
+        return pd.DataFrame(nodes)
 
-    async def __aenter__(self):
-        await self.client.connect()
-        return self
+    async def get_links_dataframe(
+        self,
+        exclude_stdlib: bool = True,
+        exclude_tests: bool = True,
+    ) -> pd.DataFrame:
+        """Get links/edges as a pandas DataFrame."""
+        data = await self.export_graph(
+            exclude_stdlib=exclude_stdlib,
+            exclude_tests=exclude_tests,
+        )
+        links = data.get("links", [])
+        if not links:
+            return pd.DataFrame()
+        return pd.DataFrame(links)
 
-    async def __aexit__(self, *args):
-        if self.graph:
-            del self.graph
-        await self.client.close()
 
-    async def load_graph(self) -> nx.DiGraph:
-        """Load full graph."""
-        self.graph = await self.client.build_networkx_graph()
-        return self.graph
+# Backward compatibility alias
+GraphDataClient = GraphClient

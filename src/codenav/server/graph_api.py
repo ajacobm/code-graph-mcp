@@ -692,11 +692,20 @@ def create_graph_api_router(engine: UniversalAnalysisEngine) -> APIRouter:
         limit: int = Query(10000, ge=1, le=50000),
         include_metadata: bool = Query(True),
         language: Optional[str] = Query(None, description="Filter by programming language"),
-        node_type: Optional[str] = Query(None, description="Filter by node type (function, class, etc)")
+        node_type: Optional[str] = Query(None, description="Filter by node type (function, class, etc)"),
+        exclude_stdlib: bool = Query(True, description="Exclude standard library imports"),
+        exclude_tests: bool = Query(True, description="Exclude test files and directories"),
+        include_private: bool = Query(True, description="Include private symbols (_prefix)"),
+        include_dunder: bool = Query(True, description="Include Python dunder methods (__x__)"),
     ):
         """
         Export full graph for force-directed visualization.
-        Returns all nodes and relationships in a format optimized for force-graph rendering.
+        
+        Advanced filters:
+        - exclude_stdlib: Filter out standard library imports (default: True)
+        - exclude_tests: Filter out test files and directories (default: True)  
+        - include_private: Include private symbols like _helper (default: True)
+        - include_dunder: Include Python dunder methods like __init__ (default: True)
         """
         try:
             if not engine or not engine.analyzer or not engine.analyzer.graph:
@@ -705,11 +714,58 @@ def create_graph_api_router(engine: UniversalAnalysisEngine) -> APIRouter:
             start_time = time.time()
             graph = engine.analyzer.graph
             
-            # Collect nodes with optional filtering
+            # Collect nodes with filtering and stats
             nodes_output = []
             node_id_set = set()
+            filter_stats = {
+                "total_processed": 0,
+                "filtered_by_language": 0,
+                "filtered_by_type": 0,
+                "filtered_by_tests": 0,
+                "filtered_by_stdlib": 0,
+                "filtered_by_visibility": 0,
+            }
             
             for node_id, node in list(graph.nodes.items())[:limit]:
+                filter_stats["total_processed"] += 1
+                
+                # Language filter
+                node_language = getattr(node, 'language', '')
+                if language and node_language != language:
+                    filter_stats["filtered_by_language"] += 1
+                    continue
+                
+                # Node type filter
+                ntype = getattr(node, 'node_type', '')
+                ntype_str = ntype.value if hasattr(ntype, 'value') else str(ntype)
+                if node_type and ntype_str != node_type:
+                    filter_stats["filtered_by_type"] += 1
+                    continue
+                
+                # Test file filter
+                if exclude_tests:
+                    location = getattr(node, 'location', None)
+                    if location and is_test_file(location.file_path):
+                        filter_stats["filtered_by_tests"] += 1
+                        continue
+                
+                # Stdlib import filter
+                if exclude_stdlib and ntype_str == 'import':
+                    node_name = getattr(node, 'name', '')
+                    module_root = node_name.split('.')[0] if node_name else ''
+                    if module_root in STDLIB_MODULES:
+                        filter_stats["filtered_by_stdlib"] += 1
+                        continue
+                
+                # Visibility filter
+                node_name = getattr(node, 'name', '')
+                if not VisibilityFilter.should_include(
+                    node_name, node_language,
+                    include_private=include_private,
+                    include_dunder=include_dunder
+                ):
+                    filter_stats["filtered_by_visibility"] += 1
+                    continue
                 # Apply filters
                 if language and getattr(node, 'language', '') != language:
                     continue
@@ -782,6 +838,7 @@ def create_graph_api_router(engine: UniversalAnalysisEngine) -> APIRouter:
                     "languages": languages,
                     "nodeTypes": node_types,
                     "avgComplexity": sum(n.get("complexity", 0) for n in nodes_output) / max(len(nodes_output), 1),
+                    "filterStats": filter_stats,
                 },
                 "execution_time_ms": (time.time() - start_time) * 1000
             }

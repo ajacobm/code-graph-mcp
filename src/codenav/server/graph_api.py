@@ -5,6 +5,7 @@ FastAPI routes for graph traversal, search, and analysis endpoints.
 """
 
 import logging
+import os
 import time
 from typing import Optional, Dict, Any
 
@@ -38,8 +39,7 @@ STDLIB_MODULES = {
     'statistics', 'math', 'random', 'secrets', 'string', 'textwrap', 'fnmatch',
     'glob', 'struct', 'codecs', 'pickle', 'shelve', 'sqlite3', 'dbm',
     'configparser', 'argparse', 'getopt', 'optparse', 'pprint', 'reprlib',
-    'pytest', 'pytest_asyncio', 'unittest', 'doctest', 'mock',
-    'typing_extensions', 'types',
+    'unittest', 'doctest', 'types',
 }
 
 # Test path patterns for directory detection
@@ -88,7 +88,7 @@ def is_test_file(file_path: str) -> bool:
     for pattern in TEST_PATH_PATTERNS:
         if pattern in path_lower:
             return True
-    file_name = path_lower.split('/')[-1] if '/' in path_lower else path_lower
+    file_name = os.path.basename(path_lower)
     for pattern in TEST_FILE_PATTERNS:
         if pattern in file_name:
             return True

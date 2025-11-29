@@ -1,69 +1,41 @@
-# Docker Compose: Only backend services (for local frontend development)
-# Use this when you want to run frontend locally with npm/vite but backend in Docker
+# Backend-Only Profile
+# Use when developing frontend locally with npm/vite
+# Backend services run in Docker, frontend runs on host
+#
+# Usage:
+#   docker-compose -f docker-compose.yml -f profiles/backend-only.yml up -d
+#   # Then run frontend locally: cd frontend && npm run dev
+#
+# This disables: frontend, jupyter, memgraph
+# Uses GHCR images for quick startup (no build required)
 
 services:
-  redis:
-    image: redis:alpine
-    container_name: codegraph-redis-backend-only
-    ports:
-      - "6379:6379"
-    volumes:
-      - /workspace/.redis-data:/data
-    command: redis-server --appendonly yes
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-    networks:
-      - codegraph
-
+  # Override with GHCR images for faster startup
   codenav-mcp:
     image: ghcr.io/ajacobm/codenav:sse-latest
-    container_name: codegraph-sse-backend-only
-    ports:
-      - "8000:8000"
-    volumes:
-      - /workspace:/workspace
+    build: !reset null
     environment:
       - CODENAV_LOG_LEVEL=INFO
       - REDIS_URL=redis://redis:6379
-      # Enable CORS for local frontend development
-      - CORS_ORIGINS=http://localhost:5173,http://localhost:5174
-    depends_on:
-      redis:
-        condition: service_healthy
-    command: >
-      codenav
-      --mode sse
-      --host 0.0.0.0
-      --port 8000
-      --enable-cache
-      --redis-url redis://redis:6379
-    restart: unless-stopped
-    networks:
-      - codegraph
+      - CORS_ORIGINS=http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173
 
   codenav-web:
     image: ghcr.io/ajacobm/codenav:http-latest
-    container_name: codegraph-http-backend-only
-    ports:
-      - "10101:8000"
-    volumes:
-      - /workspace:/workspace
+    build: !reset null
     environment:
       - CODENAV_LOG_LEVEL=INFO
       - REDIS_URL=redis://redis:6379
-      # Enable CORS for local frontend development
-      - CORS_ORIGINS=http://localhost:5173,http://localhost:5174
-    depends_on:
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - codegraph
+      - CORS_ORIGINS=http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173
 
-networks:
-  codegraph:
-    driver: bridge
+  # Disable services not needed for backend-only mode by putting them in unused profile
+  frontend:
+    profiles:
+      - disabled
+
+  memgraph:
+    profiles:
+      - disabled
+
+  jupyter:
+    profiles:
+      - disabled

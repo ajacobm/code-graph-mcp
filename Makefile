@@ -1,46 +1,28 @@
-.PHONY: help dev-up dev-down dev-logs test-up test-down backend-up backend-down codespaces-up codespaces-down ghcr-up ghcr-down clean rebuild lint test
+.PHONY: help dev-up dev-down dev-logs backend-up backend-down codespaces-up codespaces-down ghcr-up ghcr-down clean rebuild lint test
 
+# Docker Compose configurations
 COMPOSE_BASE := docker-compose -f infrastructure/docker-compose.yml
-COMPOSE_TEST := $(COMPOSE_BASE) -f infrastructure/profiles/test.yml
 COMPOSE_BACKEND := $(COMPOSE_BASE) -f infrastructure/profiles/backend-only.yml
 COMPOSE_CODESPACES := $(COMPOSE_BASE) -f infrastructure/profiles/codespaces.yml
 COMPOSE_GHCR := $(COMPOSE_BASE) -f infrastructure/profiles/ghcr.yml
-COMPOSE_MULTI := $(COMPOSE_BASE) -f infrastructure/profiles/multi.yml
-COMPOSE_VALIDATION := $(COMPOSE_BASE) -f infrastructure/profiles/validation.yml
 
 help:
 	@echo "CodeNavigator (codenav) - Make Targets"
 	@echo ""
-	@echo "Development:"
-	@echo "  make dev-up           - Start development stack (Redis, Memgraph, API, Jupyter)"
+	@echo "Docker Compose Stacks:"
+	@echo "  make dev-up           - Full development stack (Redis, Memgraph, API, Jupyter, Frontend)"
 	@echo "  make dev-down         - Stop development stack"
-	@echo "  make dev-logs         - View development logs (follow)"
+	@echo "  make dev-logs         - View development logs"
 	@echo "  make dev-status       - Show container status"
 	@echo ""
-	@echo "Testing:"
-	@echo "  make test-up          - Start testing environment"
-	@echo "  make test-down        - Stop testing environment"
-	@echo "  make test-logs        - View test logs"
-	@echo ""
-	@echo "Backend Only (Frontend Dev):"
-	@echo "  make backend-up       - Start backend services only"
+	@echo "  make backend-up       - Backend only (for local frontend dev with npm)"
 	@echo "  make backend-down     - Stop backend services"
 	@echo ""
-	@echo "GitHub Codespaces:"
-	@echo "  make codespaces-up    - Start Codespaces stack"
+	@echo "  make codespaces-up    - Codespaces stack (builds from source, includes frontend)"
 	@echo "  make codespaces-down  - Stop Codespaces stack"
 	@echo ""
-	@echo "GHCR/Registry:"
-	@echo "  make ghcr-up          - Start with GHCR configuration"
+	@echo "  make ghcr-up          - GHCR images (pre-built production test)"
 	@echo "  make ghcr-down        - Stop GHCR stack"
-	@echo ""
-	@echo "Multi-Service:"
-	@echo "  make multi-up         - Start extended services"
-	@echo "  make multi-down       - Stop extended services"
-	@echo ""
-	@echo "CI/Validation:"
-	@echo "  make validation-up    - Start validation environment"
-	@echo "  make validation-down  - Stop validation environment"
 	@echo ""
 	@echo "Infrastructure:"
 	@echo "  make clean            - Remove all containers and volumes"
@@ -56,10 +38,19 @@ help:
 	@echo "  make test-coverage    - Run pytest with coverage"
 	@echo ""
 
-# Development Targets
+# =============================================================================
+# Full Development Stack (all services)
+# =============================================================================
+
 dev-up:
 	$(COMPOSE_BASE) up -d
-	@echo "✅ Development stack started"
+	@echo "✅ Full development stack started"
+	@echo "   - Redis:     localhost:6379"
+	@echo "   - SSE/MCP:   localhost:8000"
+	@echo "   - HTTP API:  localhost:10101"
+	@echo "   - Frontend:  localhost:5173"
+	@echo "   - Memgraph:  localhost:7687 (Lab: localhost:3000)"
+	@echo "   - Jupyter:   localhost:8888"
 
 dev-down:
 	$(COMPOSE_BASE) down
@@ -74,25 +65,20 @@ dev-status:
 dev-shell:
 	$(COMPOSE_BASE) exec codenav-web bash
 
-# Testing Targets
-test-up:
-	$(COMPOSE_TEST) up -d
-	@echo "✅ Testing environment started"
+# With monitoring (Redis Insight)
+dev-monitoring:
+	$(COMPOSE_BASE) --profile monitoring up -d
+	@echo "✅ Development stack with monitoring started"
+	@echo "   - Redis Insight: localhost:5540"
 
-test-down:
-	$(COMPOSE_TEST) down
-	@echo "✅ Testing environment stopped"
+# =============================================================================
+# Backend Only (for local frontend development)
+# =============================================================================
 
-test-logs:
-	$(COMPOSE_TEST) logs -f
-
-test-shell:
-	$(COMPOSE_TEST) exec codenav-web bash
-
-# Backend Only (Frontend Dev) Targets
 backend-up:
 	$(COMPOSE_BACKEND) up -d
-	@echo "✅ Backend services started (frontend dev mode)"
+	@echo "✅ Backend services started"
+	@echo "   Run frontend locally: cd frontend && npm run dev"
 
 backend-down:
 	$(COMPOSE_BACKEND) down
@@ -101,12 +87,12 @@ backend-down:
 backend-logs:
 	$(COMPOSE_BACKEND) logs -f
 
-backend-shell:
-	$(COMPOSE_BACKEND) exec codenav-web bash
+# =============================================================================
+# GitHub Codespaces
+# =============================================================================
 
-# GitHub Codespaces Targets
 codespaces-up:
-	$(COMPOSE_CODESPACES) up -d
+	$(COMPOSE_CODESPACES) up -d --build
 	@echo "✅ Codespaces stack started"
 
 codespaces-down:
@@ -116,10 +102,13 @@ codespaces-down:
 codespaces-logs:
 	$(COMPOSE_CODESPACES) logs -f
 
-# GHCR Targets
+# =============================================================================
+# GHCR Pre-built Images
+# =============================================================================
+
 ghcr-up:
 	$(COMPOSE_GHCR) up -d
-	@echo "✅ GHCR stack started"
+	@echo "✅ GHCR stack started (using pre-built images)"
 
 ghcr-down:
 	$(COMPOSE_GHCR) down
@@ -128,30 +117,16 @@ ghcr-down:
 ghcr-logs:
 	$(COMPOSE_GHCR) logs -f
 
-# Multi-Service Targets
-multi-up:
-	$(COMPOSE_MULTI) up -d
-	@echo "✅ Multi-service stack started"
+ghcr-pull:
+	$(COMPOSE_GHCR) pull
+	@echo "✅ GHCR images pulled"
 
-multi-down:
-	$(COMPOSE_MULTI) down
-	@echo "✅ Multi-service stack stopped"
+# =============================================================================
+# Infrastructure Management
+# =============================================================================
 
-# CI/Validation Targets
-validation-up:
-	$(COMPOSE_VALIDATION) up -d
-	@echo "✅ Validation environment started"
-
-validation-down:
-	$(COMPOSE_VALIDATION) down
-	@echo "✅ Validation environment stopped"
-
-validation-logs:
-	$(COMPOSE_VALIDATION) logs -f
-
-# Cleanup Targets
 clean:
-	$(COMPOSE_BASE) down -v
+	$(COMPOSE_BASE) down -v --remove-orphans
 	@echo "✅ All containers and volumes removed"
 
 rebuild:
@@ -161,32 +136,39 @@ rebuild:
 ps:
 	$(COMPOSE_BASE) ps
 
-# Code Quality Targets
+# =============================================================================
+# Code Quality
+# =============================================================================
+
 lint:
-	python -m pylint src/codenav --exit-zero
+	uv run ruff check src/ tests/
 	@echo "✅ Linting complete"
 
 format:
-	python -m black src/ tests/
-	python -m isort src/ tests/
+	uv run ruff format src/ tests/
 	@echo "✅ Code formatted"
 
-# Testing Targets
+# =============================================================================
+# Testing
+# =============================================================================
+
 test:
-	python -m pytest tests/ -v
+	uv run pytest tests/ -v
 
 test-coverage:
-	python -m pytest tests/ --cov=src --cov-report=html
+	uv run pytest tests/ --cov=src --cov-report=html
 	@echo "✅ Coverage report: htmlcov/index.html"
 
 test-watch:
-	python -m pytest tests/ -v --looponfail
+	uv run pytest tests/ -v --looponfail
 
-# Shorthand aliases
+# =============================================================================
+# Aliases
+# =============================================================================
+
 up: dev-up
 down: dev-down
 logs: dev-logs
 status: dev-status
-rebuild-all: rebuild
 
 .DEFAULT_GOAL := help

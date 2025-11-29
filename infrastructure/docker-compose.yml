@@ -1,19 +1,32 @@
+# CodeNav Docker Compose - Full Development Stack
+# This is the baseline configuration that runs ALL facilities
+# For specialized use cases, overlay with profiles/*.yml
+#
+# Usage:
+#   docker-compose up -d                    # Full stack
+#   docker-compose --profile monitoring up  # With Redis Insight
+#
+# Profiles overlay (from infrastructure/):
+#   docker-compose -f docker-compose.yml -f profiles/backend-only.yml up -d
+#   docker-compose -f docker-compose.yml -f profiles/codespaces.yml up -d
+#   docker-compose -f docker-compose.yml -f profiles/ghcr.yml up -d
+
 volumes:
   redis-data:
   memgraph-data:
-  repo-mount:
 
-# Environment defaults for local development
-# Override with .env file or environment variables for non-Codespaces setup
-# Example .env:
-#   REPO_MOUNT_PATH=/path/to/repo
-#   REDIS_DATA_PATH=/path/to/redis-data
-#   MEMGRAPH_DATA_PATH=/path/to/memgraph-data
+networks:
+  codenav:
+    driver: bridge
 
 services:
-  # Redis cache service
+  # ============================================
+  # Core Infrastructure
+  # ============================================
+  
   redis:
     image: redis:alpine
+    container_name: codenav-redis
     ports:
       - "6379:6379"
     volumes:
@@ -22,34 +35,43 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
+      interval: 10s
+      timeout: 5s
       retries: 3
+    networks:
+      - codenav
 
+  # ============================================
+  # Backend Services
+  # ============================================
+
+  # SSE mode - MCP server with HTTP streaming (streamableHttp transport)
+  # Primary interface for AI agents/tools
   codenav-mcp:
     build:
       context: ..
       dockerfile: ./Dockerfile
       target: sse
+    container_name: codenav-sse
     ports:
-      - "10101:8000"
+      - "8000:8000"
     volumes:
-      - ".:/app"  # Mount entire project for development
-      - repo-mount:/app/workspace  # Mount workspace
+      - ${CODENAV_WORKSPACE:-..}:/app/workspace:ro
     environment:
-      - CODENAV_LOG_LEVEL=DEBUG
-      - CODENAV_FILE_WATCHER=true
+      - CODENAV_LOG_LEVEL=${CODENAV_LOG_LEVEL:-INFO}
+      - CODENAV_FILE_WATCHER=${CODENAV_FILE_WATCHER:-false}
       - REDIS_URL=redis://redis:6379
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     command: >
-      uv run codenav
+      codenav
       --mode sse
-      --redis-url redis://redis:6379
-      --project-root /app/workspace
       --host 0.0.0.0
       --port 8000
-      --verbose
+      --enable-cache
+      --redis-url redis://redis:6379
+      --project-root /app/workspace
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
@@ -57,13 +79,133 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - codenav
 
-  # Redis monitoring (optional)
-  redis-insight:
-    image: redislabs/redisinsight:latest
+  # HTTP mode - FastAPI REST server for frontend and integrations
+  codenav-web:
+    build:
+      context: ..
+      dockerfile: ./Dockerfile
+      target: http
+    container_name: codenav-http
     ports:
-      - "8001:8001"
+      - "10101:8000"
+    volumes:
+      - ${CODENAV_WORKSPACE:-..}:/app/workspace:ro
+    environment:
+      - CODENAV_LOG_LEVEL=${CODENAV_LOG_LEVEL:-INFO}
+      - REDIS_URL=redis://redis:6379
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173,http://localhost:5174}
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: >
+      codenav-web
+      --host 0.0.0.0
+      --port 8000
+      --redis-url redis://redis:6379
+      --project-root /app/workspace
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - codenav
+
+  # ============================================
+  # Frontend
+  # ============================================
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: codenav-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:10101
+    depends_on:
+      - codenav-web
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5173"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - codenav
+
+  # ============================================
+  # Data Science & Analysis
+  # ============================================
+
+  # Memgraph - Graph database for complex Cypher queries
+  memgraph:
+    image: memgraph/memgraph-platform:latest
+    container_name: codenav-memgraph
+    ports:
+      - "7687:7687"  # Bolt protocol
+      - "3000:3000"  # Memgraph Lab UI
+    volumes:
+      - memgraph-data:/var/lib/memgraph
+    environment:
+      - MEMGRAPH_LOG_LEVEL=WARNING
+    command: ["--stream-enabled=true"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'RETURN 1;' | mgconsole || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - codenav
+
+  # Jupyter Data Science Notebook
+  jupyter:
+    image: quay.io/jupyter/scipy-notebook:latest
+    container_name: codenav-jupyter
+    ports:
+      - "8888:8888"
+    volumes:
+      - ../notebooks:/home/jovyan/work
+      - ${CODENAV_WORKSPACE:-..}:/home/jovyan/workspace:ro
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - MEMGRAPH_URL=bolt://memgraph:7687
+      - BACKEND_API_URL=http://codenav-web:8000
+      - JUPYTER_ENABLE_LAB=yes
     depends_on:
       - redis
+      - memgraph
+      - codenav-web
+    restart: unless-stopped
+    command: start-notebook.sh --ip=0.0.0.0 --NotebookApp.token='' --NotebookApp.password=''
+    networks:
+      - codenav
+
+  # ============================================
+  # Monitoring (Optional - use --profile monitoring)
+  # ============================================
+
+  redis-insight:
+    image: redislabs/redisinsight:latest
+    container_name: codenav-redis-insight
+    ports:
+      - "5540:5540"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - codenav
     profiles:
       - monitoring

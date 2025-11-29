@@ -1,281 +1,149 @@
 # Infrastructure & Docker Compose Configuration
 
-This directory contains all Docker Compose configurations and related infrastructure files.
+This directory contains Docker Compose configurations for CodeNav development.
 
 ## Quick Start
 
 ```bash
-# Development (default, includes everything)
+# Full development stack (everything)
 make dev-up
 
-# Testing
-make test-up
-
-# Backend only (frontend dev)
+# Backend only (for local frontend dev with npm)
 make backend-up
 
 # GitHub Codespaces
 make codespaces-up
 
-# Production with GHCR
+# Test GHCR production images
 make ghcr-up
 ```
 
-## Compose Files Organization
+## Docker Compose Structure
 
-### Base Configuration
+### Base Configuration (`docker-compose.yml`)
 
-**`docker-compose.yml`** - Production-ready base configuration
-- Redis, Memgraph, Backend API, Jupyter
-- Standard networking and volume setup
-- Health checks on all services
-- **Use this**: As the foundation for all deployments
+The root compose file runs **all facilities**:
 
-### Profiles (Variants)
-
-Located in `profiles/` directory. Each adds specific services or configuration overrides:
-
-| Profile | Purpose | Command |
-|---------|---------|---------|
-| **test.yml** | pytest/testing environment | `docker-compose -f docker-compose.yml -f profiles/test.yml up` |
-| **codespaces.yml** | GitHub Codespaces optimizations | `docker-compose -f docker-compose.yml -f profiles/codespaces.yml up` |
-| **backend-only.yml** | Backend services only (for local frontend dev) | `docker-compose -f docker-compose.yml -f profiles/backend-only.yml up` |
-| **ghcr.yml** | GHCR image registry integration | `docker-compose -f docker-compose.yml -f profiles/ghcr.yml up` |
-| **multi.yml** | Extended multi-service setup | `docker-compose -f docker-compose.yml -f profiles/multi.yml up` |
-| **validation.yml** | CI/CD validation environment | `docker-compose -f docker-compose.yml -f profiles/validation.yml up` |
-| **sample.yml** | Example/reference configuration | `docker-compose -f docker-compose.yml -f profiles/sample.yml up` |
-
-## Using Compose Profiles
-
-### Option 1: Make Commands (Recommended)
-
-Use the Makefile from the root directory:
+| Service | Port | Description |
+|---------|------|-------------|
+| `redis` | 6379 | Cache and session storage |
+| `codenav-mcp` | 8000 | SSE/MCP server for AI agents |
+| `codenav-web` | 10101 | HTTP REST API for frontend |
+| `frontend` | 5173 | Vue.js development server |
+| `memgraph` | 7687, 3000 | Graph database + Lab UI |
+| `jupyter` | 8888 | Data science notebooks |
+| `redis-insight` | 5540 | Redis monitoring (optional) |
 
 ```bash
-make dev-up          # Start development stack
-make dev-down        # Stop development stack
-make dev-logs        # View logs
-make test-up         # Start testing environment
-make backend-up      # Backend only
-make codespaces-up   # Codespaces variant
-make clean           # Remove all containers/volumes
+# Start full stack
+docker-compose -f infrastructure/docker-compose.yml up -d
+
+# With Redis monitoring
+docker-compose -f infrastructure/docker-compose.yml --profile monitoring up -d
 ```
 
-### Option 2: Direct Docker Compose Commands
+### Profiles (Overlay Configurations)
+
+Located in `profiles/` directory. Each modifies the base for specific use cases:
+
+| Profile | Purpose | Use Case |
+|---------|---------|----------|
+| `backend-only.yml` | Redis + backend services only | Local frontend dev with `npm run dev` |
+| `codespaces.yml` | GitHub Codespaces optimized | Dev in Codespaces with Playwright testing |
+| `ghcr.yml` | Pre-built GHCR images | Test production builds without building |
 
 ```bash
-# Development (base only)
-docker-compose -f docker-compose.yml up -d
-
-# With test profile
-docker-compose -f docker-compose.yml -f profiles/test.yml up -d
-
-# With backend-only profile
-docker-compose -f docker-compose.yml -f profiles/backend-only.yml up -d
-
-# View logs
-docker-compose -f docker-compose.yml logs -f code-graph-http
-
-# Bring down
-docker-compose -f docker-compose.yml down
+# Example: Backend only
+docker-compose -f infrastructure/docker-compose.yml \
+               -f infrastructure/profiles/backend-only.yml up -d
 ```
 
-### Option 3: Shell Aliases
+## Profile Details
 
-Add to your `.bashrc` or `.zshrc`:
+### Backend-Only (`profiles/backend-only.yml`)
+
+For developing the frontend locally while backend runs in Docker:
+
+- Uses GHCR images (no build required, fast startup)
+- Enables CORS for `localhost:5173` and `localhost:5174`
+- Disables: frontend, memgraph, jupyter
 
 ```bash
-alias dc='docker-compose -f infrastructure/docker-compose.yml'
-alias dctest='docker-compose -f infrastructure/docker-compose.yml -f infrastructure/profiles/test.yml'
-alias dcback='docker-compose -f infrastructure/docker-compose.yml -f infrastructure/profiles/backend-only.yml'
-alias dcspaces='docker-compose -f infrastructure/docker-compose.yml -f infrastructure/profiles/codespaces.yml'
+make backend-up
+cd frontend && npm run dev  # Run frontend locally
 ```
 
-Then:
-```bash
-dc up -d
-dctest up -d
-dcback up -d
-```
+### Codespaces (`profiles/codespaces.yml`)
 
-## Environment Configuration
+Optimized for GitHub Codespaces development:
 
-### Default Behavior (Codespaces)
-
-By default, all services use Docker volumes (not bind mounts):
-
-- `redis-data` - Redis persistence
-- `memgraph-data` - Memgraph persistence
-- `repo-mount` - Project repository mount
-
-This is optimal for Codespaces and CI/CD environments.
-
-### Local Development Overrides
-
-For local development with persistent storage, create `docker-compose.override.yml`:
+- Builds from source (development target)
+- Includes frontend for Playwright testing
+- Uses `/workspace` mount paths
+- Disables heavy services (memgraph, jupyter) to save resources
 
 ```bash
-# Copy the example
-cp docker-compose.override.yml.example docker-compose.override.yml
-
-# Edit and add your bind mounts
-nano docker-compose.override.yml
+make codespaces-up
 ```
 
-Example for local Linux development:
+### GHCR (`profiles/ghcr.yml`)
 
-```yaml
-services:
-  redis:
-    volumes:
-      - ~/redis-data:/data
+Tests pre-built production images from GitHub Container Registry:
 
-  code-graph-sse:
-    volumes:
-      - ~/code/codenav:/app
-      - ~/code/codenav:/app/workspace
-
-  memgraph:
-    volumes:
-      - ~/memgraph-data:/var/lib/memgraph
-```
-
-Example for Windows (WSL2):
-
-```yaml
-services:
-  redis:
-    volumes:
-      - /mnt/c/Users/ADAM/.redis-docker/codegraphmcp:/data
-
-  code-graph-sse:
-    volumes:
-      - /mnt/c/Users/ADAM/GitHub/codenav:/app
-      - /mnt/c/Users/ADAM/GitHub/codenav:/app/workspace
-
-  memgraph:
-    volumes:
-      - /mnt/c/Users/ADAM/.memgraph-docker/codegraphmcp:/var/lib/memgraph
-```
-
-**Note**: Docker Compose automatically loads `docker-compose.override.yml` if it exists in the same directory as `docker-compose.yml`. This allows you to customize settings without modifying the base configuration.
-
-### Service Configuration Variables
-
-Configure services via environment variables in `.env`:
+- No building required
+- Uses `ghcr.io/ajacobm/codenav:*` images
+- Includes frontend (also from GHCR)
+- Disables: memgraph, jupyter
 
 ```bash
-# Copy the example
-cp .env.example .env
-
-# Edit as needed
-nano .env
+docker login ghcr.io  # Authenticate first
+make ghcr-up
 ```
-
-Available variables (see `.env.example` for complete list):
-
-```bash
-# Volume paths (for bind mounts)
-REPO_MOUNT_PATH=
-REDIS_DATA_PATH=
-MEMGRAPH_DATA_PATH=
-
-# Service ports
-REDIS_PORT=6379
-MEMGRAPH_PORT=7687
-API_SSE_PORT=10101
-API_HTTP_PORT=10102
-
-# Service configuration
-API_LOG_LEVEL=DEBUG
-REDIS_PERSISTENCE=yes
-MEMGRAPH_MEMORY_LIMIT=1g
-```## Service Details
-
-### Base Services (Always Available)
-
-- **redis** (port 6379) - Cache and event streaming
-- **memgraph** (port 7687) - Graph database
-- **code-graph-http** (port 8000) - Backend HTTP API
-- **jupyter** (port 8888) - Jupyter notebook environment
-
-### Optional Services (Depends on Profile)
-
-- **test-db** - Isolated test database instance
-- **test-api** - Test-specific API configuration
-- Additional services per profile
-
-## Health Checks
-
-All services include health checks. Verify startup:
-
-```bash
-docker-compose -f docker-compose.yml ps
-```
-
-Expected output:
-
-```text
-NAME                  STATE              HEALTH
-redis                 Up 2 minutes       (healthy)
-memgraph              Up 2 minutes       (healthy)
-code-graph-http       Up 1 minute        (healthy)
-jupyter               Up 1 minute
-```
-
-## Volume Mounts
-
-### Standard Volumes
-
-```yaml
-repo-mount:          # Your codebase
-redis-data:          # Redis persistence
-memgraph-data:       # Memgraph persistence
-```
-
-### Custom Volumes (Profile-Specific)
-
-Some profiles may add additional volumes. Check individual profile files for details.
 
 ## Environment Variables
 
-### Core Variables (set in compose files)
+Configure via environment or `.env` file:
 
 ```bash
-REDIS_URL=redis://redis:6379
-MEMGRAPH_URL=bolt://memgraph:7687
-BACKEND_API_URL=http://code-graph-http:8000
+# Workspace path (mounted into containers)
+CODENAV_WORKSPACE=/path/to/your/repo
+
+# Log level
+CODENAV_LOG_LEVEL=DEBUG
+
+# CORS origins for local development
+CORS_ORIGINS=http://localhost:5173,http://localhost:5174
 ```
 
-### Override Variables (`.env` file)
-
-Create `infrastructure/.env` to override defaults:
+## Makefile Targets
 
 ```bash
-REDIS_PORT=6379
-MEMGRAPH_PORT=7687
-LOG_LEVEL=DEBUG
-```
+make help              # Show all targets
 
-## Dockerfile Integration
+# Full development
+make dev-up            # Start full stack
+make dev-down          # Stop
+make dev-logs          # Follow logs
+make dev-status        # Show container status
+make dev-monitoring    # With Redis Insight
 
-The `Dockerfile` in the root directory supports multi-stage builds:
+# Backend only
+make backend-up        # Start backend only
+make backend-down      # Stop
 
-```dockerfile
-FROM python:3.12-slim AS base
-FROM base AS development
-FROM base AS production
-FROM base AS sse
-FROM base AS http
-```
+# Codespaces
+make codespaces-up     # Start Codespaces stack
+make codespaces-down   # Stop
 
-Compose files reference these via the `target` field:
+# GHCR
+make ghcr-up           # Start with GHCR images
+make ghcr-down         # Stop
+make ghcr-pull         # Pull latest images
 
-```yaml
-code-graph-http:
-  build:
-    context: .
-    target: http
+# Infrastructure
+make clean             # Remove all containers and volumes
+make rebuild           # Rebuild all images
+make ps                # Show running containers
 ```
 
 ## Common Tasks
@@ -283,86 +151,52 @@ code-graph-http:
 ### View logs for a specific service
 
 ```bash
-docker-compose -f docker-compose.yml logs -f memgraph
-```
-
-### Scale a service
-
-```bash
-docker-compose -f docker-compose.yml up -d --scale jupyter=2
-```
-
-### Run a one-off command
-
-```bash
-docker-compose -f docker-compose.yml run redis redis-cli ping
-```
-
-### Rebuild images
-
-```bash
-docker-compose -f docker-compose.yml build --no-cache
+docker-compose -f infrastructure/docker-compose.yml logs -f codenav-web
 ```
 
 ### Access service shell
 
 ```bash
-docker-compose -f docker-compose.yml exec code-graph-http bash
+docker-compose -f infrastructure/docker-compose.yml exec codenav-web bash
 ```
 
-### Clean everything
+### Rebuild a specific service
 
 ```bash
-docker-compose -f docker-compose.yml down -v
+docker-compose -f infrastructure/docker-compose.yml build --no-cache codenav-mcp
 ```
 
 ## Troubleshooting
 
-### Services fail to start
-
-```bash
-# Check logs
-docker-compose -f docker-compose.yml logs
-
-# Verify health
-docker-compose -f docker-compose.yml ps
-
-# Rebuild from scratch
-docker-compose -f docker-compose.yml down -v
-docker-compose -f docker-compose.yml build --no-cache
-docker-compose -f docker-compose.yml up
-```
-
 ### Port conflicts
 
-If ports 6379, 7687, 8000, or 8888 are already in use:
-
-1. Update the port mappings in `docker-compose.yml`
-2. Or stop conflicting services: `docker ps` → `docker kill <container>`
-
-### Volume mount issues
-
-Check that paths in compose files are correct and exist on your system.
-
-### In GitHub Codespaces
-
-Use the `profiles/codespaces.yml` which has pre-configured paths:
+Check if ports are already in use:
 
 ```bash
-docker-compose -f docker-compose.yml -f profiles/codespaces.yml up
+lsof -i :8000   # SSE server
+lsof -i :10101  # HTTP API
+lsof -i :5173   # Frontend
 ```
 
-## Adding New Profiles
+### Services fail health checks
 
-To create a new profile:
+```bash
+# Check all logs
+make dev-logs
 
-1. Create `infrastructure/profiles/yourprofile.yml`
-2. Include base compose syntax (can be partial overrides)
-3. Add to Makefile: `yourprofile-up`, `yourprofile-down`, etc.
-4. Document in the table above
+# Check specific service
+docker-compose -f infrastructure/docker-compose.yml logs codenav-mcp
+```
+
+### Clean restart
+
+```bash
+make clean      # Remove everything
+make rebuild    # Rebuild images
+make dev-up     # Start fresh
+```
 
 ---
 
-**Last Updated**: November 15, 2025  
-**Branch**: feature/memgraph-integration
+**Last Updated**: November 2025
 

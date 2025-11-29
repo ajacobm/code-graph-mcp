@@ -1,43 +1,33 @@
-# Docker Compose for GitHub Codespaces
-# Uses local volumes and simplified networking
+# Codespaces Profile
+# Optimized for GitHub Codespaces development environment
+# - Builds from source for development
+# - Includes frontend for Playwright testing with Copilot
+# - Uses /workspace mounts (Codespaces convention)
+# - Disables heavy services (memgraph, jupyter) to save resources
+#
+# Usage:
+#   docker-compose -f docker-compose.yml -f profiles/codespaces.yml up -d
 
 services:
-  # Redis cache service
   redis:
-    image: redis:alpine
-    container_name: codegraph-redis
-    ports:
-      - "6379:6379"
+    container_name: codenav-redis-cs
     volumes:
       - /workspace/.redis-data:/data
-    command: redis-server --appendonly yes
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-    networks:
-      - codegraph
 
-  # SSE mode - MCP server with HTTP streaming
+  # Build from source for development
   codenav-mcp:
     build:
-      context: .
+      context: ..
+      dockerfile: ./Dockerfile
       target: development
-    container_name: codegraph-sse
-    ports:
-      - "8000:8000"
+    container_name: codenav-sse-cs
     volumes:
-      - .:/app
-      - /workspace:/workspace
+      - ..:/app
+      - /workspace:/app/workspace
     environment:
       - CODENAV_LOG_LEVEL=DEBUG
       - CODENAV_FILE_WATCHER=true
       - REDIS_URL=redis://redis:6379
-    depends_on:
-      redis:
-        condition: service_healthy
     command: >
       uv run codenav
       --mode sse
@@ -45,57 +35,42 @@ services:
       --port 8000
       --enable-cache
       --redis-url redis://redis:6379
+      --project-root /app/workspace
       --verbose
-    restart: unless-stopped
-    networks:
-      - codegraph
 
-  # HTTP API mode (optional)
   codenav-web:
     build:
-      context: .
+      context: ..
+      dockerfile: ./Dockerfile
       target: development
-    container_name: codegraph-http
-    ports:
-      - "10101:8000"
+    container_name: codenav-http-cs
     volumes:
-      - .:/app
-      - /workspace:/workspace
+      - ..:/app
+      - /workspace:/app/workspace
     environment:
       - CODENAV_LOG_LEVEL=DEBUG
       - REDIS_URL=redis://redis:6379
-    depends_on:
-      redis:
-        condition: service_healthy
     command: >
-      python -m codenav.http_server
+      uv run python -m codenav.http_server
       --host 0.0.0.0
       --port 8000
-    restart: unless-stopped
-    networks:
-      - codegraph
-    profiles:
-      - full
+      --redis-url redis://redis:6379
+      --project-root /app/workspace
 
-  # Frontend Vue.js app
+  # Frontend for Playwright testing
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: codegraph-frontend
-    ports:
-      - "5173:5173"
+    container_name: codenav-frontend-cs
     volumes:
-      - ./frontend:/app
+      - ../frontend:/app
       - /app/node_modules
     environment:
       - VITE_API_URL=http://localhost:10101
-    restart: unless-stopped
-    networks:
-      - codegraph
-    depends_on:
-      - codenav-web
 
-networks:
-  codegraph:
-    driver: bridge
+  # Disable heavy services in Codespaces by putting them in an unused profile
+  memgraph:
+    profiles:
+      - disabled
+
+  jupyter:
+    profiles:
+      - disabled

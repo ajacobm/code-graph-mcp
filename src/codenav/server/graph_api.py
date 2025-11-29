@@ -5,6 +5,7 @@ FastAPI routes for graph traversal, search, and analysis endpoints.
 """
 
 import logging
+import os
 import time
 from typing import Optional, Dict, Any
 
@@ -26,6 +27,72 @@ from ..graph.query_response import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Standard library modules to filter out of graph visualization
+STDLIB_MODULES = {
+    'asyncio', 'logging', 'time', 'json', 'sys', 're', 'os', 'tempfile',
+    'pathlib', 'typing', 'collections', 'functools', 'itertools', 'dataclasses',
+    'abc', 'enum', 'hashlib', 'uuid', 'datetime', 'copy', 'io', 'contextlib',
+    'subprocess', 'shutil', 'traceback', 'warnings', 'inspect', 'ast',
+    'threading', 'concurrent', 'multiprocessing', 'queue', 'socket', 'http',
+    'urllib', 'base64', 'gzip', 'zipfile', 'tarfile', 'csv', 'xml', 'html',
+    'statistics', 'math', 'random', 'secrets', 'string', 'textwrap', 'fnmatch',
+    'glob', 'struct', 'codecs', 'pickle', 'shelve', 'sqlite3', 'dbm',
+    'configparser', 'argparse', 'getopt', 'optparse', 'pprint', 'reprlib',
+    'unittest', 'doctest', 'types',
+}
+
+# Test path patterns for directory detection
+TEST_PATH_PATTERNS = {'/tests/', '/test/', '/_tests/', '/_test/', '/spec/', '/specs/', '/__tests__/', '/quarantine/'}
+# Test file patterns for filename detection
+TEST_FILE_PATTERNS = {'test_', '_test.', '.test.', '.spec.', 'conftest.py', 'pytest.ini'}
+
+
+class VisibilityFilter:
+    """Language-aware visibility filtering for code symbols."""
+    PYTHON_DUNDER = 'dunder'
+    PYTHON_PRIVATE = 'private'
+    PYTHON_MANGLED = 'mangled'
+    
+    @staticmethod
+    def get_python_visibility(name: str) -> str:
+        """Determine visibility level of a Python symbol."""
+        if name.startswith('__') and name.endswith('__'):
+            return VisibilityFilter.PYTHON_DUNDER
+        elif name.startswith('__'):
+            return VisibilityFilter.PYTHON_MANGLED
+        elif name.startswith('_'):
+            return VisibilityFilter.PYTHON_PRIVATE
+        return 'public'
+    
+    @staticmethod
+    def should_include(name: str, language: str, include_private: bool = True, include_dunder: bool = True) -> bool:
+        """Check if a symbol should be included based on visibility settings."""
+        if language == 'Python':
+            visibility = VisibilityFilter.get_python_visibility(name)
+            if visibility == VisibilityFilter.PYTHON_DUNDER and not include_dunder:
+                return False
+            if visibility in (VisibilityFilter.PYTHON_PRIVATE, VisibilityFilter.PYTHON_MANGLED) and not include_private:
+                return False
+        elif language in ('JavaScript', 'TypeScript'):
+            if name.startswith('_') and not include_private:
+                return False
+        return True
+
+
+def is_test_file(file_path: str) -> bool:
+    """Check if a file path indicates a test file."""
+    if not file_path:
+        return False
+    path_lower = file_path.lower()
+    for pattern in TEST_PATH_PATTERNS:
+        if pattern in path_lower:
+            return True
+    file_name = os.path.basename(path_lower)
+    for pattern in TEST_FILE_PATTERNS:
+        if pattern in file_name:
+            return True
+    return False
 
 
 class TraversalQuery(BaseModel):
@@ -692,11 +759,20 @@ def create_graph_api_router(engine: UniversalAnalysisEngine) -> APIRouter:
         limit: int = Query(10000, ge=1, le=50000),
         include_metadata: bool = Query(True),
         language: Optional[str] = Query(None, description="Filter by programming language"),
-        node_type: Optional[str] = Query(None, description="Filter by node type (function, class, etc)")
+        node_type: Optional[str] = Query(None, description="Filter by node type (function, class, etc)"),
+        exclude_stdlib: bool = Query(True, description="Exclude standard library imports"),
+        exclude_tests: bool = Query(True, description="Exclude test files and directories"),
+        include_private: bool = Query(True, description="Include private symbols (_prefix)"),
+        include_dunder: bool = Query(True, description="Include Python dunder methods (__x__)"),
     ):
         """
         Export full graph for force-directed visualization.
-        Returns all nodes and relationships in a format optimized for force-graph rendering.
+        
+        Advanced filters:
+        - exclude_stdlib: Filter out standard library imports (default: True)
+        - exclude_tests: Filter out test files and directories (default: True)  
+        - include_private: Include private symbols like _helper (default: True)
+        - include_dunder: Include Python dunder methods like __init__ (default: True)
         """
         try:
             if not engine or not engine.analyzer or not engine.analyzer.graph:
@@ -705,30 +781,67 @@ def create_graph_api_router(engine: UniversalAnalysisEngine) -> APIRouter:
             start_time = time.time()
             graph = engine.analyzer.graph
             
-            # Collect nodes with optional filtering
+            # Collect nodes with filtering and stats
             nodes_output = []
             node_id_set = set()
+            filter_stats = {
+                "total_processed": 0,
+                "filtered_by_language": 0,
+                "filtered_by_type": 0,
+                "filtered_by_tests": 0,
+                "filtered_by_stdlib": 0,
+                "filtered_by_visibility": 0,
+            }
             
             for node_id, node in list(graph.nodes.items())[:limit]:
-                # Apply filters
-                if language and getattr(node, 'language', '') != language:
+                filter_stats["total_processed"] += 1
+                
+                # Extract node attributes once at the beginning
+                node_language = getattr(node, 'language', '')
+                node_name = getattr(node, 'name', '')
+                location = getattr(node, 'location', None)
+                ntype = getattr(node, 'node_type', '')
+                ntype_str = ntype.value if hasattr(ntype, 'value') else str(ntype)
+                
+                # Language filter
+                if language and node_language != language:
+                    filter_stats["filtered_by_language"] += 1
                     continue
-                if node_type:
-                    ntype = getattr(node, 'node_type', '')
-                    ntype_str = ntype.value if hasattr(ntype, 'value') else str(ntype)
-                    if ntype_str != node_type:
+                
+                # Node type filter
+                if node_type and ntype_str != node_type:
+                    filter_stats["filtered_by_type"] += 1
+                    continue
+                
+                # Test file filter
+                if exclude_tests:
+                    if location and is_test_file(location.file_path):
+                        filter_stats["filtered_by_tests"] += 1
                         continue
                 
+                # Stdlib import filter
+                if exclude_stdlib and ntype_str == 'import':
+                    module_root = node_name.split('.')[0] if node_name else ''
+                    if module_root in STDLIB_MODULES:
+                        filter_stats["filtered_by_stdlib"] += 1
+                        continue
+                
+                # Visibility filter
+                if not VisibilityFilter.should_include(
+                    node_name, node_language,
+                    include_private=include_private,
+                    include_dunder=include_dunder
+                ):
+                    filter_stats["filtered_by_visibility"] += 1
+                    continue
+                
                 node_id_set.add(node_id)
-                location = getattr(node, 'location', None)
-                ntype = getattr(node, 'node_type', 'unknown')
-                ntype_str = ntype.value if hasattr(ntype, 'value') else str(ntype)
                 
                 node_data = {
                     "id": node_id,
-                    "name": getattr(node, 'name', ''),
+                    "name": node_name,
                     "type": ntype_str,
-                    "language": getattr(node, 'language', ''),
+                    "language": node_language,
                     "complexity": getattr(node, 'complexity', 0),
                     "file": location.file_path if location else "",
                     "line": location.start_line if location else 0,
@@ -782,6 +895,7 @@ def create_graph_api_router(engine: UniversalAnalysisEngine) -> APIRouter:
                     "languages": languages,
                     "nodeTypes": node_types,
                     "avgComplexity": sum(n.get("complexity", 0) for n in nodes_output) / max(len(nodes_output), 1),
+                    "filterStats": filter_stats,
                 },
                 "execution_time_ms": (time.time() - start_time) * 1000
             }

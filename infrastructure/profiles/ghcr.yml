@@ -32,7 +32,7 @@ services:
     container_name: codenav-frontend-ghcr
     volumes: !reset []
     environment:
-      - VITE_API_URL=http://localhost:10101
+      - VITE_API_URL=http://localhost:10102
 
   # Disable data science services for GHCR testing
   memgraph:

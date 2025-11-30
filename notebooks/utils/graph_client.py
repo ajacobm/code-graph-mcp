@@ -53,7 +53,7 @@ class GraphClient:
         timeout: int = 30,
     ):
         """Initialize client with API URL from parameter or environment."""
-        self.api_url = api_url or os.getenv("CODENAV_API_URL", "http://localhost:8000")
+        self.api_url = api_url or os.getenv("CODENAV_API_URL", "http://host.docker.internal:10102")
         self.timeout = timeout
         self._client: Optional[httpx.AsyncClient] = None
 

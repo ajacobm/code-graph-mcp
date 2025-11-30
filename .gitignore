@@ -37,3 +37,6 @@ node_modules/
 # Task files
 # tasks.json
 # tasks/ 
+
+# MkDocs build output
+site/

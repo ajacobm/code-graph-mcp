@@ -1,0 +1,77 @@
+site_name: CodeNavigator
+site_description: MCP server for multi-language code graph intelligence and analysis across 25+ programming languages
+site_author: entrepeneur4lyf
+site_url: https://ajacobm.github.io/codenav/
+
+repo_name: ajacobm/codenav
+repo_url: https://github.com/ajacobm/codenav
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - search.highlight
+    - content.code.copy
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: guides/GETTING_STARTED.md
+      - Setup Checklist: guides/SETUP_CHECKLIST.md
+  - Guides:
+      - Testing Guide: guides/TESTING_GUIDE.md
+      - Test Infrastructure: guides/TEST_INFRASTRUCTURE.md
+      - Playwright Testing: guides/PLAYWRIGHT_TESTING_GUIDE.md
+      - Codespaces Infrastructure: guides/CODESPACES_INFRASTRUCTURE.md
+      - Codespaces Troubleshooting: guides/CODESPACES_TROUBLESHOOTING.md
+      - Frontend Enhancement: guides/FRONTEND_ENHANCEMENT.md
+      - Redesign Proposal: guides/REDESIGN_PROPOSAL.md
+  - Specifications:
+      - Backend Hosting: specs/BACKEND_HOSTING_GUIDE.md
+      - Deployment Guide: specs/DEPLOYMENT_GUIDE.md
+      - Frontend Deployment: specs/FRONTEND_DEPLOYMENT.md
+      - .NET Integration: specs/DOTNET_INTEGRATION.md
+      - Entry Point Discovery: specs/ENTRY_POINT_DISCOVERY.md
+      - GHCR Overview: specs/GHCR_INFRASTRUCTURE_OVERVIEW.md
+      - GHCR Quick Reference: specs/GHCR_QUICK_REF.md
+      - Graph Database Evaluation: specs/GRAPH_DATABASE_EVALUATION.md
+      - MCP Agent Integration: specs/MCP_AGENT_INTEGRATION.md
+      - Observability Stack: specs/OBSERVABILITY_STACK.md
+  - Supporting:
+      - Redis: supporting/REDIS.md
+      - SSE: supporting/SSE.md
+  - Reference:
+      - ADR Template: ADR_TEMPLATE.md
+      - Graph Visualization: GRAPH_VISUALIZATION_PLAN.md
+      - Location: LOCATION.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
+  - toc:
+      permalink: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/ajacobm/codenav

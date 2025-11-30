@@ -46,8 +46,8 @@ dev-up:
 	$(COMPOSE_BASE) up -d
 	@echo "✅ Full development stack started"
 	@echo "   - Redis:     localhost:6379"
-	@echo "   - SSE/MCP:   localhost:8000"
-	@echo "   - HTTP API:  localhost:10101"
+	@echo "   - SSE/MCP:   localhost:10101"
+	@echo "   - HTTP API:  localhost:10102"
 	@echo "   - Frontend:  localhost:5173"
 	@echo "   - Memgraph:  localhost:7687 (Lab: localhost:3000)"
 	@echo "   - Jupyter:   localhost:8888"

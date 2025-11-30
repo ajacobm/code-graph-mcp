@@ -54,7 +54,7 @@ services:
       target: sse
     container_name: codenav-sse
     ports:
-      - "8000:8000"
+      - "10101:8000"
     volumes:
       - ${CODENAV_WORKSPACE:-..}:/app/workspace:ro
     environment:
@@ -90,7 +90,7 @@ services:
       target: http
     container_name: codenav-http
     ports:
-      - "10101:8000"
+      - "10102:8000"
     volumes:
       - ${CODENAV_WORKSPACE:-..}:/app/workspace:ro
     environment:
@@ -131,7 +131,7 @@ services:
       - ../frontend:/app
       - /app/node_modules
     environment:
-      - VITE_API_URL=http://localhost:10101
+      - VITE_API_URL=http://localhost:10102
     depends_on:
       - codenav-web
     restart: unless-stopped

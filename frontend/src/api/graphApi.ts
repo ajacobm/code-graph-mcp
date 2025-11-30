@@ -6,7 +6,9 @@
 
 import type { GraphData, GraphStatsResponse, CategoryResponse } from '@/types'
 
-const API_BASE = import.meta.env.DEV ? 'http://localhost:8000/api' : '/api'
+const API_BASE = import.meta.env.VITE_API_URL 
+  ? `${import.meta.env.VITE_API_URL}/api`
+  : (import.meta.env.DEV ? 'http://localhost:10102/api' : '/api')
 
 export async function fetchGraphExport(options?: {
   limit?: number

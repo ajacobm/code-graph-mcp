@@ -64,7 +64,7 @@ services:
       - ../frontend:/app
       - /app/node_modules
     environment:
-      - VITE_API_URL=http://localhost:10101
+      - VITE_API_URL=http://localhost:10102
 
   # Disable heavy services in Codespaces by putting them in an unused profile
   memgraph:

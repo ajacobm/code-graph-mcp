@@ -20,7 +20,7 @@ As recommended in the [GRAPH_VISUALIZATION_PLAN.md](../docs/GRAPH_VISUALIZATION_
 
 - Node.js 18+
 - npm 9+
-- Backend API running on http://localhost:8000
+- Backend HTTP API running on http://localhost:10102
 
 ### Development
 

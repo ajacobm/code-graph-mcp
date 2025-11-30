@@ -75,3 +75,44 @@ export async function reanalyze(): Promise<{ status: string; message: string }> 
   }
   return response.json()
 }
+
+// Subgraph response type
+export interface SubgraphResponse {
+  node_id: string
+  depth: number
+  nodes: Array<{
+    id: string
+    name: string
+    type: string
+    language: string
+    file_path: string
+    line: number
+    complexity: number
+  }>
+  relationships: Array<{
+    id: string
+    source: string
+    target: string
+    type: string
+  }>
+  execution_time_ms: number
+}
+
+export async function fetchSubgraph(
+  nodeId: string,
+  depth = 2,
+  limit = 100
+): Promise<SubgraphResponse> {
+  const params = new URLSearchParams()
+  params.set('node_id', nodeId)
+  params.set('depth', String(depth))
+  params.set('limit', String(limit))
+
+  const response = await fetch(`${API_BASE}/graph/subgraph?${params.toString()}`, {
+    method: 'POST',
+  })
+  if (!response.ok) {
+    throw new Error(`Failed to fetch subgraph: ${response.status}`)
+  }
+  return response.json()
+}

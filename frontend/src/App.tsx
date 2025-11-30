@@ -32,7 +32,9 @@ export default function App() {
     highlightNodes,
     showLabels,
     colorMode,
+    graphDimension,
     filters,
+    drillIntoNode,
   } = useGraphStore()
 
   // Load graph on mount
@@ -44,6 +46,11 @@ export default function App() {
   const handleNodeClick = useCallback((node: ForceGraphNode) => {
     selectNode(node.id)
   }, [selectNode])
+
+  // Handle node double-click for drill-down navigation
+  const handleNodeDoubleClick = useCallback((node: ForceGraphNode) => {
+    drillIntoNode(node.id)
+  }, [drillIntoNode])
 
   // Handle node hover
   const handleNodeHover = useCallback((node: ForceGraphNode | null) => {
@@ -148,7 +155,9 @@ export default function App() {
             highlightedNodeIds={highlightedNodeIds}
             colorMode={colorMode}
             showLabels={showLabels}
+            dimension={graphDimension}
             onNodeClick={handleNodeClick}
+            onNodeDoubleClick={handleNodeDoubleClick}
             onNodeHover={handleNodeHover}
             onBackgroundClick={handleBackgroundClick}
           />

@@ -48,7 +48,8 @@ COPY src/ ./src/
 COPY pyproject.toml ./
 COPY README.md LICENSE ./
 
-RUN uv sync --frozen --no-dev
+# Install with mcp and web extras for server functionality
+RUN uv sync --frozen --no-dev --extra mcp --extra web
 
 RUN uv pip install -e .
 
@@ -58,10 +59,13 @@ USER codeuser
 
 RUN mkdir -p /app/workspace /app/.cache
 
+# Add virtual environment bin to PATH so codenav command is found
+ENV PATH="/app/.venv/bin:$PATH"
+
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD /app/.venv/bin/python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 
 CMD ["codenav", "--help"]
 

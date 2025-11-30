@@ -69,7 +69,7 @@ services:
       --mode sse
       --host 0.0.0.0
       --port 8000
-      --enable-cache
+      --redis-cache
       --redis-url redis://redis:6379
       --project-root /app/workspace
     restart: unless-stopped
@@ -159,7 +159,7 @@ services:
       - memgraph-data:/var/lib/memgraph
     environment:
       - MEMGRAPH_LOG_LEVEL=WARNING
-    command: ["--stream-enabled=true"]
+#    command: ["--stream-enabled=true"]
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "echo 'RETURN 1;' | mgconsole || exit 1"]

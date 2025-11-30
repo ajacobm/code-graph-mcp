@@ -170,5 +170,6 @@ up: dev-up
 down: dev-down
 logs: dev-logs
 status: dev-status
+build: rebuild
 
 .DEFAULT_GOAL := help

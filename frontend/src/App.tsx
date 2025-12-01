@@ -223,7 +223,7 @@ export default function App() {
       </div>
 
       {/* Main Content */}
-      <div className="layout-container flex-1 flex overflow-hidden">
+      <div className="layout-container overflow-hidden">
         {/* Left Panel - Tools */}
         <ToolsPanel 
           isCollapsed={leftPanelCollapsed}

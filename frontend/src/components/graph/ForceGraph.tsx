@@ -68,6 +68,9 @@ const TYPE_COLORS: Record<string, string> = {
   default: '#64748b',
 }
 
+// Double-click detection threshold in milliseconds
+const DOUBLE_CLICK_THRESHOLD_MS = 300
+
 // Helper to compute node color (pure function, no hooks)
 function computeNodeColor(
   node: ForceGraphNode,
@@ -191,7 +194,6 @@ export const ForceGraph = forwardRef<ForceGraphRef, ForceGraphProps>(({
   
   const handleNodeClick = useCallback((node: ForceGraphNode) => {
     const now = Date.now()
-    const DOUBLE_CLICK_THRESHOLD = 300 // ms
 
     // Clear any pending single-click timeout
     if (singleClickTimeoutRef.current) {
@@ -201,7 +203,7 @@ export const ForceGraph = forwardRef<ForceGraphRef, ForceGraphProps>(({
 
     if (
       lastClickNodeRef.current === node.id &&
-      now - lastClickTimeRef.current < DOUBLE_CLICK_THRESHOLD
+      now - lastClickTimeRef.current < DOUBLE_CLICK_THRESHOLD_MS
     ) {
       // Double-click detected
       onNodeDoubleClickRef.current?.(node)
@@ -218,7 +220,7 @@ export const ForceGraph = forwardRef<ForceGraphRef, ForceGraphProps>(({
           onNodeClickRef.current?.(node)
         }
         singleClickTimeoutRef.current = null
-      }, DOUBLE_CLICK_THRESHOLD)
+      }, DOUBLE_CLICK_THRESHOLD_MS)
     }
   }, [])
 

@@ -6,7 +6,60 @@
 
 import { create } from 'zustand'
 import type { GraphData, GraphNode, FilterOptions, NavigationEntry, GraphDimension } from '@/types'
-import { fetchGraphExport, fetchSubgraph } from '@/api/graphApi'
+import { fetchGraphExport, fetchSubgraph, type SubgraphResponse } from '@/api/graphApi'
+
+// Helper type for subgraph node mapping
+interface SubgraphNode {
+  id: string
+  name: string
+  type: string
+  language: string
+  complexity: number
+  file_path: string
+  line: number
+}
+
+// Helper function to convert subgraph response to GraphData format
+function convertSubgraphToGraphData(subgraph: SubgraphResponse): GraphData {
+  const nodes = subgraph.nodes.map((n: SubgraphNode) => ({
+    id: n.id,
+    name: n.name,
+    type: n.type,
+    language: n.language,
+    complexity: n.complexity,
+    file: n.file_path,
+    line: n.line,
+  }))
+
+  // Compute stats from the nodes
+  const languages: Record<string, number> = {}
+  const nodeTypes: Record<string, number> = {}
+  let totalComplexity = 0
+
+  for (const node of nodes) {
+    languages[node.language] = (languages[node.language] || 0) + 1
+    nodeTypes[node.type] = (nodeTypes[node.type] || 0) + 1
+    totalComplexity += node.complexity
+  }
+
+  return {
+    nodes,
+    links: subgraph.relationships.map((r: { source: string; target: string; type: string }) => ({
+      source: r.source,
+      target: r.target,
+      type: r.type,
+      isSeam: r.type === 'seam',
+    })),
+    stats: {
+      totalNodes: subgraph.nodes.length,
+      totalLinks: subgraph.relationships.length,
+      languages,
+      nodeTypes,
+      avgComplexity: nodes.length > 0 ? totalComplexity / nodes.length : 0,
+    },
+    execution_time_ms: subgraph.execution_time_ms,
+  }
+}
 
 interface GraphState {
   // Graph data
@@ -158,31 +211,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       }
 
       // Convert subgraph response to GraphData format
-      const focusedGraphData: GraphData = {
-        nodes: subgraph.nodes.map((n: { id: string; name: string; type: string; language: string; complexity: number; file_path: string; line: number }) => ({
-          id: n.id,
-          name: n.name,
-          type: n.type,
-          language: n.language,
-          complexity: n.complexity,
-          file: n.file_path,
-          line: n.line,
-        })),
-        links: subgraph.relationships.map((r: { source: string; target: string; type: string }) => ({
-          source: r.source,
-          target: r.target,
-          type: r.type,
-          isSeam: r.type === 'seam',
-        })),
-        stats: {
-          totalNodes: subgraph.nodes.length,
-          totalLinks: subgraph.relationships.length,
-          languages: {},
-          nodeTypes: {},
-          avgComplexity: 0,
-        },
-        execution_time_ms: subgraph.execution_time_ms,
-      }
+      const focusedGraphData = convertSubgraphToGraphData(subgraph)
 
       set({
         graphData: focusedGraphData,
@@ -223,32 +252,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       
       try {
         const subgraph = await fetchSubgraph(previousEntry.nodeId, 2, 100)
-        
-        const focusedGraphData: GraphData = {
-          nodes: subgraph.nodes.map((n: { id: string; name: string; type: string; language: string; complexity: number; file_path: string; line: number }) => ({
-            id: n.id,
-            name: n.name,
-            type: n.type,
-            language: n.language,
-            complexity: n.complexity,
-            file: n.file_path,
-            line: n.line,
-          })),
-          links: subgraph.relationships.map((r: { source: string; target: string; type: string }) => ({
-            source: r.source,
-            target: r.target,
-            type: r.type,
-            isSeam: r.type === 'seam',
-          })),
-          stats: {
-            totalNodes: subgraph.nodes.length,
-            totalLinks: subgraph.relationships.length,
-            languages: {},
-            nodeTypes: {},
-            avgComplexity: 0,
-          },
-          execution_time_ms: subgraph.execution_time_ms,
-        }
+        const focusedGraphData = convertSubgraphToGraphData(subgraph)
 
         set({
           graphData: focusedGraphData,

@@ -5,7 +5,7 @@
  * Supports dual-view mode: Workbench (card-based) and Graph (force-directed).
  */
 
-import { useEffect, useRef, useState, useCallback, Suspense, lazy } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo, Suspense, lazy } from 'react'
 import { useGraphStore } from '@/stores/graphStore'
 import { Header } from '@/components/layout/Header'
 import { StatusBar } from '@/components/layout/StatusBar'
@@ -235,7 +235,7 @@ export default function App() {
         />
 
         {/* Center - Main View (Graph or Workbench) */}
-        <div className="main-canvas flex-1 flex flex-col relative min-w-0" id="main-view" role="tabpanel">
+        <div className="main-canvas flex flex-col relative min-w-0" id="main-view" role="tabpanel">
           {activeView === 'graph' ? (
             <>
               {/* Graph Controls */}

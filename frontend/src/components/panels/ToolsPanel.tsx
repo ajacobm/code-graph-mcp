@@ -24,6 +24,9 @@ const CATEGORIES = [
   { id: 'leaves', emoji: '🍃', title: 'Leaves', description: 'Functions with no callees' },
 ]
 
+// Maximum number of category nodes to display in the list
+const MAX_CATEGORY_NODES_DISPLAYED = 20
+
 const LEGEND = [
   { color: 'bg-green-500', label: 'Function' },
   { color: 'bg-blue-500', label: 'Class' },
@@ -146,7 +149,7 @@ export function ToolsPanel({
                 {CATEGORIES.find(c => c.id === activeCategory)?.title} ({categoryNodes.length})
               </label>
               <div className="max-h-48 overflow-y-auto space-y-1">
-                {categoryNodes.slice(0, 20).map((node) => (
+                {categoryNodes.slice(0, MAX_CATEGORY_NODES_DISPLAYED).map((node) => (
                   <button
                     key={node.id}
                     onClick={() => selectNode(node.id)}
@@ -156,9 +159,9 @@ export function ToolsPanel({
                     <span className="text-xs text-slate-500 ml-1">({node.type})</span>
                   </button>
                 ))}
-                {categoryNodes.length > 20 && (
+                {categoryNodes.length > MAX_CATEGORY_NODES_DISPLAYED && (
                   <div className="text-xs text-slate-500 px-2 py-1">
-                    +{categoryNodes.length - 20} more...
+                    +{categoryNodes.length - MAX_CATEGORY_NODES_DISPLAYED} more...
                   </div>
                 )}
               </div>

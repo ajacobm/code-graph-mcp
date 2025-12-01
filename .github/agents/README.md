@@ -30,14 +30,14 @@ The agent team is organized to cover all aspects of software development, from p
         │                       │                       │
         └───────────────────────┼───────────────────────┘
                                 │
-        ┌───────────────────────┴───────────────────────┐
-        │                                               │
-        ▼                                               ▼
-┌───────────────┐                               ┌───────────────┐
-│    Kanban     │                               │    DevOps     │
-│   Manager     │                               │   Engineer    │
-│               │                               │               │
-└───────────────┘                               └───────────────┘
+        ┌───────────────┬───────┴───────┬───────────────┐
+        │               │               │               │
+        ▼               ▼               ▼               ▼
+┌───────────────┐ ┌───────────────┐ ┌───────────────┐
+│    Kanban     │ │    Sprint     │ │    DevOps     │
+│   Manager     │ │   Planner     │ │   Engineer    │
+│               │ │               │ │               │
+└───────────────┘ └───────────────┘ └───────────────┘
 ```
 
 ## Agents
@@ -92,11 +92,18 @@ The agent team is organized to cover all aspects of software development, from p
 - Tracks overall progress
 
 ### 📋 [Kanban Manager](kanban-manager.md)
-**Role**: Project board management, issue tracking, sprint planning
+**Role**: Project board management, issue tracking, board status
 - Manages GitHub Projects board
 - Triages issues
-- Tracks sprint progress
+- Tracks work item status
 - Maintains project visibility
+
+### 📆 [Sprint Planner](sprint-planner.md)
+**Role**: Specification breakdown, sprint organization, branching strategy
+- Breaks down design docs into tickets
+- Organizes work into sprints
+- Defines branching strategies
+- Creates epic/story/task hierarchy
 
 ### 🐳 [DevOps Engineer](devops-engineer.md)
 **Role**: CI/CD, Docker infrastructure, deployment, monitoring

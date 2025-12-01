@@ -1,0 +1,39 @@
+# Copilot Setup Steps
+# This workflow runs before Copilot coding agent starts working.
+# It sets up the development environment in the sandbox.
+
+name: Copilot Setup Steps
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: |
+          uv sync --frozen
+
+      - name: Set up Node.js (for MCP servers)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'

@@ -9,6 +9,7 @@ import { useEffect, useRef, useState, useCallback, useMemo, Suspense, lazy } fro
 import { useGraphStore } from '@/stores/graphStore'
 import { Header } from '@/components/layout/Header'
 import { StatusBar } from '@/components/layout/StatusBar'
+import { LoadingOverlay } from '@/components/layout/LoadingOverlay'
 import { ToolsPanel } from '@/components/panels/ToolsPanel'
 import { DetailsPanel } from '@/components/panels/DetailsPanel'
 import { GraphControls } from '@/components/graph/GraphControls'
@@ -247,19 +248,12 @@ export default function App() {
               </div>
 
               {/* Loading Overlay */}
-              {isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 z-20">
-                  <div className="text-center">
-                    <div className="animate-spin h-12 w-12 border-4 border-indigo-500 border-t-transparent rounded-full mx-auto" />
-                    <p className="mt-4 text-slate-300">Loading graph...</p>
-                  </div>
-                </div>
-              )}
+              <LoadingOverlay isLoading={isLoading} label="Loading graph..." />
 
               {/* Error Overlay */}
               {error && !isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 z-20">
-                  <div className="bg-red-900/50 border border-red-700 rounded-lg p-6 max-w-md">
+                <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 z-20 animate-in fade-in">
+                  <div className="bg-red-900/50 border border-red-700 rounded-lg p-6 max-w-md animate-in scale-in">
                     <h3 className="text-lg font-bold text-red-400 mb-2">Error loading graph</h3>
                     <p className="text-red-300 text-sm mb-4">{error}</p>
                     <button 
@@ -307,14 +301,7 @@ export default function App() {
             /* Workbench View */
             <>
               {/* Loading Overlay */}
-              {isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 z-20">
-                  <div className="text-center">
-                    <div className="animate-spin h-12 w-12 border-4 border-indigo-500 border-t-transparent rounded-full mx-auto" />
-                    <p className="mt-4 text-slate-300">Loading...</p>
-                  </div>
-                </div>
-              )}
+              <LoadingOverlay isLoading={isLoading} label="Loading..." />
 
               <WorkbenchCanvas
                 rootNode={workbenchRootNode}

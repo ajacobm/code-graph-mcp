@@ -3,13 +3,21 @@
  * 
  * The main canvas for the card-based hierarchical navigation view.
  * Displays the root node as a hero card and children in a responsive grid or list layout.
+ * 
+ * Keyboard Navigation:
+ * - Arrow keys: Navigate between cards
+ * - Enter: Drill into selected card
+ * - Escape: Go back one level
+ * - Home: Go to first card (Ctrl+Home: Go to root)
+ * - End: Go to last card
  */
 
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useRef, useEffect, useMemo } from 'react'
 import { clsx } from 'clsx'
 import type { GraphNode } from '@/types'
 import { NodeCard, type NodeCardProps } from './NodeCard'
 import { BreadcrumbNavigation, type NavigationItem } from './BreadcrumbNavigation'
+import { useKeyboardNavigation } from './useKeyboardNavigation'
 
 export type ViewMode = 'grid' | 'list'
 export type SortBy = 'name' | 'complexity' | 'type' | 'lines'
@@ -93,7 +101,7 @@ export function WorkbenchCanvas({
   filterBy = [],
   onDrillDown,
   onSelect,
-  onNavigateBack: _onNavigateBack,
+  onNavigateBack,
   onNavigateToLevel,
   onNavigateHome,
   selectedNodeId,
@@ -101,9 +109,43 @@ export function WorkbenchCanvas({
 }: WorkbenchCanvasProps) {
   const [localViewMode, setLocalViewMode] = useState<ViewMode>(viewMode)
   const [localSortBy, setLocalSortBy] = useState<SortBy>(sortBy)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   // Process child nodes: filter and sort
-  const processedChildren = sortNodes(filterNodes(childNodes, filterBy), localSortBy)
+  const processedChildren = useMemo(
+    () => sortNodes(filterNodes(childNodes, filterBy), localSortBy),
+    [childNodes, filterBy, localSortBy]
+  )
+
+  // Calculate grid columns based on container width (responsive)
+  const [gridColumns, setGridColumns] = useState(3)
+  
+  useEffect(() => {
+    const updateColumns = () => {
+      if (containerRef.current) {
+        const width = containerRef.current.offsetWidth
+        // Minimum card width is 200px + gap
+        const cols = Math.max(1, Math.floor(width / 220))
+        setGridColumns(cols)
+      }
+    }
+    
+    updateColumns()
+    window.addEventListener('resize', updateColumns)
+    return () => window.removeEventListener('resize', updateColumns)
+  }, [])
+
+  // Keyboard navigation hook
+  const { focusedIndex, isKeyboardActive, handleKeyDown } = useKeyboardNavigation({
+    nodes: processedChildren,
+    selectedNodeId,
+    onSelect,
+    onDrillDown,
+    onNavigateBack,
+    onNavigateHome,
+    enabled: true,
+    gridColumns: localViewMode === 'grid' ? gridColumns : 1,
+  })
 
   const handleNodeClick = useCallback((nodeId: string) => {
     onSelect(nodeId)
@@ -112,6 +154,13 @@ export function WorkbenchCanvas({
   const handleNodeDoubleClick = useCallback((nodeId: string) => {
     onDrillDown(nodeId)
   }, [onDrillDown])
+
+  // Focus container on mount for keyboard navigation
+  useEffect(() => {
+    if (containerRef.current && (rootNode || processedChildren.length > 0)) {
+      containerRef.current.focus()
+    }
+  }, [rootNode, processedChildren.length])
 
   // Empty state
   if (!rootNode && childNodes.length === 0) {
@@ -137,9 +186,14 @@ export function WorkbenchCanvas({
 
   return (
     <div 
+      ref={containerRef}
       className={clsx('flex flex-col h-full', className)}
       data-test="workbench-canvas"
       data-testid="workbench-canvas"
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+      role="application"
+      aria-label="Node navigation workbench. Use arrow keys to navigate, Enter to drill down, Escape to go back."
     >
       {/* Breadcrumb Navigation */}
       <div className="flex-shrink-0 p-4 border-b border-slate-700">
@@ -199,9 +253,21 @@ export function WorkbenchCanvas({
           </select>
         </div>
 
-        {/* Children count */}
-        <div className="text-sm text-slate-500">
-          {processedChildren.length} items
+        {/* Children count and keyboard hints */}
+        <div className="flex items-center gap-3">
+          <div className="text-sm text-slate-500">
+            {processedChildren.length} items
+          </div>
+          {isKeyboardActive && (
+            <div className="text-xs text-slate-600 hidden md:flex items-center gap-1">
+              <kbd className="px-1.5 py-0.5 bg-slate-700 rounded text-slate-400">↑↓←→</kbd>
+              <span>navigate</span>
+              <kbd className="px-1.5 py-0.5 bg-slate-700 rounded text-slate-400 ml-2">Enter</kbd>
+              <span>drill</span>
+              <kbd className="px-1.5 py-0.5 bg-slate-700 rounded text-slate-400 ml-2">Esc</kbd>
+              <span>back</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -209,7 +275,7 @@ export function WorkbenchCanvas({
       <div className="flex-1 overflow-auto p-4">
         {/* Root node as hero card */}
         {rootNode && (
-          <div className="mb-6">
+          <div className="mb-6 transition-all duration-200">
             <NodeCard
               node={rootNode}
               variant="hero"
@@ -235,31 +301,40 @@ export function WorkbenchCanvas({
         {/* Children grid/list */}
         {localViewMode === 'grid' ? (
           <div 
-            className="grid gap-4"
+            className="grid gap-4 transition-all duration-200"
             style={{
               gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
             }}
             data-test="children-grid"
+            role="listbox"
+            aria-label="Child nodes"
           >
-            {processedChildren.map((node) => (
+            {processedChildren.map((node, index) => (
               <NodeCard
                 key={node.id}
                 node={node}
                 variant="grid"
                 isSelected={selectedNodeId === node.id}
+                isFocused={isKeyboardActive && focusedIndex === index}
                 onClick={() => handleNodeClick(node.id)}
                 onDoubleClick={() => handleNodeDoubleClick(node.id)}
               />
             ))}
           </div>
         ) : (
-          <div className="flex flex-col gap-2" data-test="children-list">
-            {processedChildren.map((node) => (
+          <div 
+            className="flex flex-col gap-2 transition-all duration-200" 
+            data-test="children-list"
+            role="listbox"
+            aria-label="Child nodes"
+          >
+            {processedChildren.map((node, index) => (
               <NodeCard
                 key={node.id}
                 node={node}
                 variant="list"
                 isSelected={selectedNodeId === node.id}
+                isFocused={isKeyboardActive && focusedIndex === index}
                 onClick={() => handleNodeClick(node.id)}
                 onDoubleClick={() => handleNodeDoubleClick(node.id)}
               />

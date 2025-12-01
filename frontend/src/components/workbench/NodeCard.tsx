@@ -40,6 +40,7 @@ export interface NodeCardProps {
   node: GraphNode
   variant: 'hero' | 'grid' | 'list'
   isSelected?: boolean
+  isFocused?: boolean
   categoryBadge?: 'entry-point' | 'hub' | 'leaf'
   onClick?: () => void
   onDoubleClick?: () => void
@@ -93,6 +94,7 @@ export function NodeCard({
   node,
   variant,
   isSelected = false,
+  isFocused = false,
   categoryBadge,
   onClick,
   onDoubleClick,
@@ -126,7 +128,9 @@ export function NodeCard({
     'focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-900',
     isSelected 
       ? 'border-indigo-500 bg-slate-800/80 shadow-lg shadow-indigo-500/20'
-      : 'border-slate-700 bg-slate-800/60 hover:border-slate-600 hover:bg-slate-800/80'
+      : isFocused
+        ? 'border-indigo-400 bg-slate-800/70 ring-2 ring-indigo-400/50'
+        : 'border-slate-700 bg-slate-800/60 hover:border-slate-600 hover:bg-slate-800/80'
   )
 
   // Hero variant - Full details for root node

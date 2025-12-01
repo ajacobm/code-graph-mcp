@@ -190,11 +190,25 @@ export const useGraphStore = create<GraphState>((set, get) => ({
 
   // Navigation: drill into a node to see its local subgraph
   drillIntoNode: async (nodeId: string) => {
+    // Guard against invalid nodeId - must be a non-empty string
+    if (!nodeId || typeof nodeId !== 'string') {
+      console.warn('drillIntoNode: called with invalid nodeId', nodeId)
+      return
+    }
+
     const { graphData, navigationStack } = get()
-    if (!graphData) return
+    if (!graphData) {
+      console.warn('drillIntoNode: no graphData available')
+      return
+    }
 
     const node = graphData.nodes.find(n => n.id === nodeId)
-    if (!node) return
+    if (!node) {
+      // Node not found in current graph data - this can happen if the graph
+      // was updated between the click events or if the node reference is stale
+      console.warn(`drillIntoNode: node not found in current graph data: ${nodeId}`)
+      return
+    }
 
     set({ isLoading: true, error: null })
 

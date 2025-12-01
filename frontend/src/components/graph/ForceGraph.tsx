@@ -193,6 +193,12 @@ export const ForceGraph = forwardRef<ForceGraphRef, ForceGraphProps>(({
   const singleClickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   
   const handleNodeClick = useCallback((node: ForceGraphNode) => {
+    // Guard against null/undefined node or missing/invalid id
+    if (!node || !node.id || typeof node.id !== 'string') {
+      console.warn('ForceGraph: handleNodeClick called with invalid node', node)
+      return
+    }
+
     const now = Date.now()
 
     // Clear any pending single-click timeout

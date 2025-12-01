@@ -6,12 +6,16 @@
 
 import { useState } from 'react'
 import { useGraphStore } from '@/stores/graphStore'
+import { clsx } from 'clsx'
+import type { GraphNode } from '@/types'
 
 interface ToolsPanelProps {
   isCollapsed?: boolean
   onToggleCollapse?: () => void
   onCategorySelect?: (category: string) => void
   onSearch?: (query: string) => void
+  activeCategory?: string | null
+  categoryNodes?: GraphNode[]
 }
 
 const CATEGORIES = [
@@ -19,6 +23,9 @@ const CATEGORIES = [
   { id: 'hubs', emoji: '🔀', title: 'Hubs', description: 'Highly connected nodes' },
   { id: 'leaves', emoji: '🍃', title: 'Leaves', description: 'Functions with no callees' },
 ]
+
+// Maximum number of category nodes to display in the list
+const MAX_CATEGORY_NODES_DISPLAYED = 20
 
 const LEGEND = [
   { color: 'bg-green-500', label: 'Function' },
@@ -32,10 +39,12 @@ export function ToolsPanel({
   isCollapsed = false, 
   onToggleCollapse,
   onCategorySelect,
-  onSearch 
+  onSearch,
+  activeCategory,
+  categoryNodes = []
 }: ToolsPanelProps) {
   const [searchQuery, setSearchQuery] = useState('')
-  const { filters, setFilter, graphData } = useGraphStore()
+  const { filters, setFilter, graphData, selectNode } = useGraphStore()
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
@@ -116,7 +125,12 @@ export function ToolsPanel({
                 <button
                   key={cat.id}
                   onClick={() => onCategorySelect?.(cat.id)}
-                  className="w-full flex items-center gap-2 px-2 py-2 rounded hover:bg-slate-700 transition-colors text-left"
+                  className={clsx(
+                    'w-full flex items-center gap-2 px-2 py-2 rounded transition-colors text-left',
+                    activeCategory === cat.id 
+                      ? 'bg-indigo-600 text-white'
+                      : 'hover:bg-slate-700'
+                  )}
                 >
                   <span className="text-lg">{cat.emoji}</span>
                   <div className="flex-1 min-w-0">
@@ -127,6 +141,32 @@ export function ToolsPanel({
               ))}
             </div>
           </div>
+
+          {/* Category Results */}
+          {activeCategory && categoryNodes.length > 0 && (
+            <div>
+              <label className="block text-xs text-slate-400 mb-1.5">
+                {CATEGORIES.find(c => c.id === activeCategory)?.title} ({categoryNodes.length})
+              </label>
+              <div className="max-h-48 overflow-y-auto space-y-1">
+                {categoryNodes.slice(0, MAX_CATEGORY_NODES_DISPLAYED).map((node) => (
+                  <button
+                    key={node.id}
+                    onClick={() => selectNode(node.id)}
+                    className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-slate-700 transition-colors truncate"
+                  >
+                    <span className="text-slate-300">{node.name}</span>
+                    <span className="text-xs text-slate-500 ml-1">({node.type})</span>
+                  </button>
+                ))}
+                {categoryNodes.length > MAX_CATEGORY_NODES_DISPLAYED && (
+                  <div className="text-xs text-slate-500 px-2 py-1">
+                    +{categoryNodes.length - MAX_CATEGORY_NODES_DISPLAYED} more...
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Language Filter */}
           {availableLanguages.length > 0 && (

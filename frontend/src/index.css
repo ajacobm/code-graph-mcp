@@ -24,6 +24,53 @@ body {
   min-height: 100vh;
 }
 
+/* CSS Grid layout with minmax constraints for proper resizing */
+.layout-container {
+  display: grid;
+  grid-template-columns: 
+    minmax(48px, auto)      /* Navigator panel - collapsed: 48px, expanded: auto */
+    minmax(400px, 1fr)      /* Main canvas - flexible with minimum */
+    minmax(48px, auto);     /* Details panel - collapsed: 48px, expanded: auto */
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Panel widths when expanded */
+.layout-container > :first-child:not(.collapsed) {
+  width: 256px;
+}
+
+.layout-container > :last-child:not(.collapsed) {
+  width: 320px;
+}
+
+/* Main canvas always fills available space */
+.main-canvas {
+  min-width: 400px;
+  flex: 1;
+}
+
+/* Responsive breakpoints */
+@media (max-width: 1024px) {
+  .layout-container {
+    grid-template-columns: 
+      minmax(48px, 200px)     /* Smaller navigator */
+      minmax(300px, 1fr)      /* Main canvas */
+      minmax(48px, 280px);    /* Smaller details */
+  }
+}
+
+@media (max-width: 768px) {
+  .layout-container {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto;
+  }
+  
+  .main-canvas {
+    min-width: 100%;
+  }
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 8px;

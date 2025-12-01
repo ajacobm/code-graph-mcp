@@ -1,16 +1,23 @@
 /**
  * DetailsPanel Component
  * 
- * Right sidebar showing details of the selected node.
+ * Right sidebar showing details of the selected node, its metadata, 
+ * and connection management panel for viewing callers and callees.
  */
 
 import { useGraphStore } from '@/stores/graphStore'
+import type { GraphNode } from '@/types'
 
 interface DetailsPanelProps {
   isCollapsed?: boolean
   onToggleCollapse?: () => void
   onViewConnections?: (nodeId: string) => void
   onCenterNode?: (nodeId: string) => void
+  showConnectionsPanel?: boolean
+  connections?: { callers: GraphNode[]; callees: GraphNode[] }
+  connectionsLoading?: boolean
+  onCloseConnections?: () => void
+  onSelectConnection?: (nodeId: string) => void
 }
 
 const TYPE_ICONS: Record<string, string> = {
@@ -35,7 +42,12 @@ export function DetailsPanel({
   isCollapsed = false, 
   onToggleCollapse,
   onViewConnections,
-  onCenterNode 
+  onCenterNode,
+  showConnectionsPanel = false,
+  connections = { callers: [], callees: [] },
+  connectionsLoading = false,
+  onCloseConnections,
+  onSelectConnection
 }: DetailsPanelProps) {
   const { getSelectedNode, selectNode } = useGraphStore()
   const node = getSelectedNode()
@@ -159,6 +171,76 @@ export function DetailsPanel({
                     <code className="text-xs text-slate-400 break-all">{node.file}</code>
                   </div>
                 </details>
+              )}
+
+              {/* Connections Panel */}
+              {showConnectionsPanel && (
+                <div className="mt-4 bg-slate-900/50 rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-medium text-slate-200">Connections</h4>
+                    <button 
+                      onClick={onCloseConnections}
+                      className="text-slate-400 hover:text-white transition-colors"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  
+                  {connectionsLoading ? (
+                    <div className="text-center py-4">
+                      <div className="animate-spin h-6 w-6 border-2 border-indigo-500 border-t-transparent rounded-full mx-auto" />
+                      <p className="mt-2 text-xs text-slate-400">Loading...</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Callers */}
+                      <div className="mb-3">
+                        <div className="text-xs text-slate-400 mb-1">
+                          Callers ({connections.callers.length})
+                        </div>
+                        {connections.callers.length > 0 ? (
+                          <div className="space-y-1 max-h-32 overflow-y-auto">
+                            {connections.callers.map(caller => (
+                              <button
+                                key={caller.id}
+                                onClick={() => onSelectConnection?.(caller.id)}
+                                className="w-full text-left px-2 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 transition-colors truncate"
+                              >
+                                <span className="text-slate-200">{caller.name}</span>
+                                <span className="text-slate-500 ml-1">({caller.type})</span>
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-slate-500 italic">No callers</p>
+                        )}
+                      </div>
+
+                      {/* Callees */}
+                      <div>
+                        <div className="text-xs text-slate-400 mb-1">
+                          Callees ({connections.callees.length})
+                        </div>
+                        {connections.callees.length > 0 ? (
+                          <div className="space-y-1 max-h-32 overflow-y-auto">
+                            {connections.callees.map(callee => (
+                              <button
+                                key={callee.id}
+                                onClick={() => onSelectConnection?.(callee.id)}
+                                className="w-full text-left px-2 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 transition-colors truncate"
+                              >
+                                <span className="text-slate-200">{callee.name}</span>
+                                <span className="text-slate-500 ml-1">({callee.type})</span>
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-slate-500 italic">No callees</p>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
             </div>
           ) : (

@@ -37,3 +37,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+
+      - name: Install Playwright MCP server and browsers
+        run: |
+          # Install Playwright MCP server globally
+          npm install -g @anthropics/mcp-playwright
+          # Install Playwright browsers (chromium, firefox, webkit)
+          npx playwright install --with-deps chromium

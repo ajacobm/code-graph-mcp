@@ -16,7 +16,7 @@ This document provides a complete breakdown of tickets for implementing the Work
 |--------|-------|
 | **Epic** | Workbench View Implementation |
 | **Stories** | 4 (one per phase) |
-| **Tasks** | 23 total |
+| **Tasks** | 19 total |
 | **Estimated Duration** | 4 weeks |
 | **Affected Areas** | Frontend (primary), API (minor) |
 
@@ -695,7 +695,7 @@ Implement a new card-based hierarchical navigation view (Workbench View) that co
 
 ## Bug Fixes (Tracked Separately)
 
-These bugs are mentioned in Section 9 of the design doc but overlap with Story 2:
+These bugs are mentioned in the "Known Issues to Track" section of the design doc but overlap with Story 2:
 
 | Bug ID | Title | Addressed In |
 |--------|-------|--------------|
@@ -707,7 +707,7 @@ These bugs are mentioned in Section 9 of the design doc but overlap with Story 2
 
 ## Future Features (Backlog)
 
-These are mentioned in Section 9.2 and should be created as backlog items:
+These are mentioned in the "Features" subsection of "Known Issues to Track" and should be created as backlog items:
 
 | Feature | Description | Priority |
 |---------|-------------|----------|

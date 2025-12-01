@@ -13,12 +13,12 @@ import type { GraphNode } from '@/types'
 
 // Type icons mapping
 const TYPE_ICONS: Record<string, string> = {
-  function: '⚙️',
-  class: '📦',
-  method: '🔧',
-  module: '📁',
-  import: '📥',
-  default: '📄',
+  'function': '⚙️',
+  'class': '📦',
+  'method': '🔧',
+  'module': '📁',
+  'import': '📥',
+  'default': '📄',
 }
 
 // Language icons/emojis

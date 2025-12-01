@@ -228,7 +228,3 @@ class TestSortControls:
 
         # Note: May be None if workbench is not yet integrated into main app
         # This test serves as documentation for the expected selectors
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-xvs"])

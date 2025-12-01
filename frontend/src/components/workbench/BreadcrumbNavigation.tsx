@@ -7,6 +7,9 @@
 import { type KeyboardEvent } from 'react'
 import { clsx } from 'clsx'
 
+// Constant to identify ellipsis placeholder item
+const ELLIPSIS_NODE_ID = '__breadcrumb_ellipsis__' as const
+
 export interface NavigationItem {
   nodeId: string
   nodeName: string
@@ -63,7 +66,7 @@ export function BreadcrumbNavigation({
   const displayPath = shouldTruncate
     ? [
         ...path.slice(0, 2),
-        { nodeId: 'ellipsis', nodeName: '...', nodeType: 'ellipsis' } as NavigationItem,
+        { nodeId: ELLIPSIS_NODE_ID, nodeName: '...', nodeType: 'ellipsis' } as NavigationItem,
         ...path.slice(-2),
       ]
     : path
@@ -72,7 +75,7 @@ export function BreadcrumbNavigation({
   const getActualIndex = (displayIndex: number): number => {
     if (!shouldTruncate) return displayIndex
     if (displayIndex < 2) return displayIndex
-    if (displayPath[displayIndex].nodeId === 'ellipsis') return -1
+    if (displayPath[displayIndex].nodeId === ELLIPSIS_NODE_ID) return -1
     return path.length - (displayPath.length - displayIndex)
   }
 
@@ -107,7 +110,7 @@ export function BreadcrumbNavigation({
       {displayPath.map((item, displayIndex) => {
         const actualIndex = getActualIndex(displayIndex)
         const isLast = displayIndex === displayPath.length - 1
-        const isEllipsis = item.nodeId === 'ellipsis'
+        const isEllipsis = item.nodeId === ELLIPSIS_NODE_ID
         const isClickable = !isLast && !isEllipsis
 
         return (

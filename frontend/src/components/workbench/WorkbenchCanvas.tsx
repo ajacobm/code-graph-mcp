@@ -165,8 +165,13 @@ export function WorkbenchCanvas({
     }
   }, [rootNode, processedChildren.length])
 
+  // Determine display states
+  const hasNoNodes = !rootNode && childNodes.length === 0
+  const shouldShowErrorState = error && hasNoNodes
+  const isShowingInitialNodes = !rootNode && childNodes.length > 0
+
   // Error state - show when there's an error and no nodes
-  if (error && !rootNode && childNodes.length === 0) {
+  if (shouldShowErrorState) {
     return (
       <div 
         className={clsx(
@@ -190,7 +195,7 @@ export function WorkbenchCanvas({
   }
 
   // Empty state - only show when there are no nodes at all and no error
-  if (!rootNode && childNodes.length === 0) {
+  if (hasNoNodes) {
     return (
       <div 
         className={clsx(
@@ -209,9 +214,6 @@ export function WorkbenchCanvas({
       </div>
     )
   }
-
-  // Check if we're showing initial nodes (no root node but have child nodes)
-  const isShowingInitialNodes = !rootNode && childNodes.length > 0
 
   return (
     <div 

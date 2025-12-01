@@ -201,32 +201,39 @@ export default function App() {
       )
     })
   }, [graphData, workbenchRootNode])
+  // Constants for workbench initial loading
+  const FALLBACK_NODES_LIMIT = 20
 
   // Load initial nodes for workbench when no node is selected
   useEffect(() => {
     const loadInitialWorkbenchNodes = async () => {
-      // Only load if in workbench view and no node selected
-      // Don't require graphData - we'll fetch entry points directly
-      if (activeView === 'workbench' && !workbenchRootNode && initialWorkbenchNodes.length === 0 && !initialWorkbenchLoading) {
-        setInitialWorkbenchLoading(true)
-        setInitialWorkbenchError(null)
-        try {
-          // Fetch entry points as the initial view
-          const response = await fetchCategory('entry_points')
-          setInitialWorkbenchNodes(response.nodes)
-        } catch (err) {
-          console.error('Failed to load initial workbench nodes:', err)
-          setInitialWorkbenchError(err instanceof Error ? err.message : 'Failed to load entry points')
-          // Fallback: use top nodes from graph data by complexity if available
-          if (graphData) {
-            const topNodes = [...graphData.nodes]
-              .sort((a, b) => b.complexity - a.complexity)
-              .slice(0, 20)
-            setInitialWorkbenchNodes(topNodes)
-          }
-        } finally {
-          setInitialWorkbenchLoading(false)
+      // Check if we should load initial nodes
+      const shouldLoadInitialNodes = 
+        activeView === 'workbench' && 
+        !workbenchRootNode && 
+        initialWorkbenchNodes.length === 0 && 
+        !initialWorkbenchLoading
+
+      if (!shouldLoadInitialNodes) return
+
+      setInitialWorkbenchLoading(true)
+      setInitialWorkbenchError(null)
+      try {
+        // Fetch entry points as the initial view
+        const response = await fetchCategory('entry_points')
+        setInitialWorkbenchNodes(response.nodes)
+      } catch (err) {
+        console.error('Failed to load initial workbench nodes:', err)
+        setInitialWorkbenchError(err instanceof Error ? err.message : 'Failed to load entry points')
+        // Fallback: use top nodes from graph data by complexity if available
+        if (graphData) {
+          const topNodes = [...graphData.nodes]
+            .sort((a, b) => b.complexity - a.complexity)
+            .slice(0, FALLBACK_NODES_LIMIT)
+          setInitialWorkbenchNodes(topNodes)
         }
+      } finally {
+        setInitialWorkbenchLoading(false)
       }
     }
     

@@ -1,6 +1,6 @@
 # Workbench View Design Documentation
 
-**Version**: 1.0  
+**Version**: 1.1  
 **Date**: December 2025  
 **Status**: Design Phase
 
@@ -8,7 +8,9 @@
 
 ## Executive Summary
 
-This document outlines the design for a new workbench view that will replace the current force-directed graph visualization. The new view introduces a **sliding panel with node cards** interface that supports hierarchical drill-down navigation while maintaining the established interaction patterns like double-click navigation and breadcrumb navigation.
+This document outlines the design for a new workbench view that will **coexist with** the current force-directed graph visualization. The new view introduces a **sliding panel with node cards** interface that supports hierarchical drill-down navigation while maintaining the established interaction patterns like double-click navigation and breadcrumb navigation.
+
+Users will be able to **toggle between views** and set their preferred default view on startup. The force-directed graph, being computationally heavy, will be **lazy-loaded** to optimize performance.
 
 ---
 
@@ -21,14 +23,18 @@ This document outlines the design for a new workbench view that will replace the
    - .NET: `project → class → method`
    - JavaScript/TypeScript: `module → class/function`
 
-2. **Simplified Interaction**: Replace complex force-graph manipulation with card-based navigation
+2. **Dual View System**: Both views coexist with easy toggling between them
+   - **Workbench View** (new): Card-based hierarchical navigation
+   - **Force Graph View** (existing): Visual relationship exploration
 
-3. **Maintained Workflow**: Preserve existing double-click drill-down and breadcrumb navigation patterns
+3. **Maintained Workflow**: Preserve existing double-click drill-down and breadcrumb navigation patterns in both views
 
 4. **Testability**: Design components for unit and integration testing with Playwright
 
 ### 1.2 Secondary Goals
 
+- Lazy loading for the force-directed graph to improve initial load performance
+- User preference for default view (persisted in localStorage)
 - Improve panel resize behavior on window resize
 - Fix non-functional controls (e.g., "View Connections" button)
 - Better integration of entry points, hubs, and leaves categories
@@ -58,7 +64,54 @@ This document outlines the design for a new workbench view that will replace the
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-### 2.2 Proposed State: Workbench View
+### 2.2 Dual View Architecture
+
+The main canvas area supports **two interchangeable views** with a toggle control:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  Header Bar                                                          │
+│  [← Back] Breadcrumbs: src/codenav > ...    [📊 Graph] [📋 Cards]   │
+│                                              ↑ View Toggle           │
+├───────────────┬───────────────────────────────────────┬─────────────┤
+│               │                                       │             │
+│  Navigator    │      Active View (Toggle between):   │  Details    │
+│  Panel        │      • Workbench View (Cards)        │   Panel     │
+│               │      • Force Graph View (Lazy Load)  │             │
+│               │                                       │             │
+├───────────────┴───────────────────────────────────────┴─────────────┤
+│  Status Bar: View: Cards | Nodes: 974 | Default: [Set as Default]   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 2.3 Force Graph View (Existing - Lazy Loaded)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  Header Bar                                                          │
+├───────────────┬───────────────────────────────────────┬─────────────┤
+│               │                                       │             │
+│  ToolsPanel   │      Force-Directed Graph Canvas      │  Details    │
+│  (w-64)       │      (flex-1)                         │   Panel     │
+│               │                                       │  (w-80)     │
+│  [Search]     │         ┌───┐                        │             │
+│  [Categories] │        /│ A │\                       │  Node info  │
+│  [Filters]    │       / └───┘ \                      │  Actions    │
+│  [Legend]     │  ┌───┐         ┌───┐                 │             │
+│               │  │ B │─────────│ C │                 │             │
+│               │  └───┘         └───┘                 │             │
+├───────────────┴───────────────────────────────────────┴─────────────┤
+│  Status Bar                                                          │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Lazy Loading Strategy**:
+- Force Graph component is loaded via `React.lazy()` / dynamic import
+- Only initialized when user toggles to the Graph view
+- Shows a loading spinner while the heavy component loads
+- Graph data is cached once loaded for quick switching
+
+### 2.4 Workbench View (New - Default)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -90,9 +143,50 @@ This document outlines the design for a new workbench view that will replace the
 
 ## 3. Component Design
 
-### 3.1 WorkbenchCanvas Component
+### 3.1 ViewToggle Component (New)
 
-The central component replacing ForceGraph, displaying the current root node and its children as interactive cards.
+Controls switching between Workbench and Force Graph views with user preference persistence.
+
+```typescript
+interface ViewToggleProps {
+  // Current active view
+  activeView: 'workbench' | 'graph'
+  
+  // Toggle handler
+  onViewChange: (view: 'workbench' | 'graph') => void
+  
+  // Default view preference
+  defaultView: 'workbench' | 'graph'
+  onSetDefault: (view: 'workbench' | 'graph') => void
+  
+  // Loading state for lazy-loaded graph
+  isGraphLoading: boolean
+}
+```
+
+**Implementation Details**:
+- Toggle control in header bar: `[📋 Cards] [📊 Graph]`
+- "Set as Default" option in settings or status bar
+- User preference stored in `localStorage` under `codenav.defaultView`
+- Force Graph lazy loaded using `React.lazy()`:
+
+```typescript
+// Lazy load the heavy ForceGraph component
+const ForceGraph = React.lazy(() => import('@/components/graph/ForceGraph'))
+
+// In the main canvas area
+{activeView === 'graph' ? (
+  <Suspense fallback={<LoadingSpinner message="Loading graph visualization..." />}>
+    <ForceGraph {...graphProps} />
+  </Suspense>
+) : (
+  <WorkbenchCanvas {...workbenchProps} />
+)}
+```
+
+### 3.2 WorkbenchCanvas Component
+
+The central component for the new card-based view, displaying the current root node and its children as interactive cards.
 
 ```typescript
 interface WorkbenchCanvasProps {

@@ -68,6 +68,45 @@ const TYPE_COLORS: Record<string, string> = {
   default: '#64748b',
 }
 
+// Helper to compute node color (pure function, no hooks)
+function computeNodeColor(
+  node: ForceGraphNode,
+  selectedNodeId: string | null | undefined,
+  highlightedNodeIds: string[],
+  colorMode: 'type' | 'language' | 'complexity'
+): string {
+  if (selectedNodeId === node.id) {
+    return '#f472b6' // Pink for selected
+  }
+  if (highlightedNodeIds.includes(node.id)) {
+    return '#fbbf24' // Yellow for highlighted
+  }
+  
+  if (colorMode === 'language') {
+    const lang = node.language?.toLowerCase() || 'default'
+    return LANGUAGE_COLORS[lang] || LANGUAGE_COLORS.default
+  }
+  
+  if (colorMode === 'complexity') {
+    const c = node.complexity || 0
+    if (c <= 5) return '#22c55e'  // Green - low
+    if (c <= 10) return '#f59e0b' // Yellow - medium
+    if (c <= 20) return '#f97316' // Orange - high
+    return '#ef4444'              // Red - very high
+  }
+  
+  // Default: color by type
+  const type = node.type?.toLowerCase() || 'default'
+  return TYPE_COLORS[type] || TYPE_COLORS.default
+}
+
+// Helper to compute node size (pure function, no hooks)
+function computeNodeSize(node: ForceGraphNode): number {
+  const baseSize = 4
+  const complexityFactor = Math.min(node.complexity || 1, 20) / 5
+  return baseSize + complexityFactor
+}
+
 interface ForceGraphProps {
   data: GraphData | null
   selectedNodeId?: string | null
@@ -102,59 +141,95 @@ export const ForceGraph = forwardRef<ForceGraphRef, ForceGraphProps>(({
   const graphRef = useRef<ForceGraphInstance | null>(null)
   const lastClickTimeRef = useRef<number>(0)
   const lastClickNodeRef = useRef<string | null>(null)
+  
+  // Use refs for values that shouldn't trigger graph re-initialization
+  const selectedNodeIdRef = useRef(selectedNodeId)
+  const highlightedNodeIdsRef = useRef(highlightedNodeIds)
+  const colorModeRef = useRef(colorMode)
+  const onNodeClickRef = useRef(onNodeClick)
+  const onNodeDoubleClickRef = useRef(onNodeDoubleClick)
+  const onNodeHoverRef = useRef(onNodeHover)
+  const onBackgroundClickRef = useRef(onBackgroundClick)
+  
+  // Keep refs in sync with props
+  useEffect(() => {
+    selectedNodeIdRef.current = selectedNodeId
+  }, [selectedNodeId])
+  
+  useEffect(() => {
+    highlightedNodeIdsRef.current = highlightedNodeIds
+  }, [highlightedNodeIds])
+  
+  useEffect(() => {
+    colorModeRef.current = colorMode
+  }, [colorMode])
+  
+  useEffect(() => {
+    onNodeClickRef.current = onNodeClick
+    onNodeDoubleClickRef.current = onNodeDoubleClick
+    onNodeHoverRef.current = onNodeHover
+    onBackgroundClickRef.current = onBackgroundClick
+  }, [onNodeClick, onNodeDoubleClick, onNodeHover, onBackgroundClick])
 
+  // Wrapper functions that use refs (stable references)
   const getNodeColor = useCallback((node: ForceGraphNode): string => {
-    if (selectedNodeId === node.id) {
-      return '#f472b6' // Pink for selected
-    }
-    if (highlightedNodeIds.includes(node.id)) {
-      return '#fbbf24' // Yellow for highlighted
-    }
-    
-    if (colorMode === 'language') {
-      const lang = node.language?.toLowerCase() || 'default'
-      return LANGUAGE_COLORS[lang] || LANGUAGE_COLORS.default
-    }
-    
-    if (colorMode === 'complexity') {
-      const c = node.complexity || 0
-      if (c <= 5) return '#22c55e'  // Green - low
-      if (c <= 10) return '#f59e0b' // Yellow - medium
-      if (c <= 20) return '#f97316' // Orange - high
-      return '#ef4444'              // Red - very high
-    }
-    
-    // Default: color by type
-    const type = node.type?.toLowerCase() || 'default'
-    return TYPE_COLORS[type] || TYPE_COLORS.default
-  }, [selectedNodeId, highlightedNodeIds, colorMode])
+    return computeNodeColor(
+      node,
+      selectedNodeIdRef.current,
+      highlightedNodeIdsRef.current,
+      colorModeRef.current
+    )
+  }, [])
 
   const getNodeSize = useCallback((node: ForceGraphNode): number => {
-    const baseSize = 4
-    const complexityFactor = Math.min(node.complexity || 1, 20) / 5
-    return baseSize + complexityFactor
+    return computeNodeSize(node)
   }, [])
 
   // Handle click with double-click detection
+  // Uses a delayed single-click to avoid firing when double-click is intended
+  const singleClickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  
   const handleNodeClick = useCallback((node: ForceGraphNode) => {
     const now = Date.now()
     const DOUBLE_CLICK_THRESHOLD = 300 // ms
+
+    // Clear any pending single-click timeout
+    if (singleClickTimeoutRef.current) {
+      clearTimeout(singleClickTimeoutRef.current)
+      singleClickTimeoutRef.current = null
+    }
 
     if (
       lastClickNodeRef.current === node.id &&
       now - lastClickTimeRef.current < DOUBLE_CLICK_THRESHOLD
     ) {
       // Double-click detected
-      onNodeDoubleClick?.(node)
+      onNodeDoubleClickRef.current?.(node)
       lastClickNodeRef.current = null
       lastClickTimeRef.current = 0
     } else {
-      // Single click
-      onNodeClick?.(node)
+      // Delay single click to allow double-click detection
       lastClickNodeRef.current = node.id
       lastClickTimeRef.current = now
+      
+      singleClickTimeoutRef.current = setTimeout(() => {
+        // Only fire if this is still the same pending click
+        if (lastClickNodeRef.current === node.id) {
+          onNodeClickRef.current?.(node)
+        }
+        singleClickTimeoutRef.current = null
+      }, DOUBLE_CLICK_THRESHOLD)
     }
-  }, [onNodeClick, onNodeDoubleClick])
+  }, [])
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (singleClickTimeoutRef.current) {
+        clearTimeout(singleClickTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // Expose methods to parent via ref
   useImperativeHandle(ref, () => ({
@@ -179,7 +254,7 @@ export const ForceGraph = forwardRef<ForceGraphRef, ForceGraphProps>(({
     }
   }), [data, dimension])
 
-  // Initialize graph
+  // Initialize graph - only when dimension or showLabels changes
   useEffect(() => {
     if (!containerRef.current) return
 
@@ -218,10 +293,10 @@ export const ForceGraph = forwardRef<ForceGraphRef, ForceGraphProps>(({
           handleNodeClick(node)
         })
         .onNodeHover((node: ForceGraphNode | null) => {
-          onNodeHover?.(node)
+          onNodeHoverRef.current?.(node)
         })
         .onBackgroundClick(() => {
-          onBackgroundClick?.()
+          onBackgroundClickRef.current?.()
         })
         .cooldownTicks(100)
         .backgroundColor('#0f172a')
@@ -247,10 +322,10 @@ export const ForceGraph = forwardRef<ForceGraphRef, ForceGraphProps>(({
           handleNodeClick(node)
         })
         .onNodeHover((node: ForceGraphNode | null) => {
-          onNodeHover?.(node)
+          onNodeHoverRef.current?.(node)
         })
         .onBackgroundClick(() => {
-          onBackgroundClick?.()
+          onBackgroundClickRef.current?.()
         })
         .cooldownTicks(100)
         .backgroundColor('#0f172a')
@@ -289,7 +364,7 @@ export const ForceGraph = forwardRef<ForceGraphRef, ForceGraphProps>(({
       container.innerHTML = ''
       graphRef.current = null
     }
-  }, [showLabels, dimension, getNodeColor, getNodeSize, handleNodeClick, onNodeHover, onBackgroundClick])
+  }, [showLabels, dimension, getNodeColor, getNodeSize, handleNodeClick])
 
   // Update data
   useEffect(() => {

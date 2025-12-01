@@ -200,7 +200,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   },
 
   // Navigate back in the stack
-  navigateBack: () => {
+  navigateBack: async () => {
     const { navigationStack, fullGraphData } = get()
     
     if (navigationStack.length === 0) return
@@ -217,11 +217,52 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         selectedNodeId: null,
       })
     } else {
-      // Navigate to previous level
+      // Navigate to previous level - fetch the subgraph directly
       const previousEntry = newStack[newStack.length - 1]
-      get().drillIntoNode(previousEntry.nodeId)
-      // Adjust stack since drillIntoNode adds an entry
-      set({ navigationStack: newStack })
+      set({ isLoading: true, error: null })
+      
+      try {
+        const subgraph = await fetchSubgraph(previousEntry.nodeId, 2, 100)
+        
+        const focusedGraphData: GraphData = {
+          nodes: subgraph.nodes.map((n: { id: string; name: string; type: string; language: string; complexity: number; file_path: string; line: number }) => ({
+            id: n.id,
+            name: n.name,
+            type: n.type,
+            language: n.language,
+            complexity: n.complexity,
+            file: n.file_path,
+            line: n.line,
+          })),
+          links: subgraph.relationships.map((r: { source: string; target: string; type: string }) => ({
+            source: r.source,
+            target: r.target,
+            type: r.type,
+            isSeam: r.type === 'seam',
+          })),
+          stats: {
+            totalNodes: subgraph.nodes.length,
+            totalLinks: subgraph.relationships.length,
+            languages: {},
+            nodeTypes: {},
+            avgComplexity: 0,
+          },
+          execution_time_ms: subgraph.execution_time_ms,
+        }
+
+        set({
+          graphData: focusedGraphData,
+          navigationStack: newStack,
+          focusedNodeId: previousEntry.nodeId,
+          selectedNodeId: previousEntry.nodeId,
+          isLoading: false,
+        })
+      } catch (err) {
+        set({ 
+          error: err instanceof Error ? err.message : 'Failed to navigate back',
+          isLoading: false 
+        })
+      }
     }
   },
 

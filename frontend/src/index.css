@@ -2,6 +2,76 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Animation utilities */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes slide-up {
+  from { 
+    opacity: 0; 
+    transform: translateY(10px);
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-down {
+  from { 
+    opacity: 0; 
+    transform: translateY(-10px);
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-in {
+  animation-duration: 200ms;
+  animation-timing-function: ease-out;
+  animation-fill-mode: forwards;
+}
+
+.fade-in {
+  animation-name: fade-in;
+}
+
+.fade-out {
+  animation-name: fade-out;
+}
+
+.slide-up {
+  animation-name: slide-up;
+}
+
+.slide-down {
+  animation-name: slide-down;
+}
+
+.scale-in {
+  animation-name: scale-in;
+}
+
 /* Custom global styles */
 :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;

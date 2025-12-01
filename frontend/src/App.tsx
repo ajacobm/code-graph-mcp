@@ -9,6 +9,7 @@ import { useEffect, useRef, useState, useCallback, useMemo, Suspense, lazy } fro
 import { useGraphStore } from '@/stores/graphStore'
 import { Header } from '@/components/layout/Header'
 import { StatusBar } from '@/components/layout/StatusBar'
+import { LoadingOverlay } from '@/components/layout/LoadingOverlay'
 import { ToolsPanel } from '@/components/panels/ToolsPanel'
 import { DetailsPanel } from '@/components/panels/DetailsPanel'
 import { GraphControls } from '@/components/graph/GraphControls'
@@ -175,6 +176,11 @@ export default function App() {
     }
   }, [graphData])
 
+  // State for initial workbench nodes (when no node is selected)
+  const [initialWorkbenchNodes, setInitialWorkbenchNodes] = useState<GraphNode[]>([])
+  const [initialWorkbenchLoading, setInitialWorkbenchLoading] = useState(false)
+  const [initialWorkbenchError, setInitialWorkbenchError] = useState<string | null>(null)
+
   // Get workbench data
   const selectedNode = getSelectedNode()
   const focusedNode = focusedNodeId 
@@ -195,6 +201,54 @@ export default function App() {
       )
     })
   }, [graphData, workbenchRootNode])
+  // Constants for workbench initial loading
+  const FALLBACK_NODES_LIMIT = 20
+
+  // Load initial nodes for workbench when no node is selected
+  useEffect(() => {
+    const loadInitialWorkbenchNodes = async () => {
+      // Check if we should load initial nodes
+      const shouldLoadInitialNodes = 
+        activeView === 'workbench' && 
+        !workbenchRootNode && 
+        initialWorkbenchNodes.length === 0 && 
+        !initialWorkbenchLoading
+
+      if (!shouldLoadInitialNodes) return
+
+      setInitialWorkbenchLoading(true)
+      setInitialWorkbenchError(null)
+      try {
+        // Fetch entry points as the initial view
+        const response = await fetchCategory('entry_points')
+        setInitialWorkbenchNodes(response.nodes)
+      } catch (err) {
+        console.error('Failed to load initial workbench nodes:', err)
+        setInitialWorkbenchError(err instanceof Error ? err.message : 'Failed to load entry points')
+        // Fallback: use top nodes from graph data by complexity if available
+        if (graphData) {
+          const topNodes = [...graphData.nodes]
+            .sort((a, b) => b.complexity - a.complexity)
+            .slice(0, FALLBACK_NODES_LIMIT)
+          setInitialWorkbenchNodes(topNodes)
+        }
+      } finally {
+        setInitialWorkbenchLoading(false)
+      }
+    }
+    
+    loadInitialWorkbenchNodes()
+  }, [activeView, workbenchRootNode, graphData, initialWorkbenchNodes.length, initialWorkbenchLoading])
+
+  // Clear initial nodes when a node is selected or focused
+  useEffect(() => {
+    if (workbenchRootNode && initialWorkbenchNodes.length > 0) {
+      setInitialWorkbenchNodes([])
+    }
+  }, [workbenchRootNode, initialWorkbenchNodes.length])
+
+  // Use initial nodes when no root node is selected
+  const effectiveWorkbenchChildren = workbenchRootNode ? workbenchChildren : initialWorkbenchNodes
 
   // Convert navigation stack to NavigationItem format
   const navigationItems = navigationStack.map((entry: NavigationEntry) => ({
@@ -247,19 +301,12 @@ export default function App() {
               </div>
 
               {/* Loading Overlay */}
-              {isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 z-20">
-                  <div className="text-center">
-                    <div className="animate-spin h-12 w-12 border-4 border-indigo-500 border-t-transparent rounded-full mx-auto" />
-                    <p className="mt-4 text-slate-300">Loading graph...</p>
-                  </div>
-                </div>
-              )}
+              <LoadingOverlay isLoading={isLoading} label="Loading graph..." />
 
               {/* Error Overlay */}
               {error && !isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 z-20">
-                  <div className="bg-red-900/50 border border-red-700 rounded-lg p-6 max-w-md">
+                <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 z-20 animate-in fade-in">
+                  <div className="bg-red-900/50 border border-red-700 rounded-lg p-6 max-w-md animate-in scale-in">
                     <h3 className="text-lg font-bold text-red-400 mb-2">Error loading graph</h3>
                     <p className="text-red-300 text-sm mb-4">{error}</p>
                     <button 
@@ -307,18 +354,11 @@ export default function App() {
             /* Workbench View */
             <>
               {/* Loading Overlay */}
-              {isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 z-20">
-                  <div className="text-center">
-                    <div className="animate-spin h-12 w-12 border-4 border-indigo-500 border-t-transparent rounded-full mx-auto" />
-                    <p className="mt-4 text-slate-300">Loading...</p>
-                  </div>
-                </div>
-              )}
+              <LoadingOverlay isLoading={isLoading || initialWorkbenchLoading} label="Loading..." />
 
               <WorkbenchCanvas
                 rootNode={workbenchRootNode}
-                childNodes={workbenchChildren}
+                childNodes={effectiveWorkbenchChildren}
                 navigationStack={navigationItems}
                 selectedNodeId={selectedNodeId}
                 onDrillDown={drillIntoNode}
@@ -326,6 +366,7 @@ export default function App() {
                 onNavigateBack={navigateBack}
                 onNavigateToLevel={navigateToLevel}
                 onNavigateHome={resetNavigation}
+                error={initialWorkbenchError}
               />
             </>
           )}

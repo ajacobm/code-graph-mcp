@@ -180,15 +180,18 @@ export default function App() {
   
   // Get child nodes for workbench (nodes connected to focused node)
   const workbenchRootNode = focusedNode || selectedNode
-  const workbenchChildren = graphData?.nodes.filter(n => {
-    if (!workbenchRootNode || n.id === workbenchRootNode.id) return false
-    // Check if there's a link from root to this node or vice versa
-    // GraphLink source/target are always strings (node IDs)
-    return graphData.links.some(l => 
-      (l.source === workbenchRootNode.id && l.target === n.id) ||
-      (l.target === workbenchRootNode.id && l.source === n.id)
-    )
-  }) || []
+  const workbenchChildren = useMemo(() => {
+    if (!graphData || !workbenchRootNode) return []
+    return graphData.nodes.filter(n => {
+      if (n.id === workbenchRootNode.id) return false
+      // Check if there's a link from root to this node or vice versa
+      // GraphLink source/target are always strings (node IDs)
+      return graphData.links.some(l => 
+        (l.source === workbenchRootNode.id && l.target === n.id) ||
+        (l.target === workbenchRootNode.id && l.source === n.id)
+      )
+    })
+  }, [graphData, workbenchRootNode])
 
   // Convert navigation stack to NavigationItem format
   const navigationItems = navigationStack.map((entry: NavigationEntry) => ({

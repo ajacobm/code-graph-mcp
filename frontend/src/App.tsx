@@ -49,8 +49,8 @@ export default function App() {
 
   // Handle node double-click for drill-down navigation
   const handleNodeDoubleClick = useCallback((node: ForceGraphNode) => {
-    // Guard against null/undefined node or missing id
-    if (!node || !node.id) {
+    // Guard against null/undefined node or missing/invalid id
+    if (!node || !node.id || typeof node.id !== 'string') {
       console.warn('App: handleNodeDoubleClick called with invalid node', node)
       return
     }

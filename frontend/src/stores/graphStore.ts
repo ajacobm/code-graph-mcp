@@ -190,8 +190,8 @@ export const useGraphStore = create<GraphState>((set, get) => ({
 
   // Navigation: drill into a node to see its local subgraph
   drillIntoNode: async (nodeId: string) => {
-    // Guard against invalid nodeId
-    if (!nodeId) {
+    // Guard against invalid nodeId - must be a non-empty string
+    if (!nodeId || typeof nodeId !== 'string') {
       console.warn('drillIntoNode: called with invalid nodeId', nodeId)
       return
     }

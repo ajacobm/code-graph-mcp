@@ -36,6 +36,8 @@ export interface WorkbenchCanvasProps {
   onNavigateHome: () => void
   selectedNodeId?: string | null
   className?: string
+  /** Error message to display when initial loading fails */
+  error?: string | null
 }
 
 /**
@@ -106,6 +108,7 @@ export function WorkbenchCanvas({
   onNavigateHome,
   selectedNodeId,
   className,
+  error,
 }: WorkbenchCanvasProps) {
   const [localViewMode, setLocalViewMode] = useState<ViewMode>(viewMode)
   const [localSortBy, setLocalSortBy] = useState<SortBy>(sortBy)
@@ -162,7 +165,31 @@ export function WorkbenchCanvas({
     }
   }, [rootNode, processedChildren.length])
 
-  // Empty state
+  // Error state - show when there's an error and no nodes
+  if (error && !rootNode && childNodes.length === 0) {
+    return (
+      <div 
+        className={clsx(
+          'flex flex-col items-center justify-center h-full p-8',
+          'text-slate-400',
+          className
+        )}
+        data-test="workbench-canvas"
+        data-testid="workbench-canvas-error"
+      >
+        <div className="text-6xl mb-4">⚠️</div>
+        <h2 className="text-xl font-semibold mb-2 text-red-400">Unable to Load Nodes</h2>
+        <p className="text-sm text-slate-500 text-center max-w-md mb-4">
+          {error}
+        </p>
+        <p className="text-xs text-slate-600 text-center max-w-md">
+          Make sure the backend server is running and try refreshing the page.
+        </p>
+      </div>
+    )
+  }
+
+  // Empty state - only show when there are no nodes at all and no error
   if (!rootNode && childNodes.length === 0) {
     return (
       <div 
@@ -175,14 +202,16 @@ export function WorkbenchCanvas({
         data-testid="workbench-canvas-empty"
       >
         <div className="text-6xl mb-4">📊</div>
-        <h2 className="text-xl font-semibold mb-2">No Node Selected</h2>
+        <h2 className="text-xl font-semibold mb-2">Loading Entry Points...</h2>
         <p className="text-sm text-slate-500 text-center max-w-md">
-          Select a node from the graph view to explore its structure and relationships,
-          or double-click to drill into its local context.
+          Fetching initial nodes to get you started.
         </p>
       </div>
     )
   }
+
+  // Check if we're showing initial nodes (no root node but have child nodes)
+  const isShowingInitialNodes = !rootNode && childNodes.length > 0
 
   return (
     <div 
@@ -273,6 +302,22 @@ export function WorkbenchCanvas({
 
       {/* Scrollable content area */}
       <div className="flex-1 overflow-auto p-4">
+        {/* Initial nodes header - when showing entry points with no root node */}
+        {isShowingInitialNodes && (
+          <div className="mb-6">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-3xl">🚀</span>
+              <div>
+                <h2 className="text-xl font-bold text-slate-100">Entry Points</h2>
+                <p className="text-sm text-slate-400">Functions with no callers - great starting points for exploration</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 mt-2">
+              Double-click any card to drill into its local context
+            </p>
+          </div>
+        )}
+
         {/* Root node as hero card */}
         {rootNode && (
           <div className="mb-6 transition-all duration-200">
@@ -291,7 +336,7 @@ export function WorkbenchCanvas({
         )}
 
         {/* Section header for children */}
-        {processedChildren.length > 0 && (
+        {processedChildren.length > 0 && !isShowingInitialNodes && (
           <h3 className="text-sm font-medium text-slate-400 mb-3 flex items-center gap-2">
             <span>Related Nodes</span>
             <span className="text-slate-600">({processedChildren.length})</span>

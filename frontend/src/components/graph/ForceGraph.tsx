@@ -1,7 +1,7 @@
 /**
  * ForceGraph Component
  * 
- * React wrapper for the force-graph library.
+ * React wrapper for the force-graph library with 2D/3D support.
  * 
  * Note: The force-graph library uses a factory pattern where the default export
  * returns a function that creates graph instances. TypeScript struggles with this
@@ -11,7 +11,8 @@
 
 import { useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react'
 import ForceGraph2D from 'force-graph'
-import type { GraphData, ForceGraphNode, ForceGraphLink } from '@/types'
+import ForceGraph3D from '3d-force-graph'
+import type { GraphData, ForceGraphNode, ForceGraphLink, GraphDimension } from '@/types'
 
 /**
  * ForceGraph instance type - represents a configured force-graph instance.
@@ -33,12 +34,14 @@ interface ForceGraphInstance {
   onBackgroundClick: (fn: () => void) => ForceGraphInstance
   cooldownTicks: (ticks: number) => ForceGraphInstance
   backgroundColor: (color: string) => ForceGraphInstance
-  nodeCanvasObject: (fn: (node: ForceGraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => void) => ForceGraphInstance
+  nodeCanvasObject?: (fn: (node: ForceGraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => void) => ForceGraphInstance
+  nodeThreeObject?: (fn: (node: ForceGraphNode) => object) => ForceGraphInstance
   zoomToFit: (duration: number, padding: number) => void
   centerAt: (x: number | undefined, y: number | undefined, duration: number) => void
   zoom: (factor: number, duration: number) => void
   width: (width: number) => ForceGraphInstance
   height: (height: number) => ForceGraphInstance
+  cameraPosition?: (position: { x: number; y: number; z: number }, lookAt?: { x: number; y: number; z: number }, transitionDuration?: number) => void
 }
 
 // Color mappings
@@ -65,13 +68,57 @@ const TYPE_COLORS: Record<string, string> = {
   default: '#64748b',
 }
 
+// Double-click detection threshold in milliseconds
+const DOUBLE_CLICK_THRESHOLD_MS = 300
+
+// Helper to compute node color (pure function, no hooks)
+function computeNodeColor(
+  node: ForceGraphNode,
+  selectedNodeId: string | null | undefined,
+  highlightedNodeIds: string[],
+  colorMode: 'type' | 'language' | 'complexity'
+): string {
+  if (selectedNodeId === node.id) {
+    return '#f472b6' // Pink for selected
+  }
+  if (highlightedNodeIds.includes(node.id)) {
+    return '#fbbf24' // Yellow for highlighted
+  }
+  
+  if (colorMode === 'language') {
+    const lang = node.language?.toLowerCase() || 'default'
+    return LANGUAGE_COLORS[lang] || LANGUAGE_COLORS.default
+  }
+  
+  if (colorMode === 'complexity') {
+    const c = node.complexity || 0
+    if (c <= 5) return '#22c55e'  // Green - low
+    if (c <= 10) return '#f59e0b' // Yellow - medium
+    if (c <= 20) return '#f97316' // Orange - high
+    return '#ef4444'              // Red - very high
+  }
+  
+  // Default: color by type
+  const type = node.type?.toLowerCase() || 'default'
+  return TYPE_COLORS[type] || TYPE_COLORS.default
+}
+
+// Helper to compute node size (pure function, no hooks)
+function computeNodeSize(node: ForceGraphNode): number {
+  const baseSize = 4
+  const complexityFactor = Math.min(node.complexity || 1, 20) / 5
+  return baseSize + complexityFactor
+}
+
 interface ForceGraphProps {
   data: GraphData | null
   selectedNodeId?: string | null
   highlightedNodeIds?: string[]
   colorMode?: 'type' | 'language' | 'complexity'
   showLabels?: boolean
+  dimension?: GraphDimension
   onNodeClick?: (node: ForceGraphNode) => void
+  onNodeDoubleClick?: (node: ForceGraphNode) => void
   onNodeHover?: (node: ForceGraphNode | null) => void
   onBackgroundClick?: () => void
 }
@@ -87,43 +134,103 @@ export const ForceGraph = forwardRef<ForceGraphRef, ForceGraphProps>(({
   highlightedNodeIds = [],
   colorMode = 'type',
   showLabels = true,
+  dimension = '2d',
   onNodeClick,
+  onNodeDoubleClick,
   onNodeHover,
   onBackgroundClick,
 }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null)
-  const graphRef = useRef<ForceGraphInstance>(null)
+  const graphRef = useRef<ForceGraphInstance | null>(null)
+  const lastClickTimeRef = useRef<number>(0)
+  const lastClickNodeRef = useRef<string | null>(null)
+  
+  // Use refs for values that shouldn't trigger graph re-initialization
+  const selectedNodeIdRef = useRef(selectedNodeId)
+  const highlightedNodeIdsRef = useRef(highlightedNodeIds)
+  const colorModeRef = useRef(colorMode)
+  const onNodeClickRef = useRef(onNodeClick)
+  const onNodeDoubleClickRef = useRef(onNodeDoubleClick)
+  const onNodeHoverRef = useRef(onNodeHover)
+  const onBackgroundClickRef = useRef(onBackgroundClick)
+  
+  // Keep refs in sync with props
+  useEffect(() => {
+    selectedNodeIdRef.current = selectedNodeId
+  }, [selectedNodeId])
+  
+  useEffect(() => {
+    highlightedNodeIdsRef.current = highlightedNodeIds
+  }, [highlightedNodeIds])
+  
+  useEffect(() => {
+    colorModeRef.current = colorMode
+  }, [colorMode])
+  
+  useEffect(() => {
+    onNodeClickRef.current = onNodeClick
+    onNodeDoubleClickRef.current = onNodeDoubleClick
+    onNodeHoverRef.current = onNodeHover
+    onBackgroundClickRef.current = onBackgroundClick
+  }, [onNodeClick, onNodeDoubleClick, onNodeHover, onBackgroundClick])
 
+  // Wrapper functions that use refs (stable references)
   const getNodeColor = useCallback((node: ForceGraphNode): string => {
-    if (selectedNodeId === node.id) {
-      return '#f472b6' // Pink for selected
-    }
-    if (highlightedNodeIds.includes(node.id)) {
-      return '#fbbf24' // Yellow for highlighted
-    }
-    
-    if (colorMode === 'language') {
-      const lang = node.language?.toLowerCase() || 'default'
-      return LANGUAGE_COLORS[lang] || LANGUAGE_COLORS.default
-    }
-    
-    if (colorMode === 'complexity') {
-      const c = node.complexity || 0
-      if (c <= 5) return '#22c55e'  // Green - low
-      if (c <= 10) return '#f59e0b' // Yellow - medium
-      if (c <= 20) return '#f97316' // Orange - high
-      return '#ef4444'              // Red - very high
-    }
-    
-    // Default: color by type
-    const type = node.type?.toLowerCase() || 'default'
-    return TYPE_COLORS[type] || TYPE_COLORS.default
-  }, [selectedNodeId, highlightedNodeIds, colorMode])
+    return computeNodeColor(
+      node,
+      selectedNodeIdRef.current,
+      highlightedNodeIdsRef.current,
+      colorModeRef.current
+    )
+  }, [])
 
   const getNodeSize = useCallback((node: ForceGraphNode): number => {
-    const baseSize = 4
-    const complexityFactor = Math.min(node.complexity || 1, 20) / 5
-    return baseSize + complexityFactor
+    return computeNodeSize(node)
+  }, [])
+
+  // Handle click with double-click detection
+  // Uses a delayed single-click to avoid firing when double-click is intended
+  const singleClickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  
+  const handleNodeClick = useCallback((node: ForceGraphNode) => {
+    const now = Date.now()
+
+    // Clear any pending single-click timeout
+    if (singleClickTimeoutRef.current) {
+      clearTimeout(singleClickTimeoutRef.current)
+      singleClickTimeoutRef.current = null
+    }
+
+    if (
+      lastClickNodeRef.current === node.id &&
+      now - lastClickTimeRef.current < DOUBLE_CLICK_THRESHOLD_MS
+    ) {
+      // Double-click detected
+      onNodeDoubleClickRef.current?.(node)
+      lastClickNodeRef.current = null
+      lastClickTimeRef.current = 0
+    } else {
+      // Delay single click to allow double-click detection
+      lastClickNodeRef.current = node.id
+      lastClickTimeRef.current = now
+      
+      singleClickTimeoutRef.current = setTimeout(() => {
+        // Only fire if this is still the same pending click
+        if (lastClickNodeRef.current === node.id) {
+          onNodeClickRef.current?.(node)
+        }
+        singleClickTimeoutRef.current = null
+      }, DOUBLE_CLICK_THRESHOLD_MS)
+    }
+  }, [])
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (singleClickTimeoutRef.current) {
+        clearTimeout(singleClickTimeoutRef.current)
+      }
+    }
   }, [])
 
   // Expose methods to parent via ref
@@ -135,89 +242,131 @@ export const ForceGraph = forwardRef<ForceGraphRef, ForceGraphProps>(({
       if (!graphRef.current || !data) return
       const node = data.nodes.find(n => n.id === nodeId) as ForceGraphNode | undefined
       if (node && node.x !== undefined && node.y !== undefined) {
-        graphRef.current.centerAt(node.x, node.y, 500)
-        graphRef.current.zoom(2, 500)
+        if (dimension === '3d' && graphRef.current.cameraPosition) {
+          graphRef.current.cameraPosition(
+            { x: node.x, y: node.y, z: (node.z || 0) + 200 },
+            { x: node.x, y: node.y, z: node.z || 0 },
+            500
+          )
+        } else {
+          graphRef.current.centerAt(node.x, node.y, 500)
+          graphRef.current.zoom(2, 500)
+        }
       }
     }
-  }), [data])
+  }), [data, dimension])
 
-  // Initialize graph
+  // Initialize graph - only when dimension or showLabels changes
   useEffect(() => {
     if (!containerRef.current) return
 
+    // Store ref for cleanup
+    const container = containerRef.current
+
     // Clear existing
-    containerRef.current.innerHTML = ''
+    container.innerHTML = ''
 
     /**
      * Initialize the force-graph instance.
-     * The library uses a factory pattern: ForceGraph2D() returns a function
+     * The library uses a factory pattern: ForceGraph2D/3D() returns a function
      * that takes an HTMLElement and returns a chainable graph instance.
      */
-    const ForceGraphFactory = ForceGraph2D as unknown as () => (container: HTMLElement) => ForceGraphInstance
-    const graph = ForceGraphFactory()(containerRef.current)
-      .graphData({ nodes: [], links: [] })
-      .nodeId('id')
-      .nodeLabel((node: ForceGraphNode) => {
-        return `${node.name}\n${node.type} | ${node.language}\nComplexity: ${node.complexity}`
-      })
-      .nodeColor((node: ForceGraphNode) => getNodeColor(node))
-      .nodeVal((node: ForceGraphNode) => getNodeSize(node))
-      .linkColor((link: ForceGraphLink) => {
-        return link.isSeam ? '#f59e0b' : '#475569'
-      })
-      .linkWidth((link: ForceGraphLink) => {
-        return link.isSeam ? 2 : 1
-      })
-      .linkDirectionalArrowLength(6)
-      .linkDirectionalArrowRelPos(1)
-      .onNodeClick((node: ForceGraphNode) => {
-        onNodeClick?.(node)
-      })
-      .onNodeHover((node: ForceGraphNode | null) => {
-        onNodeHover?.(node)
-      })
-      .onBackgroundClick(() => {
-        onBackgroundClick?.()
-      })
-      .cooldownTicks(100)
-      .backgroundColor('#0f172a')
+    let graph: ForceGraphInstance
 
-    // Custom node rendering with labels
-    if (showLabels) {
-      graph.nodeCanvasObject((node: ForceGraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
-        const n = node as ForceGraphNode
-        const size = getNodeSize(n)
-        const color = getNodeColor(n)
-        
-        // Draw node circle
-        ctx.beginPath()
-        ctx.arc(n.x || 0, n.y || 0, size, 0, 2 * Math.PI)
-        ctx.fillStyle = color
-        ctx.fill()
-        
-        // Draw label if zoomed in enough
-        if (globalScale > 0.8) {
-          const label = n.name
-          const fontSize = 10 / globalScale
-          ctx.font = `${fontSize}px Sans-Serif`
-          ctx.textAlign = 'center'
-          ctx.textBaseline = 'middle'
-          ctx.fillStyle = '#e2e8f0'
-          ctx.fillText(label, n.x || 0, (n.y || 0) + size + fontSize)
-        }
-      })
+    if (dimension === '3d') {
+      const ForceGraph3DFactory = ForceGraph3D as unknown as () => (container: HTMLElement) => ForceGraphInstance
+      graph = ForceGraph3DFactory()(container)
+        .graphData({ nodes: [], links: [] })
+        .nodeId('id')
+        .nodeLabel((node: ForceGraphNode) => {
+          return `${node.name}\n${node.type} | ${node.language}\nComplexity: ${node.complexity}`
+        })
+        .nodeColor((node: ForceGraphNode) => getNodeColor(node))
+        .nodeVal((node: ForceGraphNode) => getNodeSize(node))
+        .linkColor((link: ForceGraphLink) => {
+          return link.isSeam ? '#f59e0b' : '#475569'
+        })
+        .linkWidth((link: ForceGraphLink) => {
+          return link.isSeam ? 2 : 1
+        })
+        .linkDirectionalArrowLength(6)
+        .linkDirectionalArrowRelPos(1)
+        .onNodeClick((node: ForceGraphNode) => {
+          handleNodeClick(node)
+        })
+        .onNodeHover((node: ForceGraphNode | null) => {
+          onNodeHoverRef.current?.(node)
+        })
+        .onBackgroundClick(() => {
+          onBackgroundClickRef.current?.()
+        })
+        .cooldownTicks(100)
+        .backgroundColor('#0f172a')
+    } else {
+      const ForceGraphFactory = ForceGraph2D as unknown as () => (container: HTMLElement) => ForceGraphInstance
+      graph = ForceGraphFactory()(container)
+        .graphData({ nodes: [], links: [] })
+        .nodeId('id')
+        .nodeLabel((node: ForceGraphNode) => {
+          return `${node.name}\n${node.type} | ${node.language}\nComplexity: ${node.complexity}`
+        })
+        .nodeColor((node: ForceGraphNode) => getNodeColor(node))
+        .nodeVal((node: ForceGraphNode) => getNodeSize(node))
+        .linkColor((link: ForceGraphLink) => {
+          return link.isSeam ? '#f59e0b' : '#475569'
+        })
+        .linkWidth((link: ForceGraphLink) => {
+          return link.isSeam ? 2 : 1
+        })
+        .linkDirectionalArrowLength(6)
+        .linkDirectionalArrowRelPos(1)
+        .onNodeClick((node: ForceGraphNode) => {
+          handleNodeClick(node)
+        })
+        .onNodeHover((node: ForceGraphNode | null) => {
+          onNodeHoverRef.current?.(node)
+        })
+        .onBackgroundClick(() => {
+          onBackgroundClickRef.current?.()
+        })
+        .cooldownTicks(100)
+        .backgroundColor('#0f172a')
+
+      // Custom node rendering with labels (2D only)
+      if (showLabels && graph.nodeCanvasObject) {
+        graph.nodeCanvasObject((node: ForceGraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
+          const n = node as ForceGraphNode
+          const size = getNodeSize(n)
+          const color = getNodeColor(n)
+          
+          // Draw node circle
+          ctx.beginPath()
+          ctx.arc(n.x || 0, n.y || 0, size, 0, 2 * Math.PI)
+          ctx.fillStyle = color
+          ctx.fill()
+          
+          // Draw label if zoomed in enough
+          if (globalScale > 0.8) {
+            const label = n.name
+            const fontSize = 10 / globalScale
+            ctx.font = `${fontSize}px Sans-Serif`
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'middle'
+            ctx.fillStyle = '#e2e8f0'
+            ctx.fillText(label, n.x || 0, (n.y || 0) + size + fontSize)
+          }
+        })
+      }
     }
 
     graphRef.current = graph
 
     // Cleanup
     return () => {
-      if (containerRef.current) {
-        containerRef.current.innerHTML = ''
-      }
+      container.innerHTML = ''
       graphRef.current = null
     }
-  }, [showLabels]) // Only re-init when showLabels changes
+  }, [showLabels, dimension, getNodeColor, getNodeSize, handleNodeClick])
 
   // Update data
   useEffect(() => {
@@ -253,14 +402,17 @@ export const ForceGraph = forwardRef<ForceGraphRef, ForceGraphProps>(({
   useEffect(() => {
     if (!containerRef.current || !graphRef.current) return
 
+    const container = containerRef.current
+    const graph = graphRef.current
+
     const resizeObserver = new ResizeObserver(() => {
-      if (graphRef.current && containerRef.current) {
-        graphRef.current.width(containerRef.current.clientWidth)
-        graphRef.current.height(containerRef.current.clientHeight)
+      if (graph && container) {
+        graph.width(container.clientWidth)
+        graph.height(container.clientHeight)
       }
     })
 
-    resizeObserver.observe(containerRef.current)
+    resizeObserver.observe(container)
     return () => resizeObserver.disconnect()
   }, [])
 

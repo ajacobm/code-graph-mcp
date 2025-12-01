@@ -45,14 +45,17 @@ export interface GraphData {
   execution_time_ms: number
 }
 
-// Force graph node with position data
+// Force graph node with position data (2D and 3D support)
 export interface ForceGraphNode extends GraphNode {
   x?: number
   y?: number
+  z?: number // 3D support
   vx?: number
   vy?: number
+  vz?: number // 3D support
   fx?: number | null
   fy?: number | null
+  fz?: number | null // 3D support
   val?: number
   color?: string
 }
@@ -97,3 +100,14 @@ export interface CategoryResponse {
   nodes: GraphNode[]
   execution_time_ms: number
 }
+
+// Navigation stack entry for drill-down navigation
+export interface NavigationEntry {
+  nodeId: string
+  nodeName: string
+  nodeType: string
+  timestamp: number
+}
+
+// Graph display mode
+export type GraphDimension = '2d' | '3d'

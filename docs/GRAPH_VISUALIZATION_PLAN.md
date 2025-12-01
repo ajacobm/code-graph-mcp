@@ -4,6 +4,8 @@
 **Date**: November 2025  
 **Status**: Planning Phase
 
+> **Related Documentation**: See [WORKBENCH_VIEW_DESIGN.md](specs/WORKBENCH_VIEW_DESIGN.md) for the new sliding panel and node cards workbench view design that complements this force-graph approach.
+
 ---
 
 ## Executive Summary

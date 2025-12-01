@@ -4,6 +4,8 @@
 
 **Commitment**: Write Playwright tests BEFORE implementing features throughout all UI development sessions.
 
+> **Related Documentation**: See [WORKBENCH_VIEW_DESIGN.md](../specs/WORKBENCH_VIEW_DESIGN.md) Section 7 for the testing strategy specific to the new workbench view components.
+
 ---
 
 ## Why Playwright-First Development?

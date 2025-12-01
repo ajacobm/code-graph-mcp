@@ -99,6 +99,7 @@ interface GraphState {
   // Navigation actions
   drillIntoNode: (nodeId: string) => Promise<void>
   navigateBack: () => void
+  navigateToLevel: (index: number) => Promise<void>
   resetNavigation: () => void
 }
 
@@ -281,6 +282,56 @@ export const useGraphStore = create<GraphState>((set, get) => ({
           isLoading: false 
         })
       }
+    }
+  },
+
+  // Navigate to a specific level in the navigation stack
+  navigateToLevel: async (index: number) => {
+    const { navigationStack, fullGraphData } = get()
+    
+    // If index is -1 or less, go to root
+    if (index < 0) {
+      set({
+        graphData: fullGraphData,
+        navigationStack: [],
+        focusedNodeId: null,
+        selectedNodeId: null,
+      })
+      return
+    }
+
+    // If index is beyond the stack, do nothing
+    if (index >= navigationStack.length) {
+      return
+    }
+
+    // If navigating to last item, do nothing (already there)
+    if (index === navigationStack.length - 1) {
+      return
+    }
+
+    // Slice the stack to the target level
+    const newStack = navigationStack.slice(0, index + 1)
+    const targetEntry = newStack[newStack.length - 1]
+
+    set({ isLoading: true, error: null })
+
+    try {
+      const subgraph = await fetchSubgraph(targetEntry.nodeId, 2, 100)
+      const focusedGraphData = convertSubgraphToGraphData(subgraph)
+
+      set({
+        graphData: focusedGraphData,
+        navigationStack: newStack,
+        focusedNodeId: targetEntry.nodeId,
+        selectedNodeId: targetEntry.nodeId,
+        isLoading: false,
+      })
+    } catch (err) {
+      set({ 
+        error: err instanceof Error ? err.message : 'Failed to navigate to level',
+        isLoading: false 
+      })
     }
   },
 

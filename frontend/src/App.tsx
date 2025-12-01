@@ -152,14 +152,17 @@ export default function App() {
       const callers: GraphNode[] = []
       const callees: GraphNode[] = []
       
+      // Create a Map for O(1) node lookups
+      const nodeMap = new Map(graphData.nodes.map(n => [n.id, n]))
+      
       graphData.links.forEach(link => {
         // GraphLink source/target are always strings (node IDs)
         if (link.target === nodeId) {
-          const caller = graphData.nodes.find(n => n.id === link.source)
+          const caller = nodeMap.get(link.source)
           if (caller) callers.push(caller)
         }
         if (link.source === nodeId) {
-          const callee = graphData.nodes.find(n => n.id === link.target)
+          const callee = nodeMap.get(link.target)
           if (callee) callees.push(callee)
         }
       })

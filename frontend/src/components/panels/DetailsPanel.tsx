@@ -1,7 +1,8 @@
 /**
  * DetailsPanel Component
  * 
- * Right sidebar showing details of the selected node and its connections.
+ * Right sidebar showing details of the selected node, its metadata, 
+ * and connection management panel for viewing callers and callees.
  */
 
 import { useGraphStore } from '@/stores/graphStore'

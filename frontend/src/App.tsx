@@ -17,12 +17,10 @@ import { ViewToggle, getSavedViewPreference, type ViewType } from '@/components/
 import { WorkbenchCanvas } from '@/components/workbench/WorkbenchCanvas'
 import { fetchCategory } from '@/api/graphApi'
 import type { ForceGraphNode, GraphNode, NavigationEntry } from '@/types'
+import type { ForceGraphRef } from '@/components/graph/ForceGraph'
 
 // Lazy load the heavy ForceGraph component
 const ForceGraph = lazy(() => import('@/components/graph/ForceGraph').then(mod => ({ default: mod.ForceGraph })))
-
-// Import type for ForceGraphRef
-import type { ForceGraphRef } from '@/components/graph/ForceGraph'
 
 export default function App() {
   const forceGraphRef = useRef<ForceGraphRef>(null)
@@ -155,15 +153,13 @@ export default function App() {
       const callees: GraphNode[] = []
       
       graphData.links.forEach(link => {
-        const sourceId = typeof link.source === 'string' ? link.source : link.source
-        const targetId = typeof link.target === 'string' ? link.target : link.target
-        
-        if (targetId === nodeId) {
-          const caller = graphData.nodes.find(n => n.id === sourceId)
+        // GraphLink source/target are always strings (node IDs)
+        if (link.target === nodeId) {
+          const caller = graphData.nodes.find(n => n.id === link.source)
           if (caller) callers.push(caller)
         }
-        if (sourceId === nodeId) {
-          const callee = graphData.nodes.find(n => n.id === targetId)
+        if (link.source === nodeId) {
+          const callee = graphData.nodes.find(n => n.id === link.target)
           if (callee) callees.push(callee)
         }
       })
@@ -187,12 +183,11 @@ export default function App() {
   const workbenchChildren = graphData?.nodes.filter(n => {
     if (!workbenchRootNode || n.id === workbenchRootNode.id) return false
     // Check if there's a link from root to this node or vice versa
-    return graphData.links.some(l => {
-      const sourceId = typeof l.source === 'string' ? l.source : l.source
-      const targetId = typeof l.target === 'string' ? l.target : l.target
-      return (sourceId === workbenchRootNode.id && targetId === n.id) ||
-             (targetId === workbenchRootNode.id && sourceId === n.id)
-    })
+    // GraphLink source/target are always strings (node IDs)
+    return graphData.links.some(l => 
+      (l.source === workbenchRootNode.id && l.target === n.id) ||
+      (l.target === workbenchRootNode.id && l.source === n.id)
+    )
   }) || []
 
   // Convert navigation stack to NavigationItem format
